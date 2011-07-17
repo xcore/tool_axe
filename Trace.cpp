@@ -1,0 +1,307 @@
+// Copyright (c) 2011, Richard Osborne, All rights reserved
+// This software is freely distributable under a derivative of the
+// University of Illinois/NCSA Open Source License posted in
+// LICENSE.txt and at <http://github.xcore.com/>
+
+#include "Trace.h"
+#include "SystemState.h"
+#include "Node.h"
+#include "Core.h"
+#include "Resource.h"
+#include "Exceptions.h"
+#include <iomanip>
+#include <sstream>
+#include <cstring>
+
+const unsigned mnemonicColumn = 40;
+const unsigned regWriteColumn = 78;
+
+Tracer Tracer::instance;
+
+void Tracer::setSymbolInfo(std::auto_ptr<SymbolInfo> &si)
+{
+  symInfo = si;
+}
+
+void Tracer::setColour(bool enable)
+{
+  colours = enable ? TerminalColours::ansi : TerminalColours::null;
+}
+
+void Tracer::escapeCode(const char *s)
+{
+  *line.buf << s;
+  line.numEscapeChars += std::strlen(s);
+}
+
+void Tracer::printCommonEnd()
+{
+  *line.buf << '\n';
+  if (line.out) {
+    *line.out << line.buf->str() << line.pending->str();
+  }
+  line.thread = 0;
+}
+
+void Tracer::printCommonStart()
+{
+  line.buf->str("");
+  if (line.pending) {
+    line.pending->str("");
+  }
+  line.numEscapeChars = 0;
+  line.hadRegWrite = false;
+  line.thread = 0;
+}
+
+void Tracer::printThreadID()
+{
+  *line.buf << 'c' << line.thread->getParent().getCoreID()
+            << 't' << line.thread->getID();
+}
+
+void Tracer::printCommonStart(const ThreadState &t)
+{
+  printCommonStart();
+  line.thread = &t;
+
+  // TODO add option to show cycles?
+  //*line.buf << std::setw(6) << (uint64_t)line.thread->time;
+  green();
+  *line.buf << '[';
+  printThreadID();
+  *line.buf << ']';
+  reset();
+}
+
+void Tracer::printThreadPC()
+{
+  unsigned pc = line.thread->getParent().targetPc(line.thread->pc);  
+  const Core *core = &line.thread->getParent();
+  const ElfSymbol *sym;
+  if (symInfo.get() && (sym = symInfo->getFunctionSymbol(core, pc))) {
+    *line.buf << sym->name;
+    if (sym->value != pc)
+      *line.buf << '+' << (pc - sym->value);
+    *line.buf << "(0x" << std::hex << pc << std::dec << ')';
+  } else {
+    *line.buf << "0x" << std::hex << pc << std::dec;
+  }
+}
+
+void Tracer::printInstructionStart(const ThreadState &t)
+{
+  printCommonStart(t);
+  *line.buf << ' ';
+  printThreadPC();
+  *line.buf << ": ";
+
+  // Align
+  size_t pos = line.buf->str().size() - line.numEscapeChars;
+  if (pos < mnemonicColumn) {
+    *line.buf << std::setw(mnemonicColumn - pos) << "";
+  }
+}
+
+void Tracer::printOperand(Register op)
+{
+  *line.buf << op;
+}
+
+void Tracer::printOperand(SrcRegister op)
+{
+  Register reg = op.getRegister();
+  *line.buf << reg << "(0x" << std::hex << line.thread->regs[reg] << ')'
+       << std::dec;
+}
+
+void Tracer::printOperand(CPRelOffset op)
+{
+  uint32_t cpValue = line.thread->regs[CP];
+  uint32_t address = cpValue + (op.getOffset() << 2);
+  const Core *core = &line.thread->getParent();
+  const ElfSymbol *sym, *cpSym;
+  if (symInfo.get() &&
+      (sym = symInfo->getDataSymbol(core, address)) &&
+      sym->value == address &&
+      (cpSym = symInfo->getGlobalSymbol(core, "_cp")) &&
+      cpSym->value == cpValue) {
+    *line.buf << sym->name;
+    *line.buf << "(0x" << std::hex << address << ')';
+  } else {
+    *line.buf << op.getOffset();
+  }
+}
+
+void Tracer::printOperand(DPRelOffset op)
+{
+  uint32_t dpValue = line.thread->regs[DP];
+  uint32_t address = dpValue + (op.getOffset() << 2);
+  const Core *core = &line.thread->getParent();
+  const ElfSymbol *sym, *dpSym;
+  if (symInfo.get() &&
+      (sym = symInfo->getDataSymbol(core, address)) &&
+      sym->value == address &&
+      (dpSym = symInfo->getGlobalSymbol(core, "_dp")) &&
+      dpSym->value == dpValue) {
+    *line.buf << sym->name;
+    *line.buf << "(0x" << std::hex << address << std::dec << ')';
+  } else {
+    *line.buf << op.getOffset();
+  }
+}
+
+void Tracer::regWrite(Register reg, uint32_t value)
+{
+  if (!line.hadRegWrite) {
+    *line.buf << ' ';
+    // Align
+    size_t pos = line.buf->str().size() - line.numEscapeChars;
+    if (pos < regWriteColumn) {
+      *line.buf << std::setw(regWriteColumn - pos) << "";
+    }
+    *line.buf << "# ";
+  } else {
+    *line.buf << ", ";
+  }
+  *line.buf << reg << "=0x" << std::hex << value << std::dec;
+  line.hadRegWrite = true;
+}
+
+void Tracer::
+event(const ThreadState &t, const EventableResource &res, uint32_t pc,
+      uint32_t ev)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(t);
+  red();
+  *line.buf << " Event caused by "
+       << Resource::getResourceName(static_cast<const Resource&>(res).getType())
+       << " 0x" << std::hex << (uint32_t)res.getID() << std::dec;
+  reset();
+  regWrite(ED, ev);
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::
+interrupt(const ThreadState &t, const EventableResource &res, uint32_t pc,
+          uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed)
+{
+  std::ostringstream newBuf;
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(t);
+  red();
+  *line.buf << " Interrupt caused by "
+       << Resource::getResourceName(static_cast<const Resource&>(res).getType())
+       << " 0x" << std::hex << (uint32_t)res.getID() << std::dec;
+  reset();
+  regWrite(ED, ed);
+  regWrite(SSR, ssr);
+  regWrite(SPC, spc);
+  regWrite(SED, sed);
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::
+exception(const ThreadState &t, uint32_t et, uint32_t ed, 
+          uint32_t sed, uint32_t ssr, uint32_t spc)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(t);
+  red();
+  *line.buf << ' ' << Exceptions::getExceptionName(et) << " exception";
+  reset();
+  regWrite(ET, et);
+  regWrite(ED, ed);
+  regWrite(SSR, ssr);
+  regWrite(SPC, spc);
+  regWrite(SED, sed);
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::
+syscallBegin(const ThreadState &t)
+{
+  printCommonStart(t);
+  red();
+  *line.buf << " Syscall ";
+}
+
+void Tracer::dumpThreadSummary(const Core &core)
+{
+  for (unsigned i = 0; i < NUM_THREADS; i++) {
+    const Thread &t = core.getThread(i);
+    if (!t.isInUse())
+      continue;
+    const ThreadState &ts = t.getState();
+    printCommonStart();
+    line.thread = &ts;
+    *line.buf << "Thread ";
+    printThreadID();
+    if (ts.waiting()) {
+      if (Resource *res = ts.pausedOn) {
+        *line.buf << " paused on ";
+        *line.buf << Resource::getResourceName(res->getType());
+        *line.buf << " 0x" << std::hex << res->getID();
+      } else if (ts.eeble()) {
+        *line.buf << " waiting for events";
+        if (ts.ieble())
+          *line.buf << " or interrupts";
+      } else if (ts.ieble()) {
+        *line.buf << " waiting for interrupts";
+      } else {
+        *line.buf << " paused";
+      }
+    }
+    *line.buf << " at ";
+    printThreadPC();
+    printCommonEnd();
+  }
+}
+
+void Tracer::dumpThreadSummary(const SystemState &system)
+{
+  for (std::vector<Node*>::const_iterator it = system.getNodes().begin(),
+       e = system.getNodes().end(); it != e; ++it) {
+    const std::vector<Core*> &cores = (*it)->getCores();
+    for (std::vector<Core*>::const_iterator it2 = cores.begin(),
+         e2 = cores.end(); it2 != e2; ++it2) {
+      dumpThreadSummary(**it2);
+    }
+  }
+}
+
+void Tracer::noRunnableThreads(const SystemState &system)
+{
+  printCommonStart();
+  red();
+  *line.buf << "No more runnable threads";
+  reset();
+  printCommonEnd();
+  dumpThreadSummary(system);
+}
+

@@ -1,0 +1,187 @@
+// Copyright (c) 2011, Richard Osborne, All rights reserved
+// This software is freely distributable under a derivative of the
+// University of Illinois/NCSA Open Source License posted in
+// LICENSE.txt and at <http://github.xcore.com/>
+
+#include "Resource.h"
+#include "Core.h"
+#include "Node.h"
+#include "SystemState.h"
+
+const char *Resource::getResourceName(ResourceType type)
+{
+  switch (type) {
+  default: return "unknown resource";
+  case RES_TYPE_PORT: return "port";
+  case RES_TYPE_TIMER: return "timer";
+  case RES_TYPE_CHANEND: return "channel end";
+  case RES_TYPE_SYNC: return "synchroniser";
+  case RES_TYPE_THREAD: return "thread";
+  case RES_TYPE_LOCK: return "lock";
+  case RES_TYPE_CLKBLK: return "clock block";
+  case RES_TYPE_PS: return "processor state";
+  case RES_TYPE_CONFIG: return "config";
+  }
+}
+
+void EventableResource::updateOwnerAux(ThreadState &t)
+{
+  if (eventsEnabled) {
+    if (interruptMode) {
+      owner->removeInterruptEnabledResource(this);
+      t.addInterruptEnabledResource(this);
+    } else {
+      owner->removeEventEnabledResource(this);
+      t.addEventEnabledResource(this);
+    }
+  }
+  owner = &t;
+}
+
+void EventableResource::clearOwner()
+{
+  if (eventsEnabled) {
+    if (interruptMode) {
+      owner->removeInterruptEnabledResource(this);
+    } else {
+      owner->removeEventEnabledResource(this);
+    }
+  }
+  owner = 0;
+}
+
+void EventableResource::setVector(ThreadState &thread, uint32_t v)
+{
+  updateOwner(thread);
+  vector = v;
+}
+
+void EventableResource::setEV(ThreadState &thread, uint32_t ev)
+{
+  updateOwner(thread);
+  EV = ev;
+}
+
+void EventableResource::setInterruptMode(ThreadState &thread, bool Enable)
+{
+  updateOwner(thread);
+  if (Enable == interruptMode)
+    return;
+  if (eventsEnabled) {
+    if (interruptMode) {
+      owner->removeInterruptEnabledResource(this);
+      owner->addEventEnabledResource(this);
+    } else {
+      owner->removeEventEnabledResource(this);
+      owner->addInterruptEnabledResource(this);
+    }
+  }
+  interruptMode = Enable;
+  if (eventsPermitted() && seeEventEnable(thread.time)) {
+    event(thread.time);
+  }
+}
+
+bool EventableResource::eventsPermitted() const
+{
+  if (!owner)
+    return false;
+  return eventsEnabled && (interruptMode ? owner->ieble() : owner->eeble());
+}
+
+void EventableResource::event(ticks_t time)
+{
+  assert(eventsPermitted());
+  SystemState &sys = *owner->getParent().getParent()->getParent();
+  if (owner->isExecuting()) {
+    sys.setPendingEvent(*this, time, interruptMode);
+    return;
+  }
+  owner->time = time;
+  sys.takeEvent(*owner, *this, interruptMode);
+}
+
+void EventableResource::completeEvent()
+{
+  owner->reg(ED) = getTruncatedEV(*owner);
+  owner->pc = vector;
+}
+
+void EventableResource::setInUseOn(ThreadState &t)
+{
+  if (isInUse())
+    clearOwner();
+  vector = 0;
+  EV = getID();
+  eventsEnabled = false;
+  interruptMode = false;
+  owner = &t;
+  Resource::setInUse(true);
+}
+
+void EventableResource::setInUseOff()
+{
+  if (!isInUse())
+    return;
+  clearOwner();
+  Resource::setInUse(false);
+}
+
+void EventableResource::setInUse(ThreadState &t, bool val)
+{
+  if (val)
+    setInUseOn(t);
+  else
+    setInUseOff();
+}
+
+uint32_t EventableResource::getTruncatedEV(ThreadState &thread) const
+{
+  if (EV == getID())
+    return EV;
+  return (EV & 0xffff) | thread.getParent().ram_base;
+}
+
+void EventableResource::eventDisable(ThreadState &thread)
+{
+  if (eventsEnabled) {
+    if (interruptMode) {
+      owner->removeInterruptEnabledResource(this);
+    } else {
+      owner->removeEventEnabledResource(this);
+    }
+  }
+  eventsEnabled = false;
+  updateOwner(thread);
+}
+
+void EventableResource::eventEnable(ThreadState &thread)
+{
+  updateOwner(thread);
+  if (!eventsEnabled) {
+    if (interruptMode) {
+      owner->addInterruptEnabledResource(this);
+    } else {
+      owner->addEventEnabledResource(this);
+    }
+  }
+  eventsEnabled = true;
+  if (eventsPermitted() && seeEventEnable(owner->time)) {
+    event(owner->time);
+  }
+}
+
+bool EventableResource::checkEvent()
+{
+  if (eventsPermitted() && seeEventEnable(owner->time)) {
+    event(owner->time);
+    return true;
+  }
+  return false;
+}
+
+void EventableResource::scheduleUpdate(ticks_t time)
+{
+  getOwner().getParent().getParent()->getParent()->scheduleOther(*this, time);
+}
+

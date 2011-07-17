@@ -1,0 +1,160 @@
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <start>
+    <element name="XSystem">
+      <ref name="anyAttributes"/>
+      <ref name="System"/>
+    </element>
+  </start>
+
+  <define name="System">  
+    <element name="System">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <ref name="Nodes"/>
+        <ref name="JtagChain"/>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Nodes</name>
+                <name>JtagChain</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Nodes">
+    <element name="Nodes">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <oneOrMore>
+          <ref name="Node"/>
+        </oneOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Node</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="JtagChain">
+    <element name="JtagChain">
+      <ref name="anyAttributes"/>
+      <oneOrMore>
+        <element name="Node">
+          <attribute name="id">
+            <ref name="numberAnyBase"/>
+          </attribute>
+        </element>
+      </oneOrMore>
+    </element>
+  </define>
+
+  <define name="Node">
+    <element name="Node">
+      <attribute name="number">
+        <ref name="numberAnyBase"/>
+      </attribute>
+      <attribute name="jtagId">
+        <ref name="numberAnyBase"/>
+      </attribute>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>number</name>
+              <name>jtagId</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <interleave>
+        <oneOrMore>
+          <ref name="Processor"/>
+        </oneOrMore>   
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Processor</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Processor">
+    <element name="Processor">
+      <attribute name="number">
+        <ref name="numberAnyBase"/>
+      </attribute>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>number</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <element name="MemoryController">
+        <ref name="anyAttributes"/>
+        <element name="Ram">
+          <attribute name="base">
+            <ref name="numberAnyBase"/>
+          </attribute>
+          <attribute name="size">
+            <ref name="numberAnyBase"/>
+          </attribute>
+        </element>
+      </element>
+    </element>
+  </define>
+
+  <define name="anyElement">
+    <element>
+      <anyName/>
+      <ref name="anyContent"/>
+    </element>
+  </define>
+
+  <define name="anyContent">
+    <zeroOrMore>
+      <choice>
+        <attribute>
+          <anyName/>
+        </attribute>
+        <text/>
+        <ref name="anyElement"/>
+      </choice>
+    </zeroOrMore>
+  </define>
+
+  <define name="anyAttributes">
+    <zeroOrMore>
+      <attribute>
+        <anyName/>
+      </attribute>
+    </zeroOrMore>
+  </define>
+
+  <define name="numberAnyBase">
+    <data type="string">
+      <param name="pattern">([0-9]+|0x[0-9a-fA-F]+|0[0-8]+)</param>
+    </data>
+  </define>
+</grammar>
