@@ -10,7 +10,7 @@ AXE (An XCore Emulator)
 :Description: AXE is a fast open source simulator of the XMOS XS1 Architecture.
 
 AXE is designed for fast simulation of XCore programs. AXE doesn't attempt to
-be cycle accurate. Instruction executuion timing is approximate. AXE is
+be cycle accurate. Instruction execution timing is approximate. AXE is
 experimental and likely to contain bugs.
 
 Known Issues
