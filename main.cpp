@@ -18,6 +18,7 @@
 #include <memory>
 #include <climits>
 #include <set>
+#include <map>
 
 #include "Trace.h"
 #include "Resource.h"
@@ -119,8 +120,8 @@ static xmlAttr *findAttribute(xmlNode *node, const char *name)
 }
 
 static void readElf(const char *filename, const XEElfSector *elfSector,
-                    uint8_t *ram, uint32_t ram_base,
-                    uint32_t ram_size, std::auto_ptr<CoreSymbolInfo> &SI)
+                    Core &core, std::auto_ptr<CoreSymbolInfo> &SI,
+                    std::map<Core*,uint32_t> &entryPoints)
 {
   uint64_t ElfSize = elfSector->getElfSize();
   const scoped_array<char> buf(new char[ElfSize]);
@@ -152,11 +153,16 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     std::cerr << "Not a XCore ELF" << std::endl;
     std::exit(1);
   }
+  if (ehdr.e_entry != 0) {
+    entryPoints.insert(std::make_pair(&core, (uint32_t)ehdr.e_entry));
+  }
   unsigned num_phdrs = ehdr.e_phnum;
   if (num_phdrs == 0) {
     std::cerr << "No ELF program headers" << std::endl;
     std::exit(1);
   }
+  uint32_t ram_base = core.ram_base;
+  uint32_t ram_size = core.ram_size;
   for (unsigned i = 0; i < num_phdrs; i++) {
     GElf_Phdr phdr;
     if (gelf_getphdr(e, i, &phdr) == NULL) {
@@ -170,12 +176,12 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     	std::cerr << "Invalid offet in ELF program header" << i << std::endl;
     	std::exit(1);
     }
-    uint32_t offset = phdr.p_paddr - ram_base;
+    uint32_t offset = phdr.p_paddr - core.ram_base;
     if (offset > ram_size || offset + phdr.p_filesz > ram_size || offset + phdr.p_memsz > ram_size) {
       std::cerr << "Error data from ELF program header " << i << " does not fit in memory" << std::endl;
       std::exit(1);
     }
-    std::memcpy(ram + offset, &buf[phdr.p_offset], phdr.p_filesz);
+    std::memcpy(core.mem() + offset, &buf[phdr.p_offset], phdr.p_filesz);
   }
 
   readSymbols(e, ram_base, ram_base + ram_size, SI);
@@ -921,7 +927,7 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
 
 static inline std::auto_ptr<SystemState>
 readXE(const char *filename, SymbolInfo &SI,
-       std::set<Core*> &coresWithImage)
+       std::set<Core*> &coresWithImage, std::map<Core*,uint32_t> &entryPoints)
 {
   // Load the file into memory.
   XE xe(filename);
@@ -957,8 +963,7 @@ readXE(const char *filename, SymbolInfo &SI,
         if (coresWithImage.count(core))
           continue;
         std::auto_ptr<CoreSymbolInfo> CSI;
-        readElf(filename, elfSector, core->mem(), core->ram_base, core->ram_size,
-                CSI);
+        readElf(filename, elfSector, *core, CSI, entryPoints);
         SI.add(core, CSI);
         coresWithImage.insert(core);
         break;
@@ -974,7 +979,9 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts)
 {
   std::auto_ptr<SymbolInfo> SI(new SymbolInfo);
   std::set<Core*> coresWithImage;
-  std::auto_ptr<SystemState> statePtr = readXE(filename, *SI, coresWithImage);
+  std::map<Core*,uint32_t> entryPoints;
+  std::auto_ptr<SystemState> statePtr = readXE(filename, *SI, coresWithImage,
+                                               entryPoints);
   SystemState &sys = *statePtr;
 
   // TODO update to handle multiple cores.
@@ -984,32 +991,42 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts)
 
   for (std::set<Core*>::iterator it = coresWithImage.begin(),
        e = coresWithImage.end(); it != e; ++it) {
-    Core &MS = **it;
+    Core *core = *it;
     if (sys.getExecutingThread())
-      sys.schedule(MS.getThread(0).getState());
+      sys.schedule(core->getThread(0).getState());
     else
-      sys.setExecutingThread(MS.getThread(0).getState());
-    MS.initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC), OPCODE(ILLEGAL_PC_THREAD),
-                 OPCODE(NO_THREADS));
+      sys.setExecutingThread(core->getThread(0).getState());
+    core->initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
+                    OPCODE(ILLEGAL_PC_THREAD), OPCODE(NO_THREADS));
 
     // Patch in syscall instruction at the syscall address.
-    if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(&MS, "_DoSyscall")) {
-      uint32_t SyscallPc = MS.physicalAddress(syscallSym->value) >> 1;
-      if (SyscallPc < MS.ram_size << 1) {
-        MS.opcode[SyscallPc] = OPCODE(SYSCALL);
+    if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(core, "_DoSyscall")) {
+      uint32_t SyscallPc = core->physicalAddress(syscallSym->value) >> 1;
+      if (SyscallPc < core->ram_size << 1) {
+        core->opcode[SyscallPc] = OPCODE(SYSCALL);
       } else {
         std::cout << "Warning: invalid _DoSyscall address "
         << std::hex << syscallSym->value << std::dec << "\n";
       }
     }
     // Patch in exception instruction at the exception address
-    if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(&MS, "_DoException")) {
-      uint32_t ExceptionPc = MS.physicalAddress(doExceptionSym->value) >> 1;
-      if (ExceptionPc < MS.ram_size << 1) {
-        MS.opcode[ExceptionPc] = OPCODE(EXCEPTION);
+    if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(core, "_DoException")) {
+      uint32_t ExceptionPc = core->physicalAddress(doExceptionSym->value) >> 1;
+      if (ExceptionPc < core->ram_size << 1) {
+        core->opcode[ExceptionPc] = OPCODE(EXCEPTION);
       } else {
         std::cout << "Warning: invalid _DoException address "
         << std::hex << doExceptionSym->value << std::dec << "\n";
+      }
+    }
+    std::map<Core*,uint32_t>::iterator match;
+    if ((match = entryPoints.find(core)) != entryPoints.end()) {
+      uint32_t entryPc = core->physicalAddress(match->second) >> 1;
+      if (entryPc< core->ram_size << 1) {
+        core->getThread(0).getState().pc = entryPc;
+      } else {
+        std::cout << "Warning: invalid ELF entry point 0x";
+        std::cout << std::hex << match->second << std::dec << "\n";
       }
     }
   }
