@@ -67,9 +67,30 @@ private:
   /// End the current packet being sent to the channel end.
   void release(ticks_t time);
 
-  /// Open a route to a destination channel end.
+  /// Open a route to a destination channel end. If the route cannot be opened
+  /// immediately then the source chanend is added to a queue. The source
+  /// will be notified when the route becomes available with
+  /// notifyDestClaimed().
   /// \return Whether a route was succesfully opened.
   bool claim(Chanend *Source);
+
+  bool canAcceptToken();
+  bool canAcceptTokens(unsigned tokens);
+
+  /// Recieve data token. The caller must check sufficient room is available
+  /// using canAcceptTokens().
+  void receiveDataToken(ticks_t time, uint8_t value);
+
+  /// Recieve control token. The caller must check sufficient room is available
+  /// using canAcceptTokens().
+  void receiveCtrlToken(ticks_t time, uint8_t value);
+
+  /// Give notification that a route to the destination has been opened.
+  void notifyDestClaimed(ticks_t time);
+
+  /// Give notification that the destination can accept  in the buffer has
+  /// become available.
+  void notifyDestCanAcceptTokens(ticks_t time, unsigned tokens);
 
   /// Input a token. You must check beforehand if there is data available.
   uint8_t poptoken(ticks_t time);

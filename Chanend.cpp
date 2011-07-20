@@ -22,6 +22,45 @@ bool Chanend::claim(Chanend *newSource)
   return true;
 }
 
+bool Chanend::canAcceptToken()
+{
+  return !buf.full();
+}
+
+bool Chanend::canAcceptTokens(unsigned tokens)
+{
+  return buf.remaining() >= tokens;
+}
+
+void Chanend::receiveDataToken(ticks_t time, uint8_t value)
+{
+  buf.push_back(Token(value, time));
+}
+
+void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
+{
+  buf.push_back(Token(value, time, true));
+}
+
+void Chanend::notifyDestClaimed(ticks_t time)
+{
+  if (pausedOut) {
+    pausedOut->time = time;
+    pausedOut->schedule();
+    pausedOut = 0;
+  }
+}
+
+// TODO can this be merged with the above function.
+void Chanend::notifyDestCanAcceptTokens(ticks_t time, unsigned tokens)
+{
+  if (pausedOut) {
+    pausedOut->time = time;
+    pausedOut->schedule();
+    pausedOut = 0;
+  }
+}
+
 void Chanend::release(ticks_t time)
 {
   if (queue.empty()) {
@@ -30,9 +69,7 @@ void Chanend::release(ticks_t time)
   }
   source = queue.front();
   queue.pop();
-  source->pausedOut->time = time;
-  source->pausedOut->schedule();
-  source->pausedOut = 0;
+  source->notifyDestClaimed(time);
 }
 
 bool Chanend::setData(ThreadState &thread, uint32_t value, ticks_t time)
@@ -60,11 +97,11 @@ outt(ThreadState &thread, uint8_t value, ticks_t time)
     // Junk data
     return CONTINUE;
   }
-  if (!dest->claim(this) || dest->buf.full()) {
+  if (!dest->claim(this) || !dest->canAcceptToken()) {
     pausedOut = &thread;
     return DESCHEDULE;
   }
-  dest->buf.push_back(Token(value, time));
+  dest->receiveDataToken(time, value);
   dest->scheduleUpdate(time);
   return CONTINUE;
 }
@@ -77,15 +114,15 @@ out(ThreadState &thread, uint32_t value, ticks_t time)
     // Junk data
     return CONTINUE;
   }
-  if (!dest->claim(this) || dest->buf.remaining() < 4) {
+  if (!dest->claim(this) || !dest->canAcceptTokens(4)) {
     pausedOut = &thread;
     return DESCHEDULE;
   }
   // Channels are big endian
-  dest->buf.push_back(Token(value >> 24, time));
-  dest->buf.push_back(Token(value >> 16, time));
-  dest->buf.push_back(Token(value >> 8, time));
-  dest->buf.push_back(Token(value, time));
+  dest->receiveDataToken(time, value >> 24);
+  dest->receiveDataToken(time, value >> 16);
+  dest->receiveDataToken(time, value >> 8);
+  dest->receiveDataToken(time, value);
   dest->scheduleUpdate(time);
   return CONTINUE;
 }
@@ -98,14 +135,14 @@ outct(ThreadState &thread, uint8_t value, ticks_t time)
     // Junk data
     return CONTINUE;
   }
-  if (!dest->claim(this) || dest->buf.full()) {
+  if (!dest->claim(this) || !dest->canAcceptToken()) {
     pausedOut = &thread;
     return DESCHEDULE;
   }
   switch (value) {
   case CT_END:
     {
-      dest->buf.push_back(Token(CT_END, time, true));
+      dest->receiveCtrlToken(time, CT_END);
       dest->scheduleUpdate(time);
       dest->release(time);
       break;
@@ -114,7 +151,7 @@ outct(ThreadState &thread, uint8_t value, ticks_t time)
     dest->release(time);
     break;
   default:
-    dest->buf.push_back(Token(value, time, true));
+    dest->receiveCtrlToken(time, value);
     dest->scheduleUpdate(time);
     break;
   }
@@ -168,10 +205,8 @@ uint8_t Chanend::poptoken(ticks_t time)
   assert(!buf.empty() && "poptoken on empty buf");
   uint8_t value = buf.front().getValue();
   buf.pop_front();
-  if (source && source->pausedOut) {
-    source->pausedOut->time = time;
-    source->pausedOut->schedule();
-    source->pausedOut = 0;
+  if (source) {
+    source->notifyDestCanAcceptTokens(time, buf.remaining());
   }
   return value;
 }
@@ -231,10 +266,8 @@ in(ThreadState &thread, ticks_t time, uint32_t &value)
     return ILLEGAL;
   value = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
   buf.pop_front(4);
-  if (source && source->pausedOut) {
-    source->pausedOut->time = time;
-    source->pausedOut->schedule();
-    source->pausedOut = 0;
+  if (source) {
+    source->notifyDestCanAcceptTokens(time, buf.remaining());
   }
   return CONTINUE;
 }
