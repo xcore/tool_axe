@@ -39,7 +39,18 @@ void Chanend::receiveDataToken(ticks_t time, uint8_t value)
 
 void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
 {
-  buf.push_back(Token(value, time, true));
+  switch (value) {
+  case CT_END:
+    buf.push_back(Token(value, time, true));
+    release(time);
+    break;
+  case CT_PAUSE:
+    release(time);
+    break;
+  default:
+    buf.push_back(Token(value, time, true));
+    break;
+  }
 }
 
 void Chanend::notifyDestClaimed(ticks_t time)
@@ -139,22 +150,8 @@ outct(ThreadState &thread, uint8_t value, ticks_t time)
     pausedOut = &thread;
     return DESCHEDULE;
   }
-  switch (value) {
-  case CT_END:
-    {
-      dest->receiveCtrlToken(time, CT_END);
-      dest->scheduleUpdate(time);
-      dest->release(time);
-      break;
-    }
-  case CT_PAUSE:
-    dest->release(time);
-    break;
-  default:
-    dest->receiveCtrlToken(time, value);
-    dest->scheduleUpdate(time);
-    break;
-  }
+  dest->receiveCtrlToken(time, CT_END);
+  dest->scheduleUpdate(time);
   return CONTINUE;
 }
 
