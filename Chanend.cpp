@@ -35,6 +35,15 @@ bool Chanend::canAcceptTokens(unsigned tokens)
 void Chanend::receiveDataToken(ticks_t time, uint8_t value)
 {
   buf.push_back(Token(value, time));
+  scheduleUpdate(time);
+}
+
+void Chanend::receiveDataTokens(ticks_t time, uint8_t *values, unsigned num)
+{
+  for (unsigned i = 0; i < num; i++) {
+    buf.push_back(Token(values[i], time));
+  }
+  scheduleUpdate(time);
 }
 
 void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
@@ -51,6 +60,7 @@ void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
     buf.push_back(Token(value, time, true));
     break;
   }
+  scheduleUpdate(time);
 }
 
 void Chanend::notifyDestClaimed(ticks_t time)
@@ -113,7 +123,6 @@ outt(ThreadState &thread, uint8_t value, ticks_t time)
     return DESCHEDULE;
   }
   dest->receiveDataToken(time, value);
-  dest->scheduleUpdate(time);
   return CONTINUE;
 }
 
@@ -130,11 +139,13 @@ out(ThreadState &thread, uint32_t value, ticks_t time)
     return DESCHEDULE;
   }
   // Channels are big endian
-  dest->receiveDataToken(time, value >> 24);
-  dest->receiveDataToken(time, value >> 16);
-  dest->receiveDataToken(time, value >> 8);
-  dest->receiveDataToken(time, value);
-  dest->scheduleUpdate(time);
+  uint8_t tokens[4] = {
+    value >> 24,
+    value >> 16,
+    value >> 8,
+    value
+  };
+  dest->receiveDataTokens(time, tokens, 4);
   return CONTINUE;
 }
 
@@ -151,7 +162,6 @@ outct(ThreadState &thread, uint8_t value, ticks_t time)
     return DESCHEDULE;
   }
   dest->receiveCtrlToken(time, CT_END);
-  dest->scheduleUpdate(time);
   return CONTINUE;
 }
 

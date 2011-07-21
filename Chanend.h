@@ -78,8 +78,12 @@ private:
   bool canAcceptTokens(unsigned tokens);
 
   /// Recieve data token. The caller must check sufficient room is available
-  /// using canAcceptTokens().
+  /// using canAcceptToken().
   void receiveDataToken(ticks_t time, uint8_t value);
+
+  /// Recieve data tokens. The caller must check sufficient room is available
+  /// using canAcceptTokens().
+  void receiveDataTokens(ticks_t time, uint8_t *values, unsigned num);
 
   /// Recieve control token. The caller must check sufficient room is available
   /// using canAcceptTokens().
