@@ -97,6 +97,7 @@ bool Chanend::openRoute()
 {
   if (inPacket)
     return true;
+  // TODO if dest in unset should give a link error exception.
   if (dest && dest->isInUse()) {
     if (!dest->claim(this)) {
       return false;
@@ -111,6 +112,8 @@ bool Chanend::openRoute()
 bool Chanend::setData(ThreadState &thread, uint32_t value, ticks_t time)
 {
   updateOwner(thread);
+  if (inPacket)
+    return false;
   ResourceID destID(value);
   if (destID.type() != RES_TYPE_CHANEND &&
       destID.type() != RES_TYPE_CONFIG)
