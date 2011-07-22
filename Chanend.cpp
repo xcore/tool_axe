@@ -93,6 +93,21 @@ void Chanend::release(ticks_t time)
   source->notifyDestClaimed(time);
 }
 
+bool Chanend::openRoute()
+{
+  if (inPacket)
+    return true;
+  if (dest && dest->isInUse()) {
+    if (!dest->claim(this)) {
+      return false;
+    }
+  } else {
+    junkPacket = true;
+  }
+  inPacket = true;
+  return true;
+}
+
 bool Chanend::setData(ThreadState &thread, uint32_t value, ticks_t time)
 {
   updateOwner(thread);
@@ -114,11 +129,13 @@ Resource::ResOpResult Chanend::
 outt(ThreadState &thread, uint8_t value, ticks_t time)
 {
   updateOwner(thread);
-  if (!dest || !dest->isInUse()) {
-    // Junk data
-    return CONTINUE;
+  if (!openRoute()) {
+    pausedOut = &thread;
+    return DESCHEDULE;
   }
-  if (!dest->claim(this) || !dest->canAcceptToken()) {
+  if (junkPacket)
+    return CONTINUE;
+  if (!dest->canAcceptToken()) {
     pausedOut = &thread;
     return DESCHEDULE;
   }
@@ -130,11 +147,13 @@ Resource::ResOpResult Chanend::
 out(ThreadState &thread, uint32_t value, ticks_t time)
 {
   updateOwner(thread);
-  if (!dest || !dest->isInUse()) {
-    // Junk data
-    return CONTINUE;
+  if (!openRoute()) {
+    pausedOut = &thread;
+    return DESCHEDULE;
   }
-  if (!dest->claim(this) || !dest->canAcceptTokens(4)) {
+  if (junkPacket)
+    return CONTINUE;
+  if (!dest->canAcceptTokens(4)) {
     pausedOut = &thread;
     return DESCHEDULE;
   }
@@ -153,15 +172,25 @@ Resource::ResOpResult Chanend::
 outct(ThreadState &thread, uint8_t value, ticks_t time)
 {
   updateOwner(thread);
-  if (!dest || !dest->isInUse()) {
-    // Junk data
-    return CONTINUE;
-  }
-  if (!dest->claim(this) || !dest->canAcceptToken()) {
+  if (!openRoute()) {
     pausedOut = &thread;
     return DESCHEDULE;
   }
-  dest->receiveCtrlToken(time, CT_END);
+  if (junkPacket) {
+    if (value == CT_END || value == CT_PAUSE) {
+      inPacket = false;
+      junkPacket = false;
+    }
+    return CONTINUE;
+  }
+  if (!dest->canAcceptToken()) {
+    pausedOut = &thread;
+    return DESCHEDULE;
+  }  
+  dest->receiveCtrlToken(time, value);
+  if (value == CT_END || value == CT_PAUSE) {
+    inPacket = false;
+  }
   return CONTINUE;
 }
 

@@ -60,6 +60,10 @@ private:
   ThreadState *pausedIn;
   /// Is the pausedIn thread waiting for a word? Only valid if pausedIn is set.
   bool waitForWord;
+  /// Are we in the middle of sending a packet?
+  bool inPacket;
+  /// Should be current packet be junked?
+  bool junkPacket;
 
   /// Update the channel end after the data is placed in the buffer.
   void update(ticks_t time);
@@ -67,9 +71,14 @@ private:
   /// End the current packet being sent to the channel end.
   void release(ticks_t time);
 
-  /// Open a route to a destination channel end. If the route cannot be opened
-  /// immediately then the source chanend is added to a queue. The source
-  /// will be notified when the route becomes available with
+  /// Try and open a route for a packet. If a route cannot be opened the chanend
+  /// is registered with the destination and notifyDestClaimed() will be called
+  /// when the route becomes available.
+  bool openRoute();
+
+  /// Called when trying to open a route to this channel end. If the route
+  /// cannot be opened immediately then the source chanend is added to a queue.
+  /// The source will be notified when the route becomes available with
   /// notifyDestClaimed().
   /// \return Whether a route was succesfully opened.
   bool claim(Chanend *Source);
@@ -111,6 +120,8 @@ public:
     source = 0;
     pausedOut = 0;
     pausedIn = 0;
+    inPacket = false;
+    junkPacket = false;
     while (!queue.empty()) {
       queue.pop();
     }
@@ -120,8 +131,7 @@ public:
   
   bool free()
   {
-    if (!buf.empty() || source ||
-      (dest && dest->source == this)) {
+    if (!buf.empty() || source || inPacket) {
       return false;
     }
     setInUseOff();
