@@ -6,7 +6,7 @@
 #include "Chanend.h"
 #include "Core.h"
 
-bool Chanend::claim(Chanend *newSource, bool &junkPacket)
+bool Chanend::claim(ChanEndpoint *newSource, bool &junkPacket)
 {
   if (!isInUse()) {
     junkPacket = true;

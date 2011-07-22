@@ -7,6 +7,7 @@
 #define _Chanend_h_
 
 #include "Resource.h"
+#include "ChanEndpoint.h"
 #include "ring_buffer.h"
 #include <queue>
 
@@ -43,14 +44,14 @@ public:
   operator uint8_t() const { return value; }
 };
 
-class Chanend : public EventableResource {
+class Chanend : public EventableResource, public ChanEndpoint {
 private:
   /// The destination channel end.
-  Chanend *dest;
+  ChanEndpoint *dest;
   /// The source of the current packet, 0 if not receiving a packet.
-  Chanend *source;
+  ChanEndpoint *source;
   /// Chanends blocked on the route to this channel end becoming free.
-  std::queue<Chanend *> queue;
+  std::queue<ChanEndpoint *> queue;
   /// Input buffer.
   typedef ring_buffer<Token, CHANEND_BUFFER_SIZE> TokenBuffer;
   TokenBuffer buf;
@@ -81,7 +82,7 @@ private:
   /// The source will be notified when the route becomes available with
   /// notifyDestClaimed().
   /// \return Whether a route was succesfully opened.
-  bool claim(Chanend *Source, bool &junkPacket);
+  bool claim(ChanEndpoint *Source, bool &junkPacket);
 
   bool canAcceptToken();
   bool canAcceptTokens(unsigned tokens);
