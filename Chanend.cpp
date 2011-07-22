@@ -6,8 +6,12 @@
 #include "Chanend.h"
 #include "Core.h"
 
-bool Chanend::claim(Chanend *newSource)
+bool Chanend::claim(Chanend *newSource, bool &junkPacket)
 {
+  if (!isInUse()) {
+    junkPacket = true;
+    return true;
+  }
   // Check if the route is already open.
   if (source == newSource) {
     return true;
@@ -97,13 +101,11 @@ bool Chanend::openRoute()
 {
   if (inPacket)
     return true;
-  // TODO if dest in unset should give a link error exception.
-  if (dest && dest->isInUse()) {
-    if (!dest->claim(this)) {
-      return false;
-    }
-  } else {
+  if (!dest) {
+    // TODO if dest in unset should give a link error exception.
     junkPacket = true;
+  } else if (!dest->claim(this, junkPacket)) {
+    return false;
   }
   inPacket = true;
   return true;

@@ -81,7 +81,7 @@ private:
   /// The source will be notified when the route becomes available with
   /// notifyDestClaimed().
   /// \return Whether a route was succesfully opened.
-  bool claim(Chanend *Source);
+  bool claim(Chanend *Source, bool &junkPacket);
 
   bool canAcceptToken();
   bool canAcceptTokens(unsigned tokens);
