@@ -1656,10 +1656,10 @@ void add()
           "}\n")
     .setSync()
     .setCanEvent();
-  f2r_in("OUTT", "outt res[%0], %1",
-         "ResourceID resID(%0);\n"
+  f2r_in("OUTT", "outt res[%1], %0",
+         "ResourceID resID(%1);\n"
          "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-         "  switch (chanend->outt(*thread, %1, TIME)) {\n"
+         "  switch (chanend->outt(*thread, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected outct result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"

@@ -63,6 +63,8 @@ add_executable(axe
   SystemState.h
   SystemState.cpp
   Token.h
+  SSwitch.h
+  SSwitch.cpp
   ConfigSchema.rng
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc

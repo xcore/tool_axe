@@ -44,3 +44,14 @@ bool Node::getTypeFromJtagID(unsigned jtagID, Type &type)
     return true;
   }
 }
+
+bool Node::hasMatchingNodeID(ResourceID ID)
+{
+  switch (type) {
+    default: assert(0 && "Unexpected node type");
+    case Node::XS1_G:
+      return ((ID.node() >> 8) & 0xff) == nodeID;
+    case Node::XS1_L:
+      return ID.node() == nodeID;
+  }
+}

@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <vector>
 #include <memory>
+#include "SSwitch.h"
+#include "Resource.h"
 
 class Core;
 class SystemState;
@@ -24,6 +26,7 @@ public:
   unsigned nodeID;
   SystemState *parent;
   Type type;
+  SSwitch sswitch;
 public:
   Node(Type t) : jtagIndex(0), nodeID(0), parent(0), type(t) {}
   ~Node();
@@ -38,6 +41,8 @@ public:
   uint32_t getNodeID() const { return nodeID; }
   Type getType() const { return type; }
   static bool getTypeFromJtagID(unsigned jtagID, Type &type);
+  bool hasMatchingNodeID(ResourceID ID);
+  SSwitch *getSSwitch() { return &sswitch; }
 };
 
 #endif // _Node_h_

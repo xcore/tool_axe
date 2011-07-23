@@ -12,6 +12,7 @@
 #include "RunnableQueue.h"
 
 class Node;
+class ChanEndpoint;
 
 class SystemState {
   std::vector<Node*> nodes;
@@ -133,7 +134,7 @@ public:
     return pendingEvent.set;
   }
 
-  Resource *getChanendDest(ResourceID ID);
+  ChanEndpoint *getChanendDest(ResourceID ID);
 };
 
 #endif // _SystemState_h_

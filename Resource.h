@@ -23,6 +23,11 @@ enum ResourceType {
   RES_TYPE_CONFIG = 12
 };
 
+enum ResConfigType {
+  RES_CONFIG_PSCTRL = 0xc2,
+  RES_CONFIG_SSCTRL = 0xc3,
+};
+
 const int LAST_STD_RES_TYPE = RES_TYPE_CLKBLK;
 
 class ResourceID {
@@ -52,6 +57,12 @@ public:
     return (ResourceType)((id >> RES_TYPE_SHIFT) & RES_TYPE_MASK);
   }
 
+  bool isChanend() const { return type() == RES_TYPE_CHANEND; }
+  bool isConfig() const { return type() == RES_TYPE_CONFIG; }
+  bool isChanendOrConfig() const {
+    return type() == RES_TYPE_CHANEND || type() == RES_TYPE_CONFIG;
+  }
+
   unsigned num() const
   {
     return (id >> RES_NUM_SHIFT) & RES_NUM_MASK;
@@ -66,7 +77,7 @@ public:
   
   void setNode(unsigned value)
   {
-    assert((type() == RES_TYPE_CHANEND) && "node is only valid for chanends");
+    assert(isChanendOrConfig());
     value &= RES_CHANEND_NODE_MASK;
     id &= ~(RES_CHANEND_NODE_MASK << RES_CHANEND_NODE_SHIFT);
     id |= value << RES_CHANEND_NODE_SHIFT;
@@ -74,7 +85,7 @@ public:
 
   unsigned node() const
   {
-    assert((type() == RES_TYPE_CHANEND) && "node is only valid for chanends");
+    assert(isChanendOrConfig());
     return (id >> RES_CHANEND_NODE_SHIFT) & RES_CHANEND_NODE_MASK;
   }
 

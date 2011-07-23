@@ -70,7 +70,7 @@ completeEvent(ThreadState &t, EventableResource &res, bool interrupt)
   }
 }
 
-Resource *SystemState::getChanendDest(ResourceID ID)
+ChanEndpoint *SystemState::getChanendDest(ResourceID ID)
 {
   unsigned coreID = ID.node();
   // TODO build lookup map.
@@ -80,7 +80,10 @@ Resource *SystemState::getChanendDest(ResourceID ID)
     for (std::vector<Core*>::const_iterator it2 = cores.begin(),
          e2 = cores.end(); it2 != e2; ++it2) {
       if ((*it2)->getCoreID() == coreID) {
-        return (*it2)->getResourceByID(ID);
+        ChanEndpoint *result;
+        bool isLocal = (*it2)->getLocalChanendDest(ID, result);
+        assert(isLocal);
+        return result;
       }
     }
   }

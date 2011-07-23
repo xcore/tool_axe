@@ -6,6 +6,8 @@
 #ifndef _Token_h_
 #define _Token_h_
 
+#include <stdint.h>
+
 enum ControlTokenValue {
   CT_END = 1,
   CT_PAUSE = 2,

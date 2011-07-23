@@ -51,6 +51,8 @@ private:
   uint32_t * const memory;
   unsigned coreNumber;
   Node *parent;
+
+  bool hasMatchingNodeID(ResourceID ID);
 public:
   // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
   // pseudo instruction just past the end of memory. This saves
@@ -264,7 +266,8 @@ public:
   Resource *getResourceByID(ResourceID ID);
   const Resource *getResourceByID(ResourceID ID) const;
 
-  Resource *getChanendDest(ResourceID ID);
+  bool getLocalChanendDest(ResourceID ID, ChanEndpoint *&result);
+  ChanEndpoint *getChanendDest(ResourceID ID);
 
   unsigned getIllegalPCThreadAddr() const
   {

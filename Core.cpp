@@ -93,16 +93,46 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   opcode[getNoThreadsAddr()] = noThreads;
 }
 
-Resource *Core::getChanendDest(ResourceID ID)
+bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)
 {
-  // If local lookup locally.
-  unsigned nodeID = parent->getNodeID();
-  if (ID.node() == nodeID) {
-    Resource *res = getResourceByID(ID);
-    if (res->getType() != RES_TYPE_CHANEND)
-      return 0;
-    return res;
+  assert(ID.isChanendOrConfig());
+  if (ID.isConfig()) {
+    switch (ID.num()) {
+      case RES_CONFIG_SSCTRL:
+        if (parent->hasMatchingNodeID(ID)) {
+          result = parent->getSSwitch();
+          return true;
+        }
+        break;
+      case RES_CONFIG_PSCTRL:
+        // TODO.
+        assert(0);
+        result = 0;
+        return true;
+    }
+  } else {
+    if (ID.node() == getCoreID()) {
+      Resource *res = getResourceByID(ID);
+      if (res) {
+        assert(res->getType() == RES_TYPE_CHANEND);
+        result = static_cast<Chanend*>(res);
+      } else {
+        result = 0;
+      }
+      return true;
+    }
   }
+  return false;
+}
+
+ChanEndpoint *Core::getChanendDest(ResourceID ID)
+{
+  if (!ID.isChanendOrConfig())
+    return 0;
+  ChanEndpoint *result;
+  // Try to lookup locally first.
+  if (getLocalChanendDest(ID, result))
+    return result;
   return parent->getParent()->getChanendDest(ID);
 }
 

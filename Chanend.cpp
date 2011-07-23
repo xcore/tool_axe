@@ -89,13 +89,7 @@ bool Chanend::setData(ThreadState &thread, uint32_t value, ticks_t time)
   if (destID.type() != RES_TYPE_CHANEND &&
       destID.type() != RES_TYPE_CONFIG)
     return false;
-  Resource *res = thread.getParent().getChanendDest(destID);
-  if (res) {
-    assert(res->getType() == RES_TYPE_CHANEND);
-    dest = static_cast<Chanend*>(res);
-  } else {
-    dest = 0;
-  }
+  dest = thread.getParent().getChanendDest(destID);
   return true;
 }
 
