@@ -17,13 +17,12 @@ enum ControlTokenValue {
 
 class Token {
 private:
-  ticks_t time;
   uint8_t value;
   bool control;
   
 public:
-  Token(uint8_t v = 0, ticks_t t = 0, bool c = false)
-  : time(t), value(v), control(c) { }
+  Token(uint8_t v = 0, bool c = false)
+  : value(v), control(c) { }
   
   bool isControl() const
   {
@@ -33,11 +32,6 @@ public:
   uint8_t getValue() const
   {
     return value;
-  }
-  
-  ticks_t getTime() const
-  {
-    return time;
   }
   
   operator uint8_t() const { return value; }

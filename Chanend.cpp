@@ -25,7 +25,7 @@ void Chanend::receiveDataToken(ticks_t time, uint8_t value)
 void Chanend::receiveDataTokens(ticks_t time, uint8_t *values, unsigned num)
 {
   for (unsigned i = 0; i < num; i++) {
-    buf.push_back(Token(values[i], time));
+    buf.push_back(Token(values[i]));
   }
   scheduleUpdate(time);
 }
@@ -34,14 +34,14 @@ void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
 {
   switch (value) {
   case CT_END:
-    buf.push_back(Token(value, time, true));
+    buf.push_back(Token(value, true));
     release(time);
     break;
   case CT_PAUSE:
     release(time);
     break;
   default:
-    buf.push_back(Token(value, time, true));
+    buf.push_back(Token(value, true));
     break;
   }
   scheduleUpdate(time);
@@ -176,12 +176,6 @@ testct(ThreadState &thread, ticks_t time, bool &isCt)
     setPausedIn(thread, false);
     return false;
   }
-  ticks_t tokenTime = buf.front().getTime();
-  if (tokenTime > time) {
-    setPausedIn(thread, false);
-    scheduleUpdate(tokenTime);
-    return false;
-  }
   isCt = buf.front().isControl();
   return true;
 }
@@ -192,12 +186,6 @@ testwct(ThreadState &thread, ticks_t time, unsigned &position)
   updateOwner(thread);
   if (buf.size() < 4) {
     setPausedIn(thread, true);
-    return false;
-  }
-  ticks_t tokenTime = buf[3].getTime();
-  if (tokenTime > time) {
-    setPausedIn(thread, true);
-    scheduleUpdate(time);
     return false;
   }
   position = 0;
@@ -284,7 +272,7 @@ in(ThreadState &thread, ticks_t time, uint32_t &value)
 
 void Chanend::update(ticks_t time)
 {
-  if (buf.empty() || buf.front().getTime() > time)
+  if (buf.empty())
     return;
   if (eventsPermitted()) {
     event(time);
@@ -292,7 +280,7 @@ void Chanend::update(ticks_t time)
   }
   if (!pausedIn)
     return;
-  if (waitForWord && (buf.size() < 4 || buf[3].getTime() > time))
+  if (waitForWord && buf.size() < 4)
     return;
   pausedIn->time = time;
   pausedIn->schedule();
@@ -308,7 +296,6 @@ bool Chanend::seeEventEnable(ticks_t time)
 {
   if (buf.empty())
     return false;
-  assert(buf.front().getTime() <= time);
   event(time);
   return true;
 }
