@@ -6,8 +6,29 @@
 #ifndef _ChanEndpoint_h_
 #define _ChanEndpoint_h_
 
+#include <queue>
+#include "Config.h"
+
 class ChanEndpoint {
+private:
+  /// Should incoming packets be junked?
+  bool junkIncoming;
+  /// Chanends blocked on the route to this channel end becoming free.
+  std::queue<ChanEndpoint *> queue;
+  /// The source of the current packet, 0 if not receiving a packet.
+  ChanEndpoint *source;
+protected:
+  void setJunkIncoming(bool value) { junkIncoming = value; }
+  ChanEndpoint *getSource() const { return source; }  
+  /// End the current packet being sent to the channel end.
+  void release(ticks_t time);
+
+  /// Try and open a route for a packet. If a route cannot be opened the chanend
+  /// is registered with the destination and notifyDestClaimed() will be called
+  /// when the route becomes available.
+  bool openRoute();
 public:
+  ChanEndpoint();
   /// Give notification that a route to the destination has been opened.
   virtual void notifyDestClaimed(ticks_t time) = 0;
 
@@ -22,7 +43,7 @@ public:
   /// \param junkPacket Set to false if the packet should be junked, otherwise
   ///                   left unchanged.
   /// \return Whether a route was succesfully opened.
-  virtual bool claim(ChanEndpoint *Source, bool &junkPacket) = 0;
+  bool claim(ChanEndpoint *Source, bool &junkPacket);
 
   virtual bool canAcceptToken() = 0;
   virtual bool canAcceptTokens(unsigned tokens) = 0;

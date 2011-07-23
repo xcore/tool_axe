@@ -6,26 +6,6 @@
 #include "Chanend.h"
 #include "Core.h"
 
-bool Chanend::claim(ChanEndpoint *newSource, bool &junkPacket)
-{
-  if (!isInUse()) {
-    junkPacket = true;
-    return true;
-  }
-  // Check if the route is already open.
-  if (source == newSource) {
-    return true;
-  }
-  // Check if we are already in the middle of a packet.
-  if (source) {
-    queue.push(newSource);
-    return false;
-  }
-  // Claim the channel
-  source = newSource;
-  return true;
-}
-
 bool Chanend::canAcceptToken()
 {
   return !buf.full();
@@ -84,17 +64,6 @@ void Chanend::notifyDestCanAcceptTokens(ticks_t time, unsigned tokens)
     pausedOut->schedule();
     pausedOut = 0;
   }
-}
-
-void Chanend::release(ticks_t time)
-{
-  if (queue.empty()) {
-    source = 0;
-    return;
-  }
-  source = queue.front();
-  queue.pop();
-  source->notifyDestClaimed(time);
 }
 
 bool Chanend::openRoute()
@@ -246,8 +215,8 @@ uint8_t Chanend::poptoken(ticks_t time)
   assert(!buf.empty() && "poptoken on empty buf");
   uint8_t value = buf.front().getValue();
   buf.pop_front();
-  if (source) {
-    source->notifyDestCanAcceptTokens(time, buf.remaining());
+  if (getSource()) {
+    getSource()->notifyDestCanAcceptTokens(time, buf.remaining());
   }
   return value;
 }
@@ -307,8 +276,8 @@ in(ThreadState &thread, ticks_t time, uint32_t &value)
     return ILLEGAL;
   value = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
   buf.pop_front(4);
-  if (source) {
-    source->notifyDestCanAcceptTokens(time, buf.remaining());
+  if (getSource()) {
+    getSource()->notifyDestCanAcceptTokens(time, buf.remaining());
   }
   return CONTINUE;
 }

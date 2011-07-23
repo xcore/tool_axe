@@ -31,6 +31,8 @@ add_executable(axe
   SymbolInfo.cpp
   Resource.h
   Resource.cpp
+  ChanEndpoint.h
+  ChanEndpoint.cpp
   Chanend.h
   Chanend.cpp
   ClockBlock.h

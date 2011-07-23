@@ -9,7 +9,6 @@
 #include "Resource.h"
 #include "ChanEndpoint.h"
 #include "ring_buffer.h"
-#include <queue>
 
 enum ControlTokenValue {
   CT_END = 1,
@@ -48,10 +47,6 @@ class Chanend : public EventableResource, public ChanEndpoint {
 private:
   /// The destination channel end.
   ChanEndpoint *dest;
-  /// The source of the current packet, 0 if not receiving a packet.
-  ChanEndpoint *source;
-  /// Chanends blocked on the route to this channel end becoming free.
-  std::queue<ChanEndpoint *> queue;
   /// Input buffer.
   typedef ring_buffer<Token, CHANEND_BUFFER_SIZE> TokenBuffer;
   TokenBuffer buf;
@@ -68,9 +63,6 @@ private:
 
   /// Update the channel end after the data is placed in the buffer.
   void update(ticks_t time);
-
-  /// End the current packet being sent to the channel end.
-  void release(ticks_t time);
 
   /// Try and open a route for a packet. If a route cannot be opened the chanend
   /// is registered with the destination and notifyDestClaimed() will be called
@@ -118,24 +110,22 @@ public:
   {
     assert(!isInUse() && "Trying to allocate in use chanend");
     dest = 0;
-    source = 0;
     pausedOut = 0;
     pausedIn = 0;
     inPacket = false;
     junkPacket = false;
-    while (!queue.empty()) {
-      queue.pop();
-    }
     setInUseOn(t);
+    setJunkIncoming(false);
     return true;
   }
   
   bool free()
   {
-    if (!buf.empty() || source || inPacket) {
+    if (!buf.empty() || getSource() || inPacket) {
       return false;
     }
     setInUseOff();
+    setJunkIncoming(true);
     return true;
   }
 
