@@ -9,33 +9,7 @@
 #include "Resource.h"
 #include "ChanEndpoint.h"
 #include "ring_buffer.h"
-
-enum ControlTokenValue {
-  CT_END = 1,
-  CT_PAUSE = 2,
-};
-
-class Token {
-private:
-  uint8_t value;
-  bool control;
-  
-public:
-  Token(uint8_t v = 0, bool c = false)
-  : value(v), control(c) { }
-  
-  bool isControl() const
-  {
-    return control;
-  }
-  
-  uint8_t getValue() const
-  {
-    return value;
-  }
-  
-  operator uint8_t() const { return value; }
-};
+#include "Token.h"
 
 class Chanend : public EventableResource, public ChanEndpoint {
 private:
