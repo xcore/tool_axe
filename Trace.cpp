@@ -18,6 +18,23 @@ const unsigned regWriteColumn = 78;
 
 Tracer Tracer::instance;
 
+Tracer::PushLineState::PushLineState() :
+  needRestore(false),
+  line(Tracer::get().line.pending)
+{
+  if (Tracer::get().line.thread) {
+    std::swap(Tracer::get().line, line);
+    needRestore = true;
+  }
+}
+
+Tracer::PushLineState::~PushLineState()
+{
+  if (needRestore) {
+    std::swap(Tracer::get().line, line);
+  }
+}
+
 void Tracer::setSymbolInfo(std::auto_ptr<SymbolInfo> &si)
 {
   symInfo = si;
@@ -181,12 +198,7 @@ void Tracer::regWrite(Register reg, uint32_t value)
 
 void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(node);
   red();
   *line.buf << " SSwitch read: ";
@@ -194,21 +206,13 @@ void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
   *line.buf << ", reply address 0x" << retAddress << std::dec;
   reset();
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::
 SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
              uint32_t value)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(node);
   red();
   *line.buf << " SSwitch write: ";
@@ -217,57 +221,33 @@ SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
   *line.buf << ", reply address 0x" << retAddress << std::dec;
   reset();
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::SSwitchNack(const Node &node, uint32_t dest)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(node);
   red();
   *line.buf << " SSwitch reply: NACK";
   *line.buf << ", destintion 0x" << std::hex << dest << std::dec;
   reset();
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::SSwitchAck(const Node &node, uint32_t dest)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(node);
   red();
   *line.buf << " SSwitch reply: ACK";
   *line.buf << ", destintion 0x" << std::hex << dest << std::dec;
   reset();
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(node);
   red();
   *line.buf << " SSwitch reply: ACK";
@@ -275,21 +255,13 @@ void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
   *line.buf << ", destintion 0x" << dest << std::dec;
   reset();
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::
 event(const ThreadState &t, const EventableResource &res, uint32_t pc,
       uint32_t ev)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(t);
   red();
   *line.buf << " Event caused by "
@@ -298,22 +270,13 @@ event(const ThreadState &t, const EventableResource &res, uint32_t pc,
   reset();
   regWrite(ED, ev);
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::
 interrupt(const ThreadState &t, const EventableResource &res, uint32_t pc,
           uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed)
 {
-  std::ostringstream newBuf;
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(t);
   red();
   *line.buf << " Interrupt caused by "
@@ -325,21 +288,13 @@ interrupt(const ThreadState &t, const EventableResource &res, uint32_t pc,
   regWrite(SPC, spc);
   regWrite(SED, sed);
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::
 exception(const ThreadState &t, uint32_t et, uint32_t ed, 
           uint32_t sed, uint32_t ssr, uint32_t spc)
 {
-  LineState newLine(line.pending);
-  bool restore = false;
-  if (line.thread) {
-    std::swap(line, newLine);
-    restore = true;
-  }
+  PushLineState save;
   printCommonStart(t);
   red();
   *line.buf << ' ' << Exceptions::getExceptionName(et) << " exception";
@@ -350,9 +305,6 @@ exception(const ThreadState &t, uint32_t et, uint32_t ed,
   regWrite(SPC, spc);
   regWrite(SED, sed);
   printCommonEnd();
-  if (restore) {
-    std::swap(line, newLine);
-  }
 }
 
 void Tracer::

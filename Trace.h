@@ -64,6 +64,15 @@ private:
     std::ostringstream *buf;
     std::ostringstream *pending;
   };
+  class PushLineState {
+  private:
+    bool needRestore;
+    LineState line;
+  public:
+    PushLineState();
+    ~PushLineState();
+    bool getRestore() const { return needRestore; }
+  };
   bool tracingEnabled;
   std::ostringstream buf;
   std::ostringstream pendingBuf;
