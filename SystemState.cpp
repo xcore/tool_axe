@@ -30,7 +30,7 @@ ThreadState *SystemState::deschedule(ThreadState &current)
   currentThread = 0;
   handleNonThreads();
   if (scheduler.empty()) {
-    Tracer::getInstance().noRunnableThreads(*this);
+    Tracer::get().noRunnableThreads(*this);
     current.pc = current.getParent().getNoThreadsAddr();
     current.waiting() = false;
     currentThread = &current;
@@ -58,14 +58,13 @@ completeEvent(ThreadState &t, EventableResource &res, bool interrupt)
   t.eeble() = false;
   // EventableResource::completeEvent sets the ED and PC.
   res.completeEvent();
-  if (Tracer::getInstance().getTracingEnabled()) {
+  if (Tracer::get().getTracingEnabled()) {
     if (interrupt) {
-      Tracer::getInstance().interrupt(t, res, t.getParent().targetPc(t.pc),
+      Tracer::get().interrupt(t, res, t.getParent().targetPc(t.pc),
                                       t.regs[SSR], t.regs[SPC], t.regs[SED],
                                       t.regs[ED]);
     } else {
-      Tracer::getInstance().event(t, res, t.getParent().targetPc(t.pc),
-                                  t.regs[ED]);
+      Tracer::get().event(t, res, t.getParent().targetPc(t.pc), t.regs[ED]);
     }
   }
 }

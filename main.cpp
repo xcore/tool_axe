@@ -226,8 +226,8 @@ exception(ThreadState &thread, Core &state, uint32_t pc, int et,
   uint32_t spc = state.targetPc(pc);
   uint32_t ssr = thread.sr.to_ulong();
   
-  if (Tracer::getInstance().getTracingEnabled()) {
-    Tracer::getInstance().exception(thread, et, ed, sed, ssr, spc);
+  if (Tracer::get().getTracingEnabled()) {
+    Tracer::get().exception(thread, et, ed, sed, ssr, spc);
   }
   
   thread.regs[SSR] = sed;
@@ -706,19 +706,19 @@ do { \
 do { \
   if (tracing) { \
     SAVE_CACHED(); \
-    Tracer::getInstance().trace(*thread, __VA_ARGS__); \
+    Tracer::get().trace(*thread, __VA_ARGS__); \
   } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
 do { \
   if (tracing) { \
-    Tracer::getInstance().regWrite(register, value); \
+    Tracer::get().regWrite(register, value); \
   } \
 } while(0)
 #define TRACE_END() \
 do { \
   if (tracing) { \
-    Tracer::getInstance().traceEnd(); \
+    Tracer::get().traceEnd(); \
   } \
 } while(0)
 #define DESCHEDULE(pc) \
@@ -1033,9 +1033,9 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts)
   SyscallHandler::setCoreCount(coresWithImage.size());
   
   // Initialise tracing
-  Tracer::getInstance().setSymbolInfo(SI);
+  Tracer::get().setSymbolInfo(SI);
   if (tracing) {
-    Tracer::getInstance().setTracingEnabled(tracing);
+    Tracer::get().setTracingEnabled(tracing);
   }
 
   ThreadState *thread = statePtr->getExecutingThread();
@@ -1395,7 +1395,7 @@ main(int argc, char **argv) {
   }
 #ifndef _WIN32
   if (isatty(fileno(stdout))) {
-    Tracer::getInstance().setColour(true);
+    Tracer::get().setColour(true);
   }
 #endif
   if (tracing) {

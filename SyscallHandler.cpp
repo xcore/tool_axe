@@ -229,21 +229,21 @@ void SyscallHandlerImpl::doException(const ThreadState &thread)
 
 #define TRACE_BEGIN() \
 do { \
-if (Tracer::getInstance().getTracingEnabled()) { \
-Tracer::getInstance().syscall(thread); \
+if (Tracer::get().getTracingEnabled()) { \
+Tracer::get().syscall(thread); \
 } \
 } while(0)
 #define TRACE_END() \
 do { \
-if (Tracer::getInstance().getTracingEnabled()) { \
-Tracer::getInstance().traceEnd(); \
+if (Tracer::get().getTracingEnabled()) { \
+Tracer::get().traceEnd(); \
 } \
 } while(0)
 #define TRACE(...) \
 do { \
-if (Tracer::getInstance().getTracingEnabled()) { \
-Tracer::getInstance().syscall(thread, __VA_ARGS__); \
-Tracer::getInstance().traceEnd(); \
+if (Tracer::get().getTracingEnabled()) { \
+Tracer::get().syscall(thread, __VA_ARGS__); \
+Tracer::get().traceEnd(); \
 } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \

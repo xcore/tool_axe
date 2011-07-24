@@ -16,6 +16,7 @@
 
 class EventableResource;
 class SystemState;
+class Node;
 
 class SrcRegister {
   Register reg;
@@ -79,6 +80,7 @@ private:
 
   void printThreadID();
   void printCommonStart();
+  void printCommonStart(const Node &n);
   void printCommonStart(const ThreadState &t);
   void printCommonEnd();
   void printThreadPC();
@@ -276,6 +278,13 @@ public:
     printCommonEnd();
   }
 
+  void SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum);
+  void SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
+                    uint32_t value);
+  void SSwitchNack(const Node &node, uint32_t dest);
+  void SSwitchAck(const Node &node, uint32_t dest);
+  void SSwitchAck(const Node &node, uint32_t data, uint32_t dest);
+
   void exception(const ThreadState &t, uint32_t et, uint32_t ed, 
                  uint32_t sed, uint32_t ssr, uint32_t spc);
 
@@ -305,7 +314,7 @@ public:
 
   void noRunnableThreads(const SystemState &system);
 
-  static Tracer &getInstance()
+  static Tracer &get()
   {
     return instance;
   }

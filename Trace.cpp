@@ -39,13 +39,13 @@ void Tracer::printCommonEnd()
   *line.buf << '\n';
   if (line.out) {
     *line.out << line.buf->str() << line.pending->str();
+    line.buf->str("");
   }
   line.thread = 0;
 }
 
 void Tracer::printCommonStart()
 {
-  line.buf->str("");
   if (line.pending) {
     line.pending->str("");
   }
@@ -70,6 +70,17 @@ void Tracer::printCommonStart(const ThreadState &t)
   green();
   *line.buf << '[';
   printThreadID();
+  *line.buf << ']';
+  reset();
+}
+
+void Tracer::printCommonStart(const Node &n)
+{
+  printCommonStart();
+
+  green();
+  *line.buf << '[';
+  *line.buf << 'n' << n.getNodeID();
   *line.buf << ']';
   reset();
 }
@@ -166,6 +177,107 @@ void Tracer::regWrite(Register reg, uint32_t value)
   }
   *line.buf << reg << "=0x" << std::hex << value << std::dec;
   line.hadRegWrite = true;
+}
+
+void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(node);
+  red();
+  *line.buf << " SSwitch read: ";
+  *line.buf << "register 0x" << std::hex << regNum;
+  *line.buf << ", reply address 0x" << retAddress << std::dec;
+  reset();
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::
+SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
+             uint32_t value)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(node);
+  red();
+  *line.buf << " SSwitch write: ";
+  *line.buf << "register 0x" << std::hex << regNum;
+  *line.buf << ", value 0x" << value;
+  *line.buf << ", reply address 0x" << retAddress << std::dec;
+  reset();
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::SSwitchNack(const Node &node, uint32_t dest)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(node);
+  red();
+  *line.buf << " SSwitch reply: NACK";
+  *line.buf << ", destintion 0x" << std::hex << dest << std::dec;
+  reset();
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::SSwitchAck(const Node &node, uint32_t dest)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(node);
+  red();
+  *line.buf << " SSwitch reply: ACK";
+  *line.buf << ", destintion 0x" << std::hex << dest << std::dec;
+  reset();
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
+}
+
+void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
+{
+  LineState newLine(line.pending);
+  bool restore = false;
+  if (line.thread) {
+    std::swap(line, newLine);
+    restore = true;
+  }
+  printCommonStart(node);
+  red();
+  *line.buf << " SSwitch reply: ACK";
+  *line.buf << ", data 0x" << std::hex << data;
+  *line.buf << ", destintion 0x" << dest << std::dec;
+  reset();
+  printCommonEnd();
+  if (restore) {
+    std::swap(line, newLine);
+  }
 }
 
 void Tracer::

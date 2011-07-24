@@ -105,7 +105,7 @@ public:
   
   operator uint32_t() const { return id; }
   
-  static ResourceID chanendID(unsigned num, uint32_t node)
+  static ResourceID chanendID(unsigned num, uint16_t node)
   {
     return RES_TYPE_CHANEND | (num << RES_NUM_SHIFT) |
            (node << RES_CHANEND_NODE_SHIFT);

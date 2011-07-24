@@ -19,7 +19,7 @@ Known Issues
 * No simulation of the boot ROM.
 * No simulation of debug.
 * No support for configurable delays on ports / clocks.
-* No support for reading and writing of pswitch / sswitch registers.
+* Minimal support for reading and writing of pswitch / sswitch registers.
 * No support for partial inputs / output (INPW, OUTPW, SETPSC).
 * There are a few other miscellaneous instructions that are unimplemented.
 * The loopback option (--loopback) can only be used to connect ports on the

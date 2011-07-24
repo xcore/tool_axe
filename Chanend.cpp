@@ -18,7 +18,7 @@ bool Chanend::canAcceptTokens(unsigned tokens)
 
 void Chanend::receiveDataToken(ticks_t time, uint8_t value)
 {
-  buf.push_back(Token(value, time));
+  buf.push_back(Token(value));
   scheduleUpdate(time);
 }
 

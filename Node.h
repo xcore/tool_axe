@@ -28,7 +28,7 @@ public:
   Type type;
   SSwitch sswitch;
 public:
-  Node(Type t) : jtagIndex(0), nodeID(0), parent(0), type(t) {}
+  Node(Type t) : jtagIndex(0), nodeID(0), parent(0), type(t), sswitch(this) {}
   ~Node();
   void addCore(std::auto_ptr<Core> cores);
   void setJtagIndex(unsigned value) { jtagIndex = value; }
