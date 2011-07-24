@@ -11,6 +11,8 @@
 enum ControlTokenValue {
   CT_END = 1,
   CT_PAUSE = 2,
+  CT_WRITEC = 0xc0,
+  CT_READC = 0xc1
 };
 
 class Token {
