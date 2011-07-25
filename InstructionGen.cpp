@@ -955,14 +955,6 @@ f2r(const std::string &name,
 }
 
 Instruction &
-f2r_reverse(const std::string &name,
-            const std::string &format,
-            const std::string &code)
-{
-  return inst(name + "_2r", 2, ops(in, out), format, code, INSTRUCTION_CYCLES);
-}
-
-Instruction &
 f2r_in(const std::string &name,
        const std::string &format,
        const std::string &code)
@@ -1671,41 +1663,41 @@ void add()
          "}\n")
     .setSync()
     .setCanEvent();
-  f2r_reverse("INT", "int res[%0], %1",
-              "ResourceID resID(%0);\n"
-              "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-              "  uint32_t value;\n"
-              "  switch (chanend->intoken(*thread, TIME, value)) {\n"
-              "    default: assert(0 && \"Unexpected int result\");\n"
-              "    case Resource::DESCHEDULE:\n"
-              "      %pause_on(chanend);\n"
-              "    case Resource::ILLEGAL:\n"
-              "      %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-              "    case Resource::CONTINUE:\n"
-              "      %1 = value;\n"
-              "      break;\n"
-              "  }\n"
-              "} else {\n"
-              "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-              "}\n");
-  f2r_reverse("INCT", "inct res[%0], %1",
-              "ResourceID resID(%0);\n"
-              "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-              "  uint32_t value;\n"
-              "  switch (chanend->intoken(*thread, TIME, value)) {\n"
-              "    default: assert(0 && \"Unexpected int result\");\n"
-              "    case Resource::DESCHEDULE:\n"
-              "      %pause_on(chanend);\n"
-              "    case Resource::ILLEGAL:\n"
-              "      %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-              "      break;\n"
-              "    case Resource::CONTINUE:\n"
-              "      %1 = value;\n"
-              "      break;\n"
-              "  }\n"
-              "} else {\n"
-              "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-              "};\n");
+  f2r("INT", "int %0, res[%1]",
+      "ResourceID resID(%1);\n"
+      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "  uint32_t value;\n"
+      "  switch (chanend->intoken(*thread, TIME, value)) {\n"
+      "    default: assert(0 && \"Unexpected int result\");\n"
+      "    case Resource::DESCHEDULE:\n"
+      "      %pause_on(chanend);\n"
+      "    case Resource::ILLEGAL:\n"
+      "      %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "    case Resource::CONTINUE:\n"
+      "      %0 = value;\n"
+      "      break;\n"
+      "  }\n"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "}\n");
+  f2r("INCT", "inct %0, res[%1]",
+      "ResourceID resID(%1);\n"
+      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "  uint32_t value;\n"
+      "  switch (chanend->inct(*thread, TIME, value)) {\n"
+      "    default: assert(0 && \"Unexpected int result\");\n"
+      "    case Resource::DESCHEDULE:\n"
+      "      %pause_on(chanend);\n"
+      "    case Resource::ILLEGAL:\n"
+      "      %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "      break;\n"
+      "    case Resource::CONTINUE:\n"
+      "      %0 = value;\n"
+      "      break;\n"
+      "  }\n"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "};\n");
   f2r_in("CHKCT", "chkct res[%0], %1",
          "ResourceID resID(%0);\n"
          "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
@@ -1736,30 +1728,30 @@ void add()
           "} else {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
           "}\n");
-  f2r_reverse("TESTCT", "testct res[%0], %1",
-              "ResourceID resID(%0);\n"
-              "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-              "  bool isCt;\n"
-              "  if (chanend->testct(*thread, TIME, isCt)) {\n"
-              "    %1 = isCt;\n"
-              "  } else {\n"
-              "    %pause_on(chanend);\n"
-              "  }\n"
-              "} else {\n"
-              "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-              "}\n");
-  f2r_reverse("TESTWCT", "testwct res[%0], %1",
-              "ResourceID resID(%0);\n"
-              "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-              "  uint32_t value;\n"
-              "  if (chanend->testwct(*thread, TIME, value)) {\n"
-              "    %1 = value;\n"
-              "  } else {\n"
-              "    %pause_on(chanend);\n"
-              "  }\n"
-              "} else {\n"
-              "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-              "}\n");
+  f2r("TESTCT", "testct %0, res[%1]",
+      "ResourceID resID(%1);\n"
+      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "  bool isCt;\n"
+      "  if (chanend->testct(*thread, TIME, isCt)) {\n"
+      "    %0 = isCt;\n"
+      "  } else {\n"
+      "    %pause_on(chanend);\n"
+      "  }\n"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "}\n");
+  f2r("TESTWCT", "testwct %0, res[%0]",
+      "ResourceID resID(%1);\n"
+      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "  uint32_t value;\n"
+      "  if (chanend->testwct(*thread, TIME, value)) {\n"
+      "    %0 = value;\n"
+      "  } else {\n"
+      "    %pause_on(chanend);\n"
+      "  }\n"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "}\n");
   f2r_in("EET", "eet res[%1], %0",
          "ResourceID resID(%1);\n"
          "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"

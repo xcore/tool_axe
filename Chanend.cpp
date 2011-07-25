@@ -5,6 +5,7 @@
 
 #include "Chanend.h"
 #include "Core.h"
+#include <algorithm>
 
 bool Chanend::canAcceptToken()
 {
@@ -178,16 +179,17 @@ bool Chanend::
 testwct(ThreadState &thread, ticks_t time, unsigned &position)
 {
   updateOwner(thread);
+  position = 0;
+  unsigned numTokens = std::min(buf.size(), 4U);
+  for (unsigned i = 0; i < numTokens; i++) {
+    if (buf[i].isControl()) {
+      position = i + 1;
+      return true;
+    }
+  }
   if (buf.size() < 4) {
     setPausedIn(thread, true);
     return false;
-  }
-  position = 0;
-  for (unsigned i = 0; i < 4; i++) {
-    if (buf[i].isControl()) {
-      position = i + 1;
-      break;
-    }
   }
   return true;
 }
