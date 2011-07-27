@@ -1492,7 +1492,14 @@ void add()
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
-  fl2r_in("TINITLR", "init t[%1]:lr, %0", "").setUnimplemented();
+  fl2r_in("TINITLR", "init t[%1]:lr, %0", 
+          "ResourceID resID(%1);\n"
+          "Thread *t = checkThread(*thread, resID);\n"
+          "if (t && t->getState().inSSync()) {\n"
+          "  t->getState().reg(LR) = %0;\n"
+          "} else {\n"
+          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+          "}\n");
   fl2r("GETD", "getd %0, res[%1]", "").setUnimplemented();
   fl2r("TESTLCL", "testlcl %0, res[%1]", "").setUnimplemented();
   fl2r_in("SETN", "setn res[%1], %0", "").setUnimplemented();

@@ -12,6 +12,8 @@ main:
   setd res[r2], r1
   ldap r11, thread
   init t[r0]:pc, r11
+  ldap r11, kill_thread
+  init t[r0]:lr, r11
   set t[r0]:r0, r2
   start t[r0]
   chkct res[r1], XS1_CT_END
@@ -21,6 +23,10 @@ main:
   retsp 0
 
 .align 2
+kill_thread:
+  freet
+
+.align 2
 thread:
   outct res[r0], XS1_CT_END
-  freet
+  retsp 0
