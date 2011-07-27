@@ -78,16 +78,20 @@ public:
   EventableResourceList() : head(0) {}
   void add(EventableResource *res)
   {
-    res->next = head;    head = res;
+    res->next = head;
+    res->prev = 0;
+    if (head)
+      head->prev = res;
+    head = res;
   }
 
   void remove(EventableResource *res)
   {
-    if (!res->prev) {
+    if (res->prev) {
+      res->prev->next = res->next;
+    } else {
       head = res->next;
-      return;
     }
-    res->prev->next = res->next;
     if (res->next) {
       res->next->prev = res->prev;
     }
