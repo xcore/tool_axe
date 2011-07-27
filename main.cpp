@@ -1080,7 +1080,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts)
         // TODO is this right?
         DESCHEDULE(PC);
       } else {
-        switch (sync->sync(*thread)) {
+        switch (sync->ssync(*thread)) {
         case Synchroniser::SYNC_CONTINUE:
           PC++;
           break;

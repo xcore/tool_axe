@@ -180,7 +180,7 @@ public:
   void alloc(ticks_t t)
   {
     sync = 0;
-    ssync = false;
+    ssync = true;
     time = t;
     pausedOn = 0;
   }
@@ -189,12 +189,16 @@ public:
   {
     assert(!sync && "Synchroniser set twice");
     sync = &s;
-    ssync = true;
   }
   
   bool inSSync() const
   {
     return ssync;
+  }
+
+  void setSSync(bool value)
+  {
+    ssync = value;
   }
   
   Synchroniser *getSync()

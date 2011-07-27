@@ -27,6 +27,7 @@ private:
   bool join;
   /// Returns the time of thread with the latest time.
   ticks_t MaxThreadTime() const;
+  SyncResult sync(ThreadState &thread, bool isMaster);
 public:
   Synchroniser() : Resource(RES_TYPE_SYNC) {}
   
@@ -69,8 +70,8 @@ public:
     return *threads[0];
   }
   
-  SyncResult sync(ThreadState &thread);
-
+  SyncResult ssync(ThreadState &thread) { return sync(thread, false); }
+  SyncResult msync(ThreadState &thread) { return sync(thread, true); }
   SyncResult mjoin(ThreadState &thread);
 
   void cancel();

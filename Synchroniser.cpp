@@ -17,11 +17,13 @@ ticks_t Synchroniser::MaxThreadTime() const
 }
 
 Synchroniser::SyncResult Synchroniser::
-sync(ThreadState &thread)
+sync(ThreadState &thread, bool isMaster)
 {
   if (getNumPaused() + 1 < getNumThreads()) {
     // Pause the current thread
     NumPaused++;
+    if (!isMaster)
+      thread.setSSync(true);
     return SYNC_DESCHEDULE;
   }
   // Wakeup / kill threads
@@ -31,6 +33,8 @@ sync(ThreadState &thread)
     for (unsigned i = 0; i < NumThreads; i++) {
       threads[i]->time = newTime;
       if (threads[i] != &thread) {
+        if (i > 0)
+          threads[i]->setSSync(false);
         threads[i]->pc++;
         threads[i]->schedule();
       }
@@ -39,7 +43,7 @@ sync(ThreadState &thread)
   }
   SyncResult result;
   threads[0]->time = newTime;
-  if (&thread == &master()) {
+  if (isMaster) {
     result = SYNC_CONTINUE;
     for (unsigned i = 1; i < NumThreads; i++) {
       threads[i]->getRes().free();
@@ -62,7 +66,7 @@ Synchroniser::SyncResult Synchroniser::
 mjoin(ThreadState &thread)
 {
   join = true;
-  return sync(thread);
+  return sync(thread, true);
 }
 
 void Synchroniser::cancel()

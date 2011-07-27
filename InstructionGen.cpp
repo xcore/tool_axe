@@ -1894,7 +1894,7 @@ void add()
   f1r("MSYNC", "msync res[%0]",
       "ResourceID resID(%0);\n"
       "if (Synchroniser *sync = checkSync(*thread, resID)) {\n"
-      "  switch (sync->sync(*thread)) {\n"
+      "  switch (sync->msync(*thread)) {\n"
       "  default: assert(0 && \"Unexpected sync result\");\n"
       "  case Synchroniser::SYNC_CONTINUE:\n"
       "    break;\n"
