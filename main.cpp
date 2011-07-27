@@ -1098,6 +1098,19 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts)
       TRACE_END();
     }
     ENDINST;
+  INST(FREET_0r):
+    {
+      TRACE("freet");
+      if (thread->getSync()) {
+        // TODO check expected behaviour
+        ERROR();
+      }
+      ThreadState *t = thread;
+      DESCHEDULE(PC);
+      t->getRes().free();
+      TRACE_END();
+    }
+    ENDINST;
   
   // Pseudo instructions.
   INST(SYSCALL):

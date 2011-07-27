@@ -1883,7 +1883,16 @@ void add()
       "}\n"
       "%pc = target;\n"
       "%next\n");
-  f1r("TSTART", "start t[%0]", "").setUnimplemented();
+  f1r("TSTART", "start t[%0]",
+      "ResourceID resID(%0);\n"
+      "Thread *t = checkThread(*thread, resID);\n"
+      "if (t && t->getState().inSSync() && !t->getState().getSync()) {\n"
+      "  t->getState().setSSync(false);\n"
+      "  t->getState().pc++;"
+      "  t->getState().schedule();"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "}\n");
   f1r_out("DGETREG", "dgetreg %0", "").setUnimplemented();
   f1r("KCALL", "kcall %0", "").setUnimplemented();
   f1r("FREER", "freer res[%0]",
@@ -2022,7 +2031,7 @@ void add()
   f0r("STSSR", "stw %0, sp[2]", "").addImplicitOp(ssr, in).setUnimplemented();
   f0r("STSED", "stw %0, sp[3]", "").addImplicitOp(sed, in).setUnimplemented();
   f0r("STET", "stw %0, sp[4]", "").addImplicitOp(et, in).setUnimplemented();
-  f0r("FREET", "freet", "").setUnimplemented();
+  f0r("FREET", "freet", "").setCustom();
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
   f0r("DENTSP", "dentsp", "").setUnimplemented();
