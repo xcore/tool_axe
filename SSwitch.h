@@ -62,5 +62,5 @@ public:
   virtual void receiveCtrlToken(ticks_t time, uint8_t value);
 };
 
-#endif _SSwitch_h_
+#endif //_SSwitch_h_
 
