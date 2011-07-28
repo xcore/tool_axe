@@ -1468,10 +1468,10 @@ void add()
       "if (value & 1) {\n"
       "  %exception(ET_ILLEGAL_PC, value)\n"
       "}\n"
-      "if (!CHECK_PC(value)) {\n"
+      "target = TO_PC(value);\n"
+      "if (!CHECK_PC(target)) {\n"
       "  %exception(ET_ILLEGAL_PC, value)\n"
       "}\n"
-      "target = TO_PC(value);\n"
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
       "%next\n")
