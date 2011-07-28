@@ -1421,7 +1421,7 @@ void add()
     .setSync();
   fu6("BLAT", "blat %0", "").addImplicitOp(r11, in).setUnimplemented();
   fu6("KCALL", "kcall %0", "").setUnimplemented();
-  fu6("GETSR", "getsr %1, %0", "%1 = %0 & (int) %2.to_ulong();")
+  fu6("GETSR", "getsr %1, %0", "%1 = %0 & (uint32_t) %2.to_ulong();")
     .addImplicitOp(r11, out)
     .addImplicitOp(sr, in);
   fu10("LDWCPL", "ldw %1, cp[%{cp}0]",
