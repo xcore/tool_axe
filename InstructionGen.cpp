@@ -2052,14 +2052,78 @@ void add()
     .addImplicitOp(sr, out)
     .setSync();
   f0r("DRESTSP", "drestsp", "").setUnimplemented();
-  f0r("LDSPC", "ldw %0, sp[1]", "").addImplicitOp(spc, out).setUnimplemented();
-  f0r("LDSSR", "ldw %0, sp[2]", "").addImplicitOp(ssr, out).setUnimplemented();
-  f0r("LDSED", "ldw %0, sp[3]", "").addImplicitOp(sed, out).setUnimplemented();
-  f0r("LDET", "ldw %0, sp[4]", "").addImplicitOp(et, out).setUnimplemented();
-  f0r("STSPC", "stw %0, sp[1]", "").addImplicitOp(spc, in).setUnimplemented();
-  f0r("STSSR", "stw %0, sp[2]", "").addImplicitOp(ssr, in).setUnimplemented();
-  f0r("STSED", "stw %0, sp[3]", "").addImplicitOp(sed, in).setUnimplemented();
-  f0r("STET", "stw %0, sp[4]", "").addImplicitOp(et, in).setUnimplemented();
+  f0r("LDSPC", "ldw %0, sp[1]", 
+      "uint32_t Addr = %1 + (1 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "%0 = LOAD_WORD(PhyAddr);\n")
+    .addImplicitOp(spc, out)
+    .addImplicitOp(sp, in);
+  f0r("LDSSR", "ldw %0, sp[2]", 
+      "uint32_t Addr = %1 + (2 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "%0 = LOAD_WORD(PhyAddr);\n")
+    .addImplicitOp(ssr, out)
+    .addImplicitOp(sp, in);
+  f0r("LDSED", "ldw %0, sp[3]", 
+      "uint32_t Addr = %1 + (3 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "%0 = LOAD_WORD(PhyAddr);\n")
+    .addImplicitOp(sed, out)
+    .addImplicitOp(sp, in);
+  f0r("LDET", "ldw %0, sp[4]", 
+      "uint32_t Addr = %1 + (4 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "%0 = LOAD_WORD(PhyAddr);\n")
+    .addImplicitOp(et, out)
+    .addImplicitOp(sp, in);
+  f0r("STSPC", "stw %0, sp[1]", 
+      "uint32_t Addr = %1 + (1 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "STORE_WORD(%0, PhyAddr);\n")
+    .addImplicitOp(spc, in)
+    .addImplicitOp(sp, in);
+  f0r("STSSR", "stw %0, sp[2]", 
+      "uint32_t Addr = %1 + (2 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "STORE_WORD(%0, PhyAddr);\n")
+    .addImplicitOp(ssr, in)
+    .addImplicitOp(sp, in);
+  f0r("STSED", "stw %0, sp[3]", 
+      "uint32_t Addr = %1 + (3 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "STORE_WORD(%0, PhyAddr);\n")
+    .addImplicitOp(sed, in)
+    .addImplicitOp(sp, in);
+  f0r("STET", "stw %0, sp[4]", 
+      "uint32_t Addr = %1 + (4 << 2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)\n"
+      "}\n"
+      "STORE_WORD(%0, PhyAddr);\n")
+    .addImplicitOp(et, in)
+    .addImplicitOp(sp, in);
   f0r("FREET", "freet", "").setCustom();
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
