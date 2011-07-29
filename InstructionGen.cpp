@@ -1396,7 +1396,7 @@ void add()
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "  %exception(ET_LOAD_STORE, %2)\n"
       "}\n"
-      "STORE_WORD(PhyAddr, %1);\n"
+      "STORE_WORD(%1, PhyAddr);\n"
       "%1 = %2 - OP(0);")
     .addImplicitOp(sp, inout)
     .addImplicitOp(ksp, in)
