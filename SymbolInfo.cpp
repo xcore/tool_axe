@@ -28,16 +28,13 @@ const ElfSymbol *CoreSymbolInfo::getGlobalSymbol(const std::string &name) const
   return it->second;
 }
 
-static const ElfSymbol *
-getSymbol(const std::vector<ElfSymbol*> &symbols, uint32_t address)
+const ElfSymbol *CoreSymbolInfo::
+getSymbol(const SymbolAddressMap &symbols, uint32_t address)
 {
-  ElfSymbol sym("", address, 0);
-  std::vector<ElfSymbol*>::const_reverse_iterator it =
-  std::lower_bound(symbols.rbegin(), symbols.rend(), &sym,
-                   ElfSymbolGreater());
-  if (it == symbols.rbegin())
+  SymbolAddressMap::const_iterator it = symbols.lower_bound(address);
+  if (it == symbols.end())
     return 0;
-  return *it;
+  return it->second;
 }
 
 const ElfSymbol *CoreSymbolInfo::getFunctionSymbol(uint32_t address) const
@@ -66,23 +63,22 @@ std::auto_ptr<CoreSymbolInfo> CoreSymbolInfoBuilder::getSymbolInfo()
     ElfSymbol *sym = &*it;
     switch (ELF32_ST_TYPE(sym->info)) {
     case STT_FUNC:
-      retval->functionSymbols.push_back(sym);
+      // Could replace an existing symbol.
+      retval->functionSymbols[sym->value] = sym;
       break;
     case STT_OBJECT:
-      retval->dataSymbols.push_back(sym);
+      // Could replace an existing symbol.
+      retval->dataSymbols[sym->value] = sym;
       break;
     case STT_NOTYPE:
-      retval->functionSymbols.push_back(sym);
-      retval->dataSymbols.push_back(sym);
+      // Only inserted if no other symbol at that address.
+      retval->functionSymbols.insert(std::make_pair(sym->value, sym));
+      retval->dataSymbols.insert(std::make_pair(sym->value, sym));
       break;
     }
     if (ELF32_ST_BIND(sym->info) != STB_LOCAL)
       retval->symNameMap.insert(std::make_pair(sym->name, sym));
   }
-  std::sort(retval->functionSymbols.begin(), retval->functionSymbols.end(),
-            ElfSymbolLess());
-  std::sort(retval->dataSymbols.begin(), retval->dataSymbols.end(),
-            ElfSymbolLess());
   return retval;
 }
 

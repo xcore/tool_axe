@@ -11,6 +11,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <functional>
 
 struct ElfSymbol {
   std::string name;
@@ -25,10 +26,13 @@ class CoreSymbolInfo {
 friend class CoreSymbolInfoBuilder;
 private:
   std::vector<ElfSymbol> symbols;
-  std::vector<ElfSymbol*> functionSymbols;
-  std::vector<ElfSymbol*> dataSymbols;
+  typedef std::map<uint32_t, ElfSymbol*, std::greater<uint32_t> >
+    SymbolAddressMap;
+  SymbolAddressMap functionSymbols;
+  SymbolAddressMap dataSymbols;
   std::map<std::string,ElfSymbol*> symNameMap;
-
+  static const ElfSymbol *getSymbol(const SymbolAddressMap &symbols,
+                                    uint32_t address);
 public:
   const ElfSymbol *getGlobalSymbol(const std::string &name) const;
   const ElfSymbol *getFunctionSymbol(uint32_t address) const;
