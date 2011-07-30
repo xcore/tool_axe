@@ -1200,7 +1200,8 @@ void add()
        "%3 = (uint32_t)(Result);");
   // TODO check destination registers don't overlap
   fl4r_inout_inout("MACCS", "maccs %0, %3, %1, %2",
-       "uint64_t Result = ((int64_t)%0 << 32 | %3) + (int64_t)(int32_t)%1 * %2;\n"
+       "uint64_t Result = ((int64_t)%0 << 32 | %3);\n"
+       "Result += (int64_t)(int32_t)%1 * (int32_t)%2;\n"
        "%0 = (int32_t)(Result >> 32);\n"
        "%3 = (uint32_t)(Result);");
   // TODO check destination registers don't overlap.
