@@ -15,7 +15,8 @@ enum ExceptionType {
   ET_ILLEGAL_PS = 6,
   ET_ARITHMETIC = 7,
   ET_ECALL = 8,
-  ET_RESOURCE_DEP = 9
+  ET_RESOURCE_DEP = 9,
+  ET_KCALL = 15
 };
 
 class Exceptions {

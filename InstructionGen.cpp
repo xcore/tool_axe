@@ -531,6 +531,19 @@ emitCode(const Instruction &instruction,
         std::cout << "goto " << getEndLabel(instruction) << ";\n";
         emitEndLabel = true;
         i = (close - s);
+      } else if (std::strncmp(&s[i], "kcall(", 6) == 0) {
+        i += 6;
+        emitCycles(instruction);
+        emitRegWriteBack(instruction);
+        emitTraceEnd();
+        std::cout << "EXCEPTION(ET_KCALL, ";
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitCode(instruction, content);
+        std::cout << ");\n";
+        std::cout << "goto " << getEndLabel(instruction) << ";\n";
+        emitEndLabel = true;
+        i = (close - s);
       } else if (std::strncmp(&s[i], "pause_on(", 9) == 0) {
         i += 9;
         emitCycles(instruction);
@@ -1421,7 +1434,7 @@ void add()
     .addImplicitOp(sr, inout)
     .setSync();
   fu6("BLAT", "blat %0", "").addImplicitOp(r11, in).setUnimplemented();
-  fu6("KCALL", "kcall %0", "").setUnimplemented();
+  fu6("KCALL", "kcall %0", "%kcall(%0)");
   fu6("GETSR", "getsr %1, %0", "%1 = %0 & (uint32_t) %2.to_ulong();")
     .addImplicitOp(r11, out)
     .addImplicitOp(sr, in);
@@ -1924,7 +1937,7 @@ void add()
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n");
   f1r_out("DGETREG", "dgetreg %0", "").setUnimplemented();
-  f1r("KCALL", "kcall %0", "").setUnimplemented();
+  f1r("KCALL",  "kcall %0", "%kcall(%0)");
   f1r("FREER", "freer res[%0]",
       "Resource *res = checkResource(*thread, ResourceID(%0));\n"
       "if (!res || !res->free()) {\n"

@@ -239,12 +239,14 @@ exception(ThreadState &thread, Core &state, uint32_t pc, int et,
   thread.regs[ET] = et;
   thread.regs[ED] = ed;
 
-  uint32_t NewPc = state.physicalAddress(thread.regs[KEP]);
-  if ((NewPc & 1) || !state.isValidAddress(NewPc)) {
+  uint32_t newPc = state.physicalAddress(thread.regs[KEP]);
+  if (et == ET_KCALL)
+    newPc += 64;
+  if ((newPc & 1) || !state.isValidAddress(newPc)) {
     std::cout << "Error: unable to handle exception (invalid kep)\n";
     std::abort();
   }
-  return NewPc >> 1;
+  return newPc >> 1;
 }
 
 static void internalError(const ThreadState &thread, const char *file, int line) {

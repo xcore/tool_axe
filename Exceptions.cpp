@@ -17,6 +17,7 @@ const char *Exceptions::getExceptionName(int type)
   case ET_ARITHMETIC: return "ARITHMETIC";
   case ET_ECALL: return "ECALL";
   case ET_RESOURCE_DEP: return "RESOURCE_DEP";
+  case ET_KCALL: return "KCALL";
   default: return "Unknown";
   }
 }
