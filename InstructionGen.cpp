@@ -1155,7 +1155,7 @@ void add()
   fl3r("MUL", "mul %0, %1, %2", "%0 = %1 * %2;");
   fl3r("DIVS", "divs %0, %1, %2",
        "if (%2 == 0 ||\n"
-       "    (%1 == 0x7fffffff && %2 == 0xffffffff)) {\n"
+       "    (%1 == 0x80000000 && %2 == 0xffffffff)) {\n"
        "  %exception(ET_ARITHMETIC, 0)"
        "}\n"
        "%0 = (int32_t)%1 / (int32_t)%2;")
@@ -1168,7 +1168,7 @@ void add()
   .setCycles(DIV_CYCLES);
   fl3r("REMS", "rems %0, %1, %2",
        "if (%2 == 0 ||\n"
-       "    (%1 == 0x7fffffff && %2 == 0xffffffff)) {\n"
+       "    (%1 == 0x80000000 && %2 == 0xffffffff)) {\n"
        "  %exception(ET_ARITHMETIC, 0)"
        "}\n"
        "%0 = (int32_t)%1 %% (int32_t)%2;")
@@ -1226,7 +1226,7 @@ void add()
   // Note operands are reordered.
   fl5r("LDIVU", "ldivu %0, %3, %4, %1, %2",
        "uint64_t dividend;\n"
-       "if (%2 == 0 || (%4 >= %2)) {\n"
+       "if (%4 >= %2) {\n"
        "  %exception(ET_ARITHMETIC, 0)\n"
        "}\n"
        "dividend = %1 + ((uint64_t)%4 << 32);\n"
