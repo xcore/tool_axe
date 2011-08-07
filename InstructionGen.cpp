@@ -1888,7 +1888,7 @@ void add()
       "  %exception(ET_ILLEGAL_PC, %0)\n"
       "}\n"
       "target = TO_PC(%0);\n"
-      "if (!CHECK_PC(%0)) {\n"
+      "if (!CHECK_PC(target)) {\n"
       "  %exception(ET_ILLEGAL_PC, %0)\n"
       "}\n"
       "%pc = target;\n"
@@ -1899,7 +1899,7 @@ void add()
       "  %exception(ET_ILLEGAL_PC, %0)\n"
       "}\n"
       "target = TO_PC(%0);\n"
-      "if (!CHECK_PC(%0)) {\n"
+      "if (!CHECK_PC(target)) {\n"
       "  %exception(ET_ILLEGAL_PC, %0)\n"
       "}\n"
       "%1 = FROM_PC(%pc);\n"
@@ -1908,7 +1908,7 @@ void add()
     .addImplicitOp(lr, out);
   f1r("BRU", "bru %0",
       "uint32_t target = %pc + %0;\n"
-      "if (!CHECK_PC(%0)) {\n"
+      "if (!CHECK_PC(target)) {\n"
       "  %exception(ET_ILLEGAL_PC, FROM_PC(target))\n"
       "}\n"
       "%pc = target;\n"
