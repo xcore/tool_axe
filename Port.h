@@ -176,10 +176,6 @@ public:
     return makeMask(getPortWidth());
   }
 
-  uint32_t transferWidthMask() const {
-    return makeMask(getTransferWidth());
-  }
-
   void setClkInitial(ClockBlock *c) {
     clock = c;
     clock->attachPort(this);

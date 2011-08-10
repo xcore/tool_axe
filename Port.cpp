@@ -486,7 +486,7 @@ out(ThreadState &thread, uint32_t value, ticks_t threadTime)
     validShiftRegEntries = 1;
   }
   transferRegValid = true;
-  transferReg = value & transferWidthMask();
+  transferReg = value;
   outputPort = true;
   scheduleUpdateIfNeeded();
   return CONTINUE;
@@ -517,7 +517,7 @@ outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
   }
   transferRegValid = true;
   nextShiftRegEntries = width / getPortWidth();
-  transferReg = value & transferWidthMask();
+  transferReg = value;
   outputPort = true;
   scheduleUpdateIfNeeded();
   return CONTINUE;
