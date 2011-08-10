@@ -54,6 +54,7 @@ bool Port::setCInUse(ThreadState &thread, bool val, ticks_t time)
     timestampReg = 0;
     shiftReg = 0;
     shiftRegEntries = 1;
+    nextShiftRegEntries = 1;
     time = thread.time;
     portCounter = 0;
     readyMode = NOREADY;
@@ -183,7 +184,8 @@ void Port::update(ticks_t newTime)
     if (!pausedIn) {
       // Optimisation to skip shifting out data which doesn't change the value on
       // the pins.
-      unsigned numSignificantFallingEdges = shiftRegEntries * 2 - 1;
+      // TODO handle nextShiftRegEntries.
+      unsigned numSignificantFallingEdges = validShiftRegEntries + shiftRegEntries - 1;
       if (pausedSync)
         numSignificantFallingEdges++;
       unsigned numSignificantEdges = 2 * numSignificantFallingEdges - 1;
@@ -203,6 +205,7 @@ void Port::update(ticks_t newTime)
   } else {
     if (!pausedOut) {
       // Optimisation to skip shifting in data which will never seen.
+      // TODO handle nextShiftRegEntries.
       unsigned numSignificantRisingEdges = shiftRegEntries * 2 - 1;
       unsigned numSignificantEdges = 2 * numSignificantRisingEdges;
       if ((nextEdge + (numSignificantEdges - 1))->time <= newTime) {
@@ -284,7 +287,8 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
             pausedSync = 0;
           }
           if (transferRegValid && !timeRegValid) {
-            validShiftRegEntries = shiftRegEntries;
+            validShiftRegEntries = nextShiftRegEntries;
+            nextShiftRegEntries = shiftRegEntries;
             nextShiftReg = transferReg;
             timestampReg = portCounter;
             transferRegValid = false;
@@ -489,6 +493,37 @@ out(ThreadState &thread, uint32_t value, ticks_t threadTime)
 }
 
 Resource::ResOpResult Port::
+outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
+{
+  update(threadTime);
+  updateOwner(thread);
+  if (!isBuffered() || width < getPortWidth() || width > getTransferWidth() ||
+      width % getPortWidth() != 0) {
+    return ILLEGAL;
+  }
+  // TODO is this right?
+  if (portType != DATAPORT) {
+    return CONTINUE;
+  }
+  if (outputPort) {
+    if (transferRegValid) {
+      pausedOut = &thread;
+      scheduleUpdateIfNeeded();
+      return DESCHEDULE;
+    }
+  } else {
+    // TODO probably wrong.
+    validShiftRegEntries = 1;
+  }
+  transferRegValid = true;
+  nextShiftRegEntries = width / getPortWidth();
+  transferReg = value & transferWidthMask();
+  outputPort = true;
+  scheduleUpdateIfNeeded();
+  return CONTINUE;
+}
+
+Resource::ResOpResult Port::
 sync(ThreadState &thread, ticks_t time)
 {
   update(time);
@@ -591,7 +626,7 @@ bool Port::setBuffered(ThreadState &thread, bool value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (value && (transferWidth != getPortWidth() || readyMode != NOREADY))
+  if (!value && (transferWidth != getPortWidth() || readyMode != NOREADY))
     return false;
   buffered = value;
   return true;
@@ -643,6 +678,7 @@ bool Port::setTransferWidth(ThreadState &thread, uint32_t value, ticks_t time)
     return false;
   transferWidth = value;
   shiftRegEntries = transferWidth / getPortWidth();
+  nextShiftRegEntries = shiftRegEntries;
   return true;
 }
 

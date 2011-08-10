@@ -54,6 +54,8 @@ private:
   ThreadState *pausedSync;
   /// Number of port width entries in the transfer register.
   unsigned shiftRegEntries;
+  /// Number of port width entries for the next input / output.
+  unsigned nextShiftRegEntries;
   /// Number of valid port width entries in the transfer register.
   unsigned validShiftRegEntries;
   /// Shift register.
@@ -151,6 +153,8 @@ public:
 
   ResOpResult in(ThreadState &thread, ticks_t time, uint32_t &value);
   ResOpResult out(ThreadState &thread, uint32_t value, ticks_t time);
+  ResOpResult outpw(ThreadState &thread, uint32_t value, uint32_t width,
+                    ticks_t time);
   ResOpResult sync(ThreadState &thread, ticks_t time);
   ResOpResult setPortTime(ThreadState &thread, uint32_t value, ticks_t time);
   uint32_t getTimestamp(ThreadState &thread, ticks_t time);

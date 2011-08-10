@@ -1203,7 +1203,23 @@ void add()
          "assert(%2 != 32 && \"ASHR_32_2rus should be used for ashr by immediate 32\");\n"
          "%0 = (int32_t)%1 >> %2;");
   fl2rus("ASHR_32", "ashr %0, %1, 32", "%0 = (int32_t)%1 >> 31;");
-  fl2rus_in("OUTPW", "outpw res[%1], %0, %1", "").setUnimplemented();
+  fl2rus_in("OUTPW", "outpw res[%1], %0, %2",
+            "ResourceID resID(%1);\n"
+            "if (Port *res = checkPort(*thread, resID)) {\n"
+            "  switch (res->outpw(*thread, %0, %2, TIME)) {\n"
+            "  default: assert(0 && \"Unexpected outpw result\");\n"
+            "  case Resource::CONTINUE:\n"
+            "    break;\n"
+            "  case Resource::DESCHEDULE:\n"
+            "    %pause_on(res);\n"
+            "  case Resource::ILLEGAL:\n"
+            "    %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+            "  }\n"
+            "} else {\n"
+            "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+            "}\n")
+    .setSync()
+    .setCanEvent();
   fl2rus("INPW", "inpw %0, res[%1], %2", "").setUnimplemented();
   fl3r_inout("CRC", "crc32 %0, %1, %2", "%0 = crc32(%0, %1, %2);");
   // TODO check destination registers don't overlap
