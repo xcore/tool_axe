@@ -1218,8 +1218,7 @@ void add()
             "} else {\n"
             "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
             "}\n")
-    .setSync()
-    .setCanEvent();
+    .setSync();
   fl2rus("INPW", "inpw %0, res[%1], %2", "").setUnimplemented();
   fl3r_inout("CRC", "crc32 %0, %1, %2", "%0 = crc32(%0, %1, %2);");
   // TODO check destination registers don't overlap
