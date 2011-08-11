@@ -1219,7 +1219,24 @@ void add()
             "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
             "}\n")
     .setSync();
-  fl2rus("INPW", "inpw %0, res[%1], %2", "").setUnimplemented();
+  fl2rus("INPW", "inpw %0, res[%1], %2",
+         "ResourceID resID(%1);\n"
+         "if (Port *res = checkPort(*thread, resID)) {\n"
+         "  uint32_t value;\n"
+         "  switch (res->inpw(*thread, %2, TIME, value)) {\n"
+         "  default: assert(0 && \"Unexpected inpw result\");\n"
+         "  case Resource::CONTINUE:\n"
+         "    %0 = value;\n"
+         "    break;\n"
+         "  case Resource::DESCHEDULE:\n"
+         "    %pause_on(res);\n"
+         "  case Resource::ILLEGAL:\n"
+         "    %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "  }\n"
+         "} else {\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "}\n")
+  .setSync();
   fl3r_inout("CRC", "crc32 %0, %1, %2", "%0 = crc32(%0, %1, %2);");
   // TODO check destination registers don't overlap
   fl4r_inout_inout("MACCU", "maccu %0, %3, %1, %2",

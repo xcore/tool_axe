@@ -57,6 +57,8 @@ private:
   /// Number of port width entries for the next input / output.
   unsigned nextShiftRegEntries;
   /// Number of valid port width entries in the transfer register.
+  /// TODO rename to portShiftCount, change to alway count down to zero
+  /// regardless of input / output.
   unsigned validShiftRegEntries;
   /// Shift register.
   uint32_t shiftReg;
@@ -140,6 +142,7 @@ private:
   bool isBuffered() const {
     return buffered;
   }
+  bool isValidPortShiftCount(uint32_t count) const;
   bool shouldRealignShiftRegister();
   bool checkTransferWidth(uint32_t value);
 public:
@@ -152,6 +155,8 @@ public:
   bool setData(ThreadState &thread, uint32_t d, ticks_t time);
 
   ResOpResult in(ThreadState &thread, ticks_t time, uint32_t &value);
+  ResOpResult inpw(ThreadState &thread, uint32_t width, ticks_t time,
+                   uint32_t &value);
   ResOpResult out(ThreadState &thread, uint32_t value, ticks_t time);
   ResOpResult outpw(ThreadState &thread, uint32_t value, uint32_t width,
                     ticks_t time);

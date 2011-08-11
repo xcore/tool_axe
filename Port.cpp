@@ -184,8 +184,8 @@ void Port::update(ticks_t newTime)
     if (!pausedIn) {
       // Optimisation to skip shifting out data which doesn't change the value on
       // the pins.
-      // TODO handle nextShiftRegEntries.
-      unsigned numSignificantFallingEdges = validShiftRegEntries + shiftRegEntries - 1;
+      unsigned numSignificantFallingEdges = validShiftRegEntries +
+                                            shiftRegEntries - 1;
       if (pausedSync)
         numSignificantFallingEdges++;
       unsigned numSignificantEdges = 2 * numSignificantFallingEdges - 1;
@@ -206,7 +206,8 @@ void Port::update(ticks_t newTime)
     if (!pausedOut) {
       // Optimisation to skip shifting in data which will never seen.
       // TODO handle nextShiftRegEntries.
-      unsigned numSignificantRisingEdges = shiftRegEntries * 2 - 1;
+      unsigned numSignificantRisingEdges = nextShiftRegEntries +
+                                           shiftRegEntries - 1;
       unsigned numSignificantEdges = 2 * numSignificantRisingEdges;
       if ((nextEdge + (numSignificantEdges - 1))->time <= newTime) {
         unsigned numEdges = clock->getEdgeIterator(newTime) - nextEdge;
@@ -331,11 +332,12 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
         transferRegValid = false;
         timeRegValid = false;
       }
-      if (validShiftRegEntries == shiftRegEntries &&
+      if (validShiftRegEntries == nextShiftRegEntries &&
           (!useReadyOut() || !transferRegValid ||
            timeRegValid || condition != COND_FULL)) {
         validShiftRegEntries = 0;
         if (!holdTransferReg) {
+          nextShiftRegEntries = shiftRegEntries;
           transferReg = shiftReg;
           timestampReg = portCounter;
           transferRegValid = true;
@@ -418,6 +420,12 @@ bool Port::valueMeetsCondition(uint32_t value) const
   }
 }
 
+bool Port::isValidPortShiftCount(uint32_t count) const
+{
+  return count >= getPortWidth() && count <= getTransferWidth() &&
+         (count % getPortWidth()) == 0;
+}
+
 Resource::ResOpResult Port::
 in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
 {
@@ -437,7 +445,8 @@ in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
     value = transferReg;
     // TODO should validShiftRegEntries be reset?
     //validShiftRegEntries = 0;
-    if (validShiftRegEntries == shiftRegEntries) {
+    if (validShiftRegEntries == nextShiftRegEntries) {
+      nextShiftRegEntries = shiftRegEntries;
       transferReg = shiftReg;
       // TODO is this right?
       timestampReg = portCounter;
@@ -452,6 +461,44 @@ in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
   return DESCHEDULE;
 }
 
+Resource::ResOpResult Port::
+inpw(ThreadState &thread, uint32_t width, ticks_t threadTime, uint32_t &value)
+{
+  update(threadTime);
+  updateOwner(thread);
+  if (!isBuffered() || !isValidPortShiftCount(width)) {
+    return ILLEGAL;
+  }
+  // TODO is this right?
+  if (portType != DATAPORT) {
+    value = 0;
+    return CONTINUE;
+  }
+  if (outputPort) {
+    pausedIn = &thread;
+    scheduleUpdateIfNeeded();
+    return DESCHEDULE;
+  }
+  if (timeAndConditionMet()) {
+    value = transferReg;
+    // TODO should validShiftRegEntries be reset?
+    //validShiftRegEntries = 0;
+    if (validShiftRegEntries == nextShiftRegEntries) {
+      nextShiftRegEntries = shiftRegEntries;
+      transferReg = shiftReg;
+      // TODO is this right?
+      timestampReg = portCounter;
+    } else {
+      transferRegValid = false;
+    }
+    holdTransferReg = false;
+    return CONTINUE;
+  }
+  nextShiftRegEntries = width / getPortWidth();
+  pausedIn = &thread;
+  scheduleUpdateIfNeeded();
+  return DESCHEDULE;
+}
 
 void Port::
 updateDependentClocks(const Signal &value, ticks_t time)
@@ -497,8 +544,7 @@ outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
 {
   update(threadTime);
   updateOwner(thread);
-  if (!isBuffered() || width < getPortWidth() || width > getTransferWidth() ||
-      width % getPortWidth() != 0) {
+  if (!isBuffered() || !isValidPortShiftCount(width)) {
     return ILLEGAL;
   }
   // TODO is this right?
@@ -776,7 +822,7 @@ bool Port::nextReadyOut()
     return validShiftRegEntries != 0;
   if (timeRegValid)
     return portCounter == timeReg;
-  return validShiftRegEntries != shiftRegEntries;
+  return validShiftRegEntries != nextShiftRegEntries;
 }
 
 void Port::clearReadyOut(ticks_t time)
