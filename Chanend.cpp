@@ -20,7 +20,7 @@ bool Chanend::canAcceptTokens(unsigned tokens)
 void Chanend::receiveDataToken(ticks_t time, uint8_t value)
 {
   buf.push_back(Token(value));
-  scheduleUpdate(time);
+  update(time);
 }
 
 void Chanend::receiveDataTokens(ticks_t time, uint8_t *values, unsigned num)
@@ -28,7 +28,7 @@ void Chanend::receiveDataTokens(ticks_t time, uint8_t *values, unsigned num)
   for (unsigned i = 0; i < num; i++) {
     buf.push_back(Token(values[i]));
   }
-  scheduleUpdate(time);
+  update(time);
 }
 
 void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
@@ -45,7 +45,7 @@ void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
     buf.push_back(Token(value, true));
     break;
   }
-  scheduleUpdate(time);
+  update(time);
 }
 
 void Chanend::notifyDestClaimed(ticks_t time)
@@ -268,8 +268,7 @@ in(ThreadState &thread, ticks_t time, uint32_t &value)
 
 void Chanend::update(ticks_t time)
 {
-  if (buf.empty())
-    return;
+  assert(!buf.empty());
   if (eventsPermitted()) {
     event(time);
     return;
@@ -285,7 +284,7 @@ void Chanend::update(ticks_t time)
 
 void Chanend::run(ticks_t time)
 {
-  update(time);
+  assert(0 && "Shouldn't get here");
 }
 
 bool Chanend::seeEventEnable(ticks_t time)

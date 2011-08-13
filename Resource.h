@@ -332,8 +332,6 @@ public:
     return true;
   }
 
-  virtual void run(ticks_t time) = 0;
-
   EventableResource *next;
   EventableResource *prev;
 };
