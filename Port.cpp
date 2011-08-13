@@ -450,11 +450,10 @@ in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
   }
   if (timeAndConditionMet()) {
     value = transferReg;
-    // TODO should validShiftRegEntries be reset?
-    //validShiftRegEntries = 0;
     if (validShiftRegEntries == portShiftCount) {
       portShiftCount = shiftRegEntries;
       transferReg = shiftReg;
+      validShiftRegEntries = 0;
       // TODO is this right?
       timestampReg = portCounter;
     } else {
@@ -589,6 +588,36 @@ setpsc(ThreadState &thread, uint32_t width, ticks_t threadTime)
     return CONTINUE;
   }
   portShiftCount = width / getPortWidth();
+  scheduleUpdateIfNeeded();
+  return CONTINUE;
+}
+
+Port::ResOpResult Port::
+endin(ThreadState &thread, ticks_t threadTime, uint32_t &value)
+{
+  update(threadTime);
+  updateOwner(thread);
+  if (outputPort || !isBuffered()) {
+    return ILLEGAL;
+  }
+  // TODO is this right?
+  if (portType != DATAPORT) {
+    value = 0;
+    return CONTINUE;
+  }
+  unsigned entries = validShiftRegEntries;
+  if (transferRegValid) {
+    entries += shiftRegEntries;
+    if (validShiftRegEntries != 0)
+      portShiftCount = validShiftRegEntries;
+  } else if (validShiftRegEntries != 0) {
+    validShiftRegEntries = 0;
+    portShiftCount = shiftRegEntries;
+    transferReg = shiftReg;
+    timestampReg = portCounter;
+    transferRegValid = true;
+  }
+  value = entries * getPortWidth();
   scheduleUpdateIfNeeded();
   return CONTINUE;
 }

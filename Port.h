@@ -161,6 +161,7 @@ public:
   ResOpResult outpw(ThreadState &thread, uint32_t value, uint32_t width,
                     ticks_t time);
   ResOpResult setpsc(ThreadState &thread, uint32_t value, ticks_t time);
+  ResOpResult endin(ThreadState &thread, ticks_t time, uint32_t &value);
   ResOpResult sync(ThreadState &thread, ticks_t time);
   ResOpResult setPortTime(ThreadState &thread, uint32_t value, ticks_t time);
   uint32_t getTimestamp(ThreadState &thread, ticks_t time);

@@ -1555,7 +1555,22 @@ void add()
       "  %exception(ET_ILLEGAL_RESOURCE, resID)\n"
       "}\n");
   f2r("PEEK", "peek %0, res[%1]", "").setUnimplemented();
-  f2r("ENDIN", "endin %0, res[%1]", "").setUnimplemented();
+  f2r("ENDIN", "endin %0, res[%1]",
+      "ResourceID resID(%1);\n"
+      "if (Port *res = checkPort(*thread, resID)) {\n"
+      "  uint32_t value;\n"
+      "  switch (res->endin(*thread, TIME, value)) {\n"
+      "  default: assert(0 && \"Unexpected endin result\");\n"
+      "  case Resource::CONTINUE:\n"
+      "    %0 = value;\n"
+      "    break;\n"
+      "  case Resource::ILLEGAL:\n"
+      "    %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "  }\n"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "}\n")
+    .setSync();
   f2r_in("SETPSC", "setpsc res[%1], %0",
          "ResourceID resID(%1);\n"
          "if (Port *res = checkPort(*thread, resID)) {\n"
