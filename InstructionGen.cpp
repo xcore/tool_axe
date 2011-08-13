@@ -1556,7 +1556,20 @@ void add()
       "}\n");
   f2r("PEEK", "peek %0, res[%1]", "").setUnimplemented();
   f2r("ENDIN", "endin %0, res[%1]", "").setUnimplemented();
-  f2r_in("SETPSC", "setpsc res[%0], %1", "").setUnimplemented();  
+  f2r_in("SETPSC", "setpsc res[%1], %0",
+         "ResourceID resID(%1);\n"
+         "if (Port *res = checkPort(*thread, resID)) {\n"
+         "  switch (res->setpsc(*thread, %0, TIME)) {\n"
+         "  default: assert(0 && \"Unexpected setpsc result\");\n"
+         "  case Resource::CONTINUE:\n"
+         "    break;\n"
+         "  case Resource::ILLEGAL:\n"
+         "    %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "  }\n"
+         "} else {\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "}\n")
+    .setSync();  
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");

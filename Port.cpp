@@ -576,6 +576,23 @@ outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
   return CONTINUE;
 }
 
+Port::ResOpResult Port::
+setpsc(ThreadState &thread, uint32_t width, ticks_t threadTime)
+{
+  update(threadTime);
+  updateOwner(thread);
+  if (!isBuffered() || !isValidPortShiftCount(width)) {
+    return ILLEGAL;
+  }
+  // TODO is this right?
+  if (portType != DATAPORT) {
+    return CONTINUE;
+  }
+  portShiftCount = width / getPortWidth();
+  scheduleUpdateIfNeeded();
+  return CONTINUE;
+}
+
 Resource::ResOpResult Port::
 sync(ThreadState &thread, ticks_t time)
 {
