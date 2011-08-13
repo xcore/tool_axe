@@ -54,8 +54,8 @@ private:
   ThreadState *pausedSync;
   /// Number of port width entries in the transfer register.
   unsigned shiftRegEntries;
-  /// Number of port width entries for the next input / output.
-  unsigned nextShiftRegEntries;
+  /// Number of port width entries for the current input / next output.
+  unsigned portShiftCount;
   /// Number of valid port width entries in the transfer register.
   /// TODO rename to portShiftCount, change to alway count down to zero
   /// regardless of input / output.

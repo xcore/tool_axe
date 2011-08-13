@@ -54,7 +54,7 @@ bool Port::setCInUse(ThreadState &thread, bool val, ticks_t time)
     timestampReg = 0;
     shiftReg = 0;
     shiftRegEntries = 1;
-    nextShiftRegEntries = 1;
+    portShiftCount = 1;
     time = thread.time;
     portCounter = 0;
     readyMode = NOREADY;
@@ -185,7 +185,7 @@ void Port::update(ticks_t newTime)
       // Optimisation to skip shifting out data which doesn't change the value on
       // the pins.
       unsigned numSignificantFallingEdges = validShiftRegEntries +
-                                            shiftRegEntries - 1;
+                                            portShiftCount - 1;
       if (pausedSync)
         numSignificantFallingEdges++;
       unsigned numSignificantEdges = 2 * numSignificantFallingEdges - 1;
@@ -205,9 +205,8 @@ void Port::update(ticks_t newTime)
   } else {
     if (!pausedOut) {
       // Optimisation to skip shifting in data which will never seen.
-      // TODO handle nextShiftRegEntries.
-      unsigned numSignificantRisingEdges = nextShiftRegEntries +
-                                           shiftRegEntries - 1;
+      // TODO handle portShiftCount.
+      unsigned numSignificantRisingEdges = shiftRegEntries * 2 - 1;
       unsigned numSignificantEdges = 2 * numSignificantRisingEdges;
       if ((nextEdge + (numSignificantEdges - 1))->time <= newTime) {
         unsigned numEdges = clock->getEdgeIterator(newTime) - nextEdge;
@@ -288,8 +287,8 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
             pausedSync = 0;
           }
           if (transferRegValid && !timeRegValid) {
-            validShiftRegEntries = nextShiftRegEntries;
-            nextShiftRegEntries = shiftRegEntries;
+            validShiftRegEntries = portShiftCount;
+            portShiftCount = shiftRegEntries;
             nextShiftReg = transferReg;
             timestampReg = portCounter;
             transferRegValid = false;
@@ -332,12 +331,12 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
         transferRegValid = false;
         timeRegValid = false;
       }
-      if (validShiftRegEntries == nextShiftRegEntries &&
+      if (validShiftRegEntries == portShiftCount &&
           (!useReadyOut() || !transferRegValid ||
            timeRegValid || condition != COND_FULL)) {
         validShiftRegEntries = 0;
         if (!holdTransferReg) {
-          nextShiftRegEntries = shiftRegEntries;
+          portShiftCount = shiftRegEntries;
           transferReg = shiftReg;
           timestampReg = portCounter;
           transferRegValid = true;
@@ -372,6 +371,14 @@ void Port::skipEdges(unsigned numFalling, unsigned numRising)
     else
       validShiftRegEntries -= numFalling;
   } else {
+    if (portShiftCount != shiftRegEntries) {
+      if (validShiftRegEntries + numRising < portShiftCount) {
+        validShiftRegEntries += numRising;
+        return;
+      }
+      numRising -= portShiftCount;
+      portShiftCount = shiftRegEntries;
+    }
     validShiftRegEntries = (validShiftRegEntries + numRising) % shiftRegEntries;
   }
 }
@@ -445,8 +452,8 @@ in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
     value = transferReg;
     // TODO should validShiftRegEntries be reset?
     //validShiftRegEntries = 0;
-    if (validShiftRegEntries == nextShiftRegEntries) {
-      nextShiftRegEntries = shiftRegEntries;
+    if (validShiftRegEntries == portShiftCount) {
+      portShiftCount = shiftRegEntries;
       transferReg = shiftReg;
       // TODO is this right?
       timestampReg = portCounter;
@@ -483,8 +490,8 @@ inpw(ThreadState &thread, uint32_t width, ticks_t threadTime, uint32_t &value)
     value = transferReg;
     // TODO should validShiftRegEntries be reset?
     //validShiftRegEntries = 0;
-    if (validShiftRegEntries == nextShiftRegEntries) {
-      nextShiftRegEntries = shiftRegEntries;
+    if (validShiftRegEntries == portShiftCount) {
+      portShiftCount = shiftRegEntries;
       transferReg = shiftReg;
       // TODO is this right?
       timestampReg = portCounter;
@@ -494,7 +501,7 @@ inpw(ThreadState &thread, uint32_t width, ticks_t threadTime, uint32_t &value)
     holdTransferReg = false;
     return CONTINUE;
   }
-  nextShiftRegEntries = width / getPortWidth();
+  portShiftCount = width / getPortWidth();
   pausedIn = &thread;
   scheduleUpdateIfNeeded();
   return DESCHEDULE;
@@ -562,7 +569,7 @@ outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
     validShiftRegEntries = 1;
   }
   transferRegValid = true;
-  nextShiftRegEntries = width / getPortWidth();
+  portShiftCount = width / getPortWidth();
   transferReg = value;
   outputPort = true;
   scheduleUpdateIfNeeded();
@@ -724,7 +731,7 @@ bool Port::setTransferWidth(ThreadState &thread, uint32_t value, ticks_t time)
     return false;
   transferWidth = value;
   shiftRegEntries = transferWidth / getPortWidth();
-  nextShiftRegEntries = shiftRegEntries;
+  portShiftCount = shiftRegEntries;
   return true;
 }
 
@@ -822,7 +829,7 @@ bool Port::nextReadyOut()
     return validShiftRegEntries != 0;
   if (timeRegValid)
     return portCounter == timeReg;
-  return validShiftRegEntries != nextShiftRegEntries;
+  return validShiftRegEntries != portShiftCount;
 }
 
 void Port::clearReadyOut(ticks_t time)
