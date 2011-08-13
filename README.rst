@@ -20,7 +20,6 @@ Known Issues
 * No simulation of debug.
 * No support for configurable delays on ports / clocks.
 * Minimal support for reading and writing of pswitch / sswitch registers.
-* No support for partial inputs / output (INPW, OUTPW, SETPSC).
 * There are a few other miscellaneous instructions that are unimplemented.
 * The loopback option (--loopback) can only be used to connect ports on the
   first core. There is currently no way to connect ports on other cores.
