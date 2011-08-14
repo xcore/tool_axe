@@ -1465,7 +1465,29 @@ void add()
   fu6("CLRSR", "clrsr %0", "%1 = %1 & ~ThreadState::sr_t((int)%0);")
     .addImplicitOp(sr, inout)
     .setSync();
-  fu6("BLAT", "blat %0", "").addImplicitOp(r11, in).setUnimplemented();
+  fu6("BLAT", "blat %0",
+      "uint32_t Addr = %2 + (%0<<2);\n"
+      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
+      "uint32_t value;\n"
+      "uint32_t target;\n"
+      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
+      "  %exception(ET_LOAD_STORE, Addr)"
+      "}\n"
+      "value = LOAD_WORD(PhyAddr);\n"
+      "if (value & 1) {\n"
+      "  %exception(ET_ILLEGAL_PC, value)\n"
+      "}\n"
+      "target = TO_PC(value);\n"
+      "if (!CHECK_PC(target)) {\n"
+      "  %exception(ET_ILLEGAL_PC, value)\n"
+      "}\n"
+      "%1 = FROM_PC(%pc);\n"
+      "%pc = target;\n"
+      "%next")
+    .addImplicitOp(lr, out)
+    .addImplicitOp(r11, in)
+    // BLAT always causes an fnop.
+    .setCycles(2 * INSTRUCTION_CYCLES);
   fu6("KCALL", "kcall %0", "%kcall(%0)");
   fu6("GETSR", "getsr %1, %0", "%1 = %0 & (uint32_t) %2.to_ulong();")
     .addImplicitOp(r11, out)
@@ -1522,7 +1544,9 @@ void add()
       "%pc = target;\n"
       "%next\n")
     .addImplicitOp(lr, out)
-    .addImplicitOp(cp, in);
+    .addImplicitOp(cp, in)
+    // BLACP always causes an fnop.
+    .setCycles(2 * INSTRUCTION_CYCLES);
   f2r("NOT", "not %0, %1", "%0 = ~%1;");
   f2r("NEG", "neg %0, %1", "%0 = -%1;");
   frus_inout("SEXT", "sext %0, %1", "%0 = signExtend(%0, %1);");
