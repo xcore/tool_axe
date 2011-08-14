@@ -163,6 +163,7 @@ public:
   ResOpResult setpsc(ThreadState &thread, uint32_t value, ticks_t time);
   ResOpResult endin(ThreadState &thread, ticks_t time, uint32_t &value);
   ResOpResult sync(ThreadState &thread, ticks_t time);
+  uint32_t peek(ThreadState &thread, ticks_t time);
   ResOpResult setPortTime(ThreadState &thread, uint32_t value, ticks_t time);
   uint32_t getTimestamp(ThreadState &thread, ticks_t time);
   void clearPortTime(ThreadState &thread, ticks_t time);

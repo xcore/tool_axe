@@ -635,6 +635,14 @@ sync(ThreadState &thread, ticks_t time)
 }
 
 uint32_t Port::
+peek(ThreadState &thread, ticks_t threadTime)
+{
+  update(threadTime);
+  updateOwner(thread);
+  return getPinsValue().getValue(threadTime);
+}
+
+uint32_t Port::
 getTimestamp(ThreadState &thread, ticks_t time)
 {
   update(time);

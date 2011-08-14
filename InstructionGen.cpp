@@ -1578,7 +1578,14 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID)\n"
       "}\n");
-  f2r("PEEK", "peek %0, res[%1]", "").setUnimplemented();
+  f2r("PEEK", "peek %0, res[%1]",
+      "ResourceID resID(%1);\n"
+      "if (Port *res = checkPort(*thread, resID)) {\n"
+      "  %0 = res->peek(*thread, TIME);\n"
+      "} else {\n"
+      "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+      "}\n")
+    .setSync();
   f2r("ENDIN", "endin %0, res[%1]",
       "ResourceID resID(%1);\n"
       "if (Port *res = checkPort(*thread, resID)) {\n"
