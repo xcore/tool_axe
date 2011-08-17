@@ -46,6 +46,9 @@ add_executable(axe
   Thread.h
   Timer.cpp
   Timer.h
+  PortInterface.h
+  PortSplitter.h
+  PortSplitter.cpp
   Port.h
   Port.cpp
   Trace.h
@@ -65,6 +68,8 @@ add_executable(axe
   Token.h
   SSwitch.h
   SSwitch.cpp
+  WaveformTracer.h
+  WaveformTracer.cpp
   ConfigSchema.rng
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc

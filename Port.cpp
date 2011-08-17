@@ -11,7 +11,6 @@ Port::Port() :
   EventableResource(RES_TYPE_PORT),
   clock(0),
   readyOutOf(0),
-  loopback(0),
   pausedOut(0),
   pausedIn(0),
   pausedSync(0),
@@ -116,8 +115,7 @@ Signal Port::getPinsOutputValue() const
 void Port::
 handlePinsChange(Signal value, ticks_t time)
 {
-  if (loopback)
-    loopback->seePinsChange(value, time);
+  loopback.seePinsChange(value, time);
   updateDependentClocks(value, time);
 }
 
@@ -132,9 +130,7 @@ handleReadyOutChange(bool value, ticks_t time)
 {
   for (std::set<Port*>::iterator it = readyOutPorts.begin(),
        e = readyOutPorts.end(); it != e; ++it) {
-    if ((*it)->loopback) {
-      (*it)->loopback->seePinsChange(Signal(value), time);
-    }
+    (*it)->loopback.seePinsChange(Signal(value), time);
   }
 }
 
@@ -724,8 +720,7 @@ bool Port::setReady(ThreadState &thread, Port *p, ticks_t time)
   }
   readyOutOf = p;
   p->attachReadyOut(*this);
-  if (loopback)
-    loopback->seePinsChange(Signal(p->getReadyOutValue()), time);
+  loopback.seePinsChange(Signal(p->getReadyOutValue()), time);
   return true;
 }
 
@@ -807,7 +802,7 @@ void Port::scheduleUpdateIfNeededOutputPort()
     return scheduleUpdate((nextEdge + 1)->time);
   }
   bool readyInKnownZero = useReadyIn() && clock->getReadyInValue() == Signal(0);
-  bool updateOnPinsChange = !sourceOf.empty() || loopback;
+  bool updateOnPinsChange = !sourceOf.empty() || !loopback.empty();
   if (!readyInKnownZero) {
     if (updateOnPinsChange && nextShiftRegOutputPort(shiftReg) != shiftReg)
       return scheduleUpdate((nextEdge + 1)->time);
@@ -865,7 +860,7 @@ void Port::scheduleUpdateIfNeeded()
   const bool slowMode = false;
   if (slowMode) {
     if (pausedIn || eventsPermitted() || pausedOut || pausedSync ||
-        !sourceOf.empty() || useReadyOut() || loopback) {
+        !sourceOf.empty() || useReadyOut() || !loopback.empty()) {
       return scheduleUpdate(nextEdge->time);
     }
   }

@@ -9,6 +9,8 @@
 #include "Resource.h"
 #include "ClockBlock.h"
 #include "BitManip.h"
+#include "PortInterface.h"
+#include "PortSplitter.h"
 #include <stdint.h>
 #include <set>
 
@@ -16,7 +18,7 @@ class ThreadState;
 class ClockBlock;
 struct Signal;
 
-class Port : public EventableResource {
+class Port : public EventableResource, public PortInterface {
 public:
   enum ReadyMode {
     NOREADY,
@@ -42,8 +44,7 @@ private:
   uint16_t portCounter;
   // Current value on the pins.
   uint32_t shiftRegister;
-  /// Outputs pins connected to loopback port. 0 if no loopback port.
-  Port *loopback;
+  PortSplitter loopback;
   /// Ready out ports.
   std::set<Port*> readyOutPorts;
   /// Thread paused on an output instruction.
@@ -168,7 +169,7 @@ public:
   uint32_t getTimestamp(ThreadState &thread, ticks_t time);
   void clearPortTime(ThreadState &thread, ticks_t time);
 
-  void connect(Port *p) { loopback = p; }
+  void connect(PortInterface *p) { loopback.add(p); }
   
   unsigned getPortWidth() const
   {

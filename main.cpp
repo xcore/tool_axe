@@ -33,6 +33,7 @@
 #include "Instruction.h"
 #include "Node.h"
 #include "SystemState.h"
+#include "WaveformTracer.h"
 
 #define XCORE_ELF_MACHINE 0xB49E
 
@@ -46,6 +47,7 @@ static void printUsage(const char *ProgName) {
 "Options:\n"
 "  -help                       Display this information.\n"
 "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
+"  --vcd FILE                  Write VCD trace to FILE.\n"
 "  -t                          Enable instruction tracing.\n";
 }
 
@@ -785,6 +787,15 @@ connectLoopbackPorts(Core &state, const LoopbackPorts &ports)
   return true;
 }
 
+static void connectWaveformTracer(Core &core, WaveformTracer &waveformTracer)
+{
+  for (Core::port_iterator it = core.port_begin(), e = core.port_end();
+       it != e; ++it) {
+    waveformTracer.add(*it);
+  }
+  waveformTracer.finalizePorts();
+}
+
 static long readNumberAttribute(xmlNode *node, const char *name)
 {
   xmlAttr *attr = findAttribute(node, name);
@@ -977,7 +988,8 @@ readXE(const char *filename, SymbolInfo &SI,
 }
 
 template <bool tracing> int
-loop(const char *filename, const LoopbackPorts &loopbackPorts)
+loop(const char *filename, const LoopbackPorts &loopbackPorts,
+     const std::string &vcdFile)
 {
   std::auto_ptr<SymbolInfo> SI(new SymbolInfo);
   std::set<Core*> coresWithImage;
@@ -989,6 +1001,13 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts)
   // TODO update to handle multiple cores.
   if (!connectLoopbackPorts(**coresWithImage.begin(), loopbackPorts)) {
     std::exit(1);
+  }
+
+  std::auto_ptr<WaveformTracer> waveformTracer;
+  // TODO update to handle multiple cores.
+  if (!vcdFile.empty()) {
+    waveformTracer.reset(new WaveformTracer(vcdFile));
+    connectWaveformTracer(**coresWithImage.begin(), *waveformTracer);
   }
 
   for (std::set<Core*>::iterator it = coresWithImage.begin(),
@@ -1381,11 +1400,19 @@ main(int argc, char **argv) {
   const char *file = 0;
   bool tracing = false;
   LoopbackPorts loopbackPorts;
+  std::string vcdFile;
   std::string arg;
   for (int i = 1; i < argc; i++) {
     arg = argv[i];
     if (arg == "-t") {
       tracing = true;
+    } else if (arg == "--vcd") {
+      if (i + 1 > argc) {
+        printUsage(argv[0]);
+        return 1;
+      }
+      vcdFile = argv[i + 1];
+      i++;
     } else if (arg == "--loopback") {
       if (i + 2 >= argc) {
         printUsage(argv[0]);
@@ -1414,8 +1441,8 @@ main(int argc, char **argv) {
   }
 #endif
   if (tracing) {
-    return loop<true>(file, loopbackPorts);
+    return loop<true>(file, loopbackPorts, vcdFile);
   } else {
-    return loop<false>(file, loopbackPorts);
+    return loop<false>(file, loopbackPorts, vcdFile);
   }
 }

@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <iterator>
+#include "Config.h"
 
 struct Edge {
   enum Type {

@@ -292,6 +292,42 @@ public:
   void dumpPaused() const;
   Thread &getThread(unsigned num) { return thread[num]; }
   const Thread &getThread(unsigned num) const { return thread[num]; }
+
+  class port_iterator {
+    Core *core;
+    unsigned width;
+    unsigned num;
+  public:
+    port_iterator(Core *c, unsigned w, unsigned n) :
+      core(c), width(w), num(n) {}
+    const port_iterator &operator++() {
+      ++num;
+      if (num >= core->portNum[width]) {
+        num = 0;
+        do {
+          ++width;
+        } while (width != 33 && num >= core->portNum[width]);
+      }
+      return *this;
+    }
+    port_iterator operator++(int) {
+      port_iterator it(*this);
+      ++(*this);
+      return it;
+    }
+    bool operator==(const port_iterator &other) {
+      return other.width == width &&
+      other.num == num;
+    }
+    bool operator!=(const port_iterator &other) {
+      return !(*this == other);
+    }
+    Port *operator*() {
+      return &core->port[width][num];
+    }
+  };
+  port_iterator port_begin() { return port_iterator(this, 1, 0); }
+  port_iterator port_end() { return port_iterator(this, 33, 0); }
 };
 
 #endif // _Core_h_
