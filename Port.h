@@ -148,7 +148,7 @@ private:
   bool checkTransferWidth(uint32_t value);
 public:
   Port();
-
+  std::string getName() const;
   Signal getPinsValue() const;
   bool setCInUse(ThreadState &thread, bool val, ticks_t time);
 

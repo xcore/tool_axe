@@ -120,7 +120,8 @@ void WaveformTracer::finalizePorts()
     out << "  wire";
     out << ' ' << std::dec << port->getID().width();
     out << ' ' << it->getIdentifier();
-    out << " PORT_" << std::hex << port->getID().id << std::dec << '\n';
+    out << ' ' << port->getName();
+    out << '\n';
     out << "$end\n";
   }
   out << "$enddefinitions $end\n";

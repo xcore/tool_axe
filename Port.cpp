@@ -5,6 +5,7 @@
 
 #include "Resource.h"
 #include "Core.h"
+#include "PortNames.h"
 #include <algorithm>
 
 Port::Port() :
@@ -17,6 +18,14 @@ Port::Port() :
   readyOut(false),
   time(0),
   pinsInputValue() {}
+
+std::string Port::getName() const
+{
+  std::string name;
+  if (getPortName(getID(), name))
+    return name;
+  return "(Unknown port)";
+}
 
 Signal Port::getDataPortPinsValue() const
 {
