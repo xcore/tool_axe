@@ -13,9 +13,34 @@ WaveformTracer::WaveformTracer(const std::string &name) :
   portsFinalized(false),
   currentTime(0) {}
 
-void WaveformTracerPort::seePinsChange(const Signal &value, ticks_t time)
+void WaveformTracerPort::update(ticks_t newTime)
 {
-  parent->seePinsChange(identifier, port, value, time);
+  if (!prev.isClock())
+    return;
+  EdgeIterator it = prev.getEdgeIterator(time);
+  while (it->time <= newTime) {
+    uint32_t value = it->type == Edge::RISING ? 1 : 0;
+    parent->seePinsChange(this, value, it->time);
+    ++it;
+  }
+  time = newTime;
+  parent->schedule(this, it->time);
+}
+
+void WaveformTracerPort::seePinsChange(const Signal &value, ticks_t newTime)
+{
+  if (value == prev)
+    return;
+  parent->runUntil(newTime);
+  uint32_t prevValue = prev.getValue(newTime);
+  uint32_t newValue = value.getValue(newTime);
+  if (prevValue != newValue)
+    parent->seePinsChange(this, newValue, newTime);
+  time = newTime;
+  prev = value;
+  if (value.isClock()) {
+    parent->schedule(this, value.getNextEdge(newTime).time);
+  }
 }
 
 void WaveformTracer::add(Port *port)
@@ -128,14 +153,29 @@ void WaveformTracer::finalizePorts()
   dumpInitialValues();
 }
 
+void WaveformTracer::schedule(WaveformTracerPort *port, ticks_t time)
+{
+  queue.push(Event(port, time));
+}
+
+void WaveformTracer::runUntil(ticks_t time)
+{
+  if (!queue.empty()) {
+    while (queue.top().time < time) {
+      Event event = queue.top();
+      event.port->update(event.time);
+      queue.pop();
+    }
+  }
+}
+
 void WaveformTracer::
-seePinsChange(const std::string &identifier, Port *port, const Signal &value,
-              ticks_t time)
+seePinsChange(WaveformTracerPort *port, uint32_t value, ticks_t time)
 {
   ticks_t translatedTime = time * (100 / CYCLES_PER_TICK);
   if (translatedTime != currentTime) {
     out << '#' << translatedTime << '\n';
     currentTime = translatedTime;
   }
-  dumpPortValue(identifier, port, value.getValue(time));
+  dumpPortValue(port->getIdentifier(), port->getPort(), value);
 }
