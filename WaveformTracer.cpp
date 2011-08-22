@@ -140,7 +140,7 @@ void WaveformTracer::finalizePorts()
   for (std::vector<WaveformTracerPort>::iterator it = ports.begin(),
        e = ports.end(); it != e; ++it) {
     Port *port = it->getPort();
-    port->connect(&*it);
+    port->setTracer(&*it);
     out << "$var\n";
     out << "  wire";
     out << ' ' << std::dec << port->getID().width();

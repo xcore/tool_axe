@@ -781,8 +781,8 @@ connectLoopbackPorts(Core &state, const LoopbackPorts &ports)
     }
     Port *firstPort = static_cast<Port*>(first);
     Port *secondPort = static_cast<Port*>(second);
-    firstPort->connect(secondPort);
-    secondPort->connect(firstPort);
+    firstPort->setLoopback(secondPort);
+    secondPort->setLoopback(firstPort);
   }
   return true;
 }

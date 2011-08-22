@@ -10,7 +10,6 @@
 #include "ClockBlock.h"
 #include "BitManip.h"
 #include "PortInterface.h"
-#include "PortSplitter.h"
 #include <stdint.h>
 #include <set>
 
@@ -44,7 +43,8 @@ private:
   uint16_t portCounter;
   // Current value on the pins.
   uint32_t shiftRegister;
-  PortSplitter loopback;
+  PortInterface *loopback;
+  PortInterface *tracer;
   /// Ready out ports.
   std::set<Port*> readyOutPorts;
   /// Thread paused on an output instruction.
@@ -103,8 +103,13 @@ private:
   unsigned getReadyOutValue() const {
     return readyOut;
   }
+  /// Called whenever the value output to the pins changes.
+  void outputValue(Signal value, ticks_t time);
+  void outputValue(uint32_t value, ticks_t time) {
+    return outputValue(Signal(value), time);
+  }
   void handlePinsChange(Signal value, ticks_t time);
-  /// Called whenever the value being output to the pins changes.
+  /// Called whenever the value on the pins changes.
   void handlePinsChange(uint32_t value, ticks_t time);
   /// Called whenever the readyOut value changes.
   void handleReadyOutChange(bool value, ticks_t time);
@@ -135,7 +140,6 @@ private:
     transferReg = value;
     transferRegValid = true;
   }
-  void updateDependentClocks(const Signal &value, ticks_t time);
   unsigned fallingEdgesUntilTimeMet() const;
   void scheduleUpdateIfNeededOutputPort();
   void scheduleUpdateIfNeededInputPort();
@@ -169,7 +173,8 @@ public:
   uint32_t getTimestamp(ThreadState &thread, ticks_t time);
   void clearPortTime(ThreadState &thread, ticks_t time);
 
-  void connect(PortInterface *p) { loopback.add(p); }
+  void setLoopback(PortInterface *p) { loopback = p; }
+  void setTracer(PortInterface *p) { tracer = p; }
   
   unsigned getPortWidth() const
   {
