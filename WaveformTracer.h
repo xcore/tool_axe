@@ -7,6 +7,7 @@
 #define _WaveformTracer_h_
 
 #include <vector>
+#include <map>
 #include <fstream>
 #include <string>
 #include <queue>
@@ -46,6 +47,8 @@ class WaveformTracer {
   std::priority_queue<Event> queue;
   std::fstream out;
   std::vector<WaveformTracerPort> ports;
+  typedef std::map<std::string, std::vector<unsigned> > ModuleMap;
+  ModuleMap modules;
   bool portsFinalized;
   uint32_t currentTime;
   std::string makeIdentifier(unsigned index);
@@ -57,7 +60,7 @@ public:
   WaveformTracer(const std::string &name);
   void schedule(WaveformTracerPort *port, ticks_t time);
   void runUntil(ticks_t time);
-  void add(Port *port);
+  void add(const std::string &module, Port *port);
   void finalizePorts();
   void seePinsChange(WaveformTracerPort *port, uint32_t newValue,
                      ticks_t time);

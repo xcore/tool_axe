@@ -789,11 +789,28 @@ connectLoopbackPorts(Core &state, const LoopbackPorts &ports)
 
 static void connectWaveformTracer(Core &core, WaveformTracer &waveformTracer)
 {
+  std::ostringstream buf;
+  buf << "core_" << core.getCoreID();
+  std::string coreName = buf.str();
   for (Core::port_iterator it = core.port_begin(), e = core.port_end();
        it != e; ++it) {
-    waveformTracer.add(*it);
+    waveformTracer.add(coreName, *it);
   }
   waveformTracer.finalizePorts();
+}
+
+static void
+connectWaveformTracer(SystemState &system, WaveformTracer &waveformTracer)
+{
+  for (SystemState::node_iterator outerIt = system.node_begin(),
+       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (Node::core_iterator innerIt = node.core_begin(),
+         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      Core &core = **innerIt;
+      connectWaveformTracer(core, waveformTracer);
+    }
+  }
 }
 
 static long readNumberAttribute(xmlNode *node, const char *name)
@@ -1006,7 +1023,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
   // TODO update to handle multiple cores.
   if (!vcdFile.empty()) {
     waveformTracer.reset(new WaveformTracer(vcdFile));
-    connectWaveformTracer(**coresWithImage.begin(), *waveformTracer);
+    connectWaveformTracer(sys, *waveformTracer);
   }
 
   for (std::set<Core*>::iterator it = coresWithImage.begin(),

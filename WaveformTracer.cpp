@@ -43,9 +43,10 @@ void WaveformTracerPort::seePinsChange(const Signal &value, ticks_t newTime)
   }
 }
 
-void WaveformTracer::add(Port *port)
+void WaveformTracer::add(const std::string &name, Port *port)
 {
   assert(!portsFinalized);
+  modules[name].push_back(ports.size());
   ports.push_back(WaveformTracerPort(this, port,
                                      makeIdentifier(ports.size())));
 }
@@ -137,17 +138,31 @@ void WaveformTracer::finalizePorts()
   assert(!portsFinalized);
   portsFinalized = true;
   emitDeclarations();
-  for (std::vector<WaveformTracerPort>::iterator it = ports.begin(),
-       e = ports.end(); it != e; ++it) {
-    Port *port = it->getPort();
-    port->setTracer(&*it);
-    out << "$var\n";
-    out << "  wire";
-    out << ' ' << std::dec << port->getID().width();
-    out << ' ' << it->getIdentifier();
-    out << ' ' << port->getName();
-    out << '\n';
-    out << "$end\n";
+  for (ModuleMap::iterator it = modules.begin(), e = modules.end(); it != e;
+       ++it) {
+    const std::string &moduleName = it->first;
+    if (!moduleName.empty()) {
+      out << "$scope\n";
+      out << "  module " << moduleName << '\n';
+      out << "$end\n";
+    }
+    const std::vector<unsigned> &modulePorts = it->second;
+    for (std::vector<unsigned>::const_iterator it = modulePorts.begin(),
+         e = modulePorts.end(); it != e; ++it) {
+      WaveformTracerPort &waveformTracerPort = ports[*it];
+      Port *port = waveformTracerPort.getPort();
+      port->setTracer(&waveformTracerPort);
+      out << "$var\n";
+      out << "  wire";
+      out << ' ' << std::dec << port->getID().width();
+      out << ' ' << waveformTracerPort.getIdentifier();
+      out << ' ' << port->getName();
+      out << '\n';
+      out << "$end\n";
+    }
+    if (!moduleName.empty()) {
+      out << "$upscope $end\n";
+    }
   }
   out << "$enddefinitions $end\n";
   dumpInitialValues();
