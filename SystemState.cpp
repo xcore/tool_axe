@@ -84,6 +84,7 @@ ChanEndpoint *SystemState::getChanendDest(ResourceID ID)
         ChanEndpoint *result;
         bool isLocal = core.getLocalChanendDest(ID, result);
         assert(isLocal);
+        (void)isLocal;
         return result;
       }
     }
