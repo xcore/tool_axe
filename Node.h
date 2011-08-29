@@ -21,6 +21,7 @@ public:
     XS1_L,
     XS1_G
   };
+private:
   std::vector<Core *> cores;
   unsigned jtagIndex;
   unsigned nodeID;
@@ -28,6 +29,8 @@ public:
   Type type;
   SSwitch sswitch;
 public:
+  typedef std::vector<Core *>::iterator core_iterator;
+  typedef std::vector<Core *>::const_iterator const_core_iterator;
   Node(Type t) : jtagIndex(0), nodeID(0), parent(0), type(t), sswitch(this) {}
   ~Node();
   void addCore(std::auto_ptr<Core> cores);
@@ -43,6 +46,10 @@ public:
   static bool getTypeFromJtagID(unsigned jtagID, Type &type);
   bool hasMatchingNodeID(ResourceID ID);
   SSwitch *getSSwitch() { return &sswitch; }
+  core_iterator core_begin() { return cores.begin(); }
+  core_iterator core_end() { return cores.end(); }
+  const_core_iterator core_begin() const { return cores.begin(); }
+  const_core_iterator core_end() const { return cores.end(); }
 };
 
 #endif // _Node_h_

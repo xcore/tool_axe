@@ -931,9 +931,8 @@ static inline void
 addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
              SystemState &system)
 {
-  const std::vector<Node*> &nodes = system.getNodes();
-  for (std::vector<Node*>::const_iterator it = nodes.begin(), e = nodes.end();
-       it != e; ++it) {
+  for (SystemState::node_iterator it = system.node_begin(),
+       e = system.node_end(); it != e; ++it) {
     addToCoreMap(coreMap, **it);
   }
 }

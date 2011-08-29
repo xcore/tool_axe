@@ -73,14 +73,16 @@ ChanEndpoint *SystemState::getChanendDest(ResourceID ID)
 {
   unsigned coreID = ID.node();
   // TODO build lookup map.
-  for (std::vector<Node*>::iterator it = nodes.begin(), e = nodes.end();
-       it != e; ++it) {
-    const std::vector<Core*> &cores = (*it)->getCores();
-    for (std::vector<Core*>::const_iterator it2 = cores.begin(),
-         e2 = cores.end(); it2 != e2; ++it2) {
-      if ((*it2)->getCoreID() == coreID) {
+  
+  for (node_iterator outerIt = node_begin(), outerE = node_end();
+       outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (Node::core_iterator innerIt = node.core_begin(),
+         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      Core &core = **innerIt;
+      if (core.getCoreID() == coreID) {
         ChanEndpoint *result;
-        bool isLocal = (*it2)->getLocalChanendDest(ID, result);
+        bool isLocal = core.getLocalChanendDest(ID, result);
         assert(isLocal);
         return result;
       }

@@ -34,13 +34,14 @@ class SystemState {
   void completeEvent(ThreadState &t, EventableResource &res, bool interrupt);
 
 public:
+  typedef std::vector<Node*>::iterator node_iterator;
+  typedef std::vector<Node*>::const_iterator const_node_iterator;
   SystemState() : currentThread(0) {
     pendingEvent.set = false;
   }
   ~SystemState();
   void setCurrentThread(ThreadState &thread) { currentThread = &thread; }
   void addNode(std::auto_ptr<Node> n);
-  const std::vector<Node*> &getNodes() const { return nodes; }
   
   bool hasTimeSliceExpired(ticks_t time) const {
     if (scheduler.empty())
@@ -135,6 +136,10 @@ public:
   }
 
   ChanEndpoint *getChanendDest(ResourceID ID);
+  node_iterator node_begin() { return nodes.begin(); }
+  node_iterator node_end() { return nodes.end(); }
+  const_node_iterator node_begin() const { return nodes.begin(); }
+  const_node_iterator node_end() const { return nodes.end(); }
 };
 
 #endif // _SystemState_h_
