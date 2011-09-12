@@ -72,6 +72,8 @@ add_executable(axe
   SSwitch.cpp
   WaveformTracer.h
   WaveformTracer.cpp
+  UartRx.h
+  UartRx.cpp
   ConfigSchema.rng
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc

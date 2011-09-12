@@ -34,6 +34,7 @@
 #include "Node.h"
 #include "SystemState.h"
 #include "WaveformTracer.h"
+#include "UartRx.h"
 
 #define XCORE_ELF_MACHINE 0xB49E
 
@@ -46,6 +47,7 @@ static void printUsage(const char *ProgName) {
   std::cout <<
 "Options:\n"
 "  -help                       Display this information.\n"
+"  --uart-rx                   Enable UART RX on PORT_1A\n"
 "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
 "  --vcd FILE                  Write VCD trace to FILE.\n"
 "  -t                          Enable instruction tracing.\n";
@@ -813,6 +815,15 @@ connectWaveformTracer(SystemState &system, WaveformTracer &waveformTracer)
   }
 }
 
+static void
+connectUart(SystemState &system, UartRx &uartRx)
+{
+  Core &core = **(*system.node_begin())->core_begin();
+  Resource *res = core.getResourceByID(0x10200);
+  Port *port = static_cast<Port *>(res);
+  port->setLoopback(&uartRx);
+}
+
 static long readNumberAttribute(xmlNode *node, const char *name)
 {
   xmlAttr *attr = findAttribute(node, name);
@@ -1005,7 +1016,7 @@ readXE(const char *filename, SymbolInfo &SI,
 
 template <bool tracing> int
 loop(const char *filename, const LoopbackPorts &loopbackPorts,
-     const std::string &vcdFile)
+     bool enableUartRx, const std::string &vcdFile)
 {
   std::auto_ptr<SymbolInfo> SI(new SymbolInfo);
   std::set<Core*> coresWithImage;
@@ -1017,6 +1028,12 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
   // TODO update to handle multiple cores.
   if (!connectLoopbackPorts(**coresWithImage.begin(), loopbackPorts)) {
     std::exit(1);
+  }
+
+  std::auto_ptr<UartRx> uartRx;
+  if (enableUartRx) {
+    uartRx.reset(new UartRx(sys.getScheduler()));
+    connectUart(sys, *uartRx);
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;
@@ -1418,10 +1435,14 @@ main(int argc, char **argv) {
   LoopbackPorts loopbackPorts;
   std::string vcdFile;
   std::string arg;
+  bool uartRx = false;
   for (int i = 1; i < argc; i++) {
     arg = argv[i];
     if (arg == "-t") {
       tracing = true;
+    } else if (arg == "--uart-rx") {
+      // TODO support options such as --uart-rx port=PORT_1A,bitrate=28800
+      uartRx = true;
     } else if (arg == "--vcd") {
       if (i + 1 > argc) {
         printUsage(argv[0]);
@@ -1457,8 +1478,8 @@ main(int argc, char **argv) {
   }
 #endif
   if (tracing) {
-    return loop<true>(file, loopbackPorts, vcdFile);
+    return loop<true>(file, loopbackPorts, uartRx, vcdFile);
   } else {
-    return loop<false>(file, loopbackPorts, vcdFile);
+    return loop<false>(file, loopbackPorts, uartRx, vcdFile);
   }
 }
