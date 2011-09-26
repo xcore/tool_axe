@@ -5,9 +5,10 @@
 
 #include "PeripheralDescriptor.h"
 
-void PeripheralDescriptor::addProperty(const PropertyDescriptor &p)
+PropertyDescriptor &PeripheralDescriptor::
+addProperty(const PropertyDescriptor &p)
 {
-  properties.insert(std::make_pair(p.getName(), p));
+  return properties.insert(std::make_pair(p.getName(), p)).first->second;
 }
 
 const PropertyDescriptor *PeripheralDescriptor::

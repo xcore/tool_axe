@@ -1510,6 +1510,16 @@ parseProperties(const std::string &str, const PeripheralDescriptor *periph,
       std::exit(1);
     }
   }
+  // Check required properties have been set.
+  for (PeripheralDescriptor::const_iterator it = periph->properties_begin(),
+       e = periph->properties_end(); it != e; ++it) {
+    if (it->getRequired() && !properties.get(it->getName())) {
+      std::cerr << "Error: Required property \"" << it->getName() << "\"";
+      std::cerr << " for " << periph->getName();
+      std::cerr << " is not set " << std::endl;
+      std::exit(1);
+    }
+  }
 }
 
 static PeripheralDescriptor *parsePeripheralOption(const std::string arg)

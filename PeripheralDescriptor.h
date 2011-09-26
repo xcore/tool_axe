@@ -25,13 +25,22 @@ public:
 private:
   Type type;
   std::string name;
+  bool required;
 public:
-  PropertyDescriptor(Type t, const std::string &n) : type(t), name(n) {}
+  PropertyDescriptor(Type t, const std::string &n) :
+    type(t),
+    name(n),
+    required(false) {}
   static PropertyDescriptor integerProperty(const std::string &name);
   static PropertyDescriptor stringProperty(const std::string &name);
   static PropertyDescriptor portProperty(const std::string &name);
   const std::string &getName() const { return name; }
   Type getType() const { return type; }
+  bool getRequired() const { return required; }
+  PropertyDescriptor &setRequired(bool value) {
+    required = value;
+    return *this;
+  }
 };
 
 class PeripheralDescriptor {
@@ -47,14 +56,17 @@ public:
   {
   }
   const std::string &getName() const { return name; }
-  void addProperty(const PropertyDescriptor &p);
+  PropertyDescriptor &addProperty(const PropertyDescriptor &p);
   const PropertyDescriptor *getProperty(const std::string &name) const;
   void createInstance(SystemState &system, const Properties &properties) const {
     (*create)(system, properties);
   }
   typedef AccessSecondIterator<std::map<std::string,PropertyDescriptor>::iterator> iterator;
+  typedef AccessSecondIterator<std::map<std::string,PropertyDescriptor>::const_iterator> const_iterator;
   iterator properties_begin() { return properties.begin(); }
   iterator properties_end() { return properties.end(); }
+  const_iterator properties_begin() const { return properties.begin(); }
+  const_iterator properties_end() const { return properties.end(); }
 };
 
 #endif // _PeripheralDescriptor_h_

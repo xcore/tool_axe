@@ -174,8 +174,7 @@ std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorUartRx()
 {
   std::auto_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("uart-rx", &createUartRx));
-  // TODO set required properties.
-  p->addProperty(PropertyDescriptor::portProperty("port"));
+  p->addProperty(PropertyDescriptor::portProperty("port")).setRequired(true);
   p->addProperty(PropertyDescriptor::integerProperty("bitrate"));
   return p;
 }
