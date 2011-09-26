@@ -34,7 +34,10 @@
 #include "Node.h"
 #include "SystemState.h"
 #include "WaveformTracer.h"
+#include "PeripheralRegistry.h"
+#include "registerAllPeripherals.h"
 #include "UartRx.h"
+#include "Property.h"
 
 #define XCORE_ELF_MACHINE 0xB49E
 
@@ -45,12 +48,28 @@ const char configSchema[] =
 static void printUsage(const char *ProgName) {
   std::cout << "Usage: " << ProgName << " [options] filename\n";
   std::cout <<
-"Options:\n"
+"General Options:\n"
 "  -help                       Display this information.\n"
-"  --uart-rx                   Enable UART RX on PORT_1A\n"
 "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
 "  --vcd FILE                  Write VCD trace to FILE.\n"
-"  -t                          Enable instruction tracing.\n";
+"  -t                          Enable instruction tracing.\n"
+"\n"
+"Peripherals:\n";
+  for (PeripheralRegistry::iterator it = PeripheralRegistry::begin(),
+       e = PeripheralRegistry::end(); it != e; ++it) {
+    PeripheralDescriptor *periph = *it;
+    std::cout << "  --" << periph->getName() << ' ';
+    bool needComma = false;
+    for (PeripheralDescriptor::iterator propIt = periph->properties_begin(),
+         propE = periph->properties_end(); propIt != propE; ++propIt) {
+      const PropertyDescriptor &prop = *propIt;
+      if (needComma)
+        std::cout << ',';
+      std::cout << prop.getName() << '=';
+      needComma = true;
+    }
+    std::cout << '\n';
+  }
 }
 
 static void readSymbols(Elf *e, Elf_Scn *scn, const GElf_Shdr &shdr,
@@ -815,15 +834,6 @@ connectWaveformTracer(SystemState &system, WaveformTracer &waveformTracer)
   }
 }
 
-static void
-connectUart(SystemState &system, UartRx &uartRx)
-{
-  Core &core = **(*system.node_begin())->core_begin();
-  Resource *res = core.getResourceByID(0x10200);
-  Port *port = static_cast<Port *>(res);
-  port->setLoopback(&uartRx);
-}
-
 static long readNumberAttribute(xmlNode *node, const char *name)
 {
   xmlAttr *attr = findAttribute(node, name);
@@ -1014,9 +1024,13 @@ readXE(const char *filename, SymbolInfo &SI,
   return system;
 }
 
+typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
+  PeripheralDescriptorWithPropertiesVector;
+
 template <bool tracing> int
 loop(const char *filename, const LoopbackPorts &loopbackPorts,
-     bool enableUartRx, const std::string &vcdFile)
+     const std::string &vcdFile,
+     const PeripheralDescriptorWithPropertiesVector &peripherals)
 {
   std::auto_ptr<SymbolInfo> SI(new SymbolInfo);
   std::set<Core*> coresWithImage;
@@ -1030,10 +1044,9 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
     std::exit(1);
   }
 
-  std::auto_ptr<UartRx> uartRx;
-  if (enableUartRx) {
-    uartRx.reset(new UartRx(sys.getScheduler()));
-    connectUart(sys, *uartRx);
+  for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
+       e = peripherals.end(); it != e; ++it) {
+    it->first->createInstance(sys, it->second);
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;
@@ -1408,7 +1421,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
   END_DISPATCH_LOOP
 }
 
-void loopbackOption(const char *a, const char *b, LoopbackPorts &loopbackPorts)
+static void loopbackOption(const char *a, const char *b, LoopbackPorts &loopbackPorts)
 {
   char *endp;
   uint32_t first = strtol(a, &endp, 0);
@@ -1424,8 +1437,91 @@ void loopbackOption(const char *a, const char *b, LoopbackPorts &loopbackPorts)
   loopbackPorts.push_back(std::make_pair(first, second));
 }
 
+static Property
+parseIntegerProperty(const PropertyDescriptor *prop, const std::string &s)
+{
+  char *endp;
+  long value = std::strtol(s.c_str(), &endp, 0);
+  if (*endp != '\0') {
+    std::cerr << "Error: property " << prop->getName();
+    std::cerr << " requires an integer argument\n";
+    std::exit(1);
+  }
+  return Property::integerProperty(prop, value);
+}
+
+static Property
+parsePortProperty(const PropertyDescriptor *prop, const std::string &s)
+{
+  char *endp;
+  long value = std::strtol(s.c_str(), &endp, 0);
+  if (*endp != '\0') {
+    std::cerr << "Error: property " << prop->getName();
+    std::cerr << " requires an port argument\n";
+    std::exit(1);
+  }
+  return Property::portProperty(prop, (uint32_t)value);
+}
+
+static void
+parseProperties(const std::string &str, const PeripheralDescriptor *periph,
+                Properties &properties)
+{
+  //port=PORT_1A,bitrate=28800
+  const char *s = str.c_str();
+  while (*s != '\0') {
+    const char *p = std::strpbrk(s, "=,");
+    std::string name;
+    std::string value;
+    if (!p) {
+      name = std::string(s);
+      s += name.length();
+    } else {
+      name = std::string(s, p - s);
+      s = p + 1;
+      if (*p == '=') {
+        p = strchr(s, ',');
+        if (p) {
+          value = std::string(s, p - s);
+          s += value.length() + 1;
+        } else {
+          value = std::string(s);
+          s += value.length();
+        }
+      }
+    }
+    if (const PropertyDescriptor *prop = periph->getProperty(name)) {
+      switch (prop->getType()) {
+      default:
+        assert(0 && "Unexpected property type");
+      case PropertyDescriptor::INTEGER:
+        properties.set(parseIntegerProperty(prop, value));
+        break;
+      case PropertyDescriptor::STRING:
+        properties.set(Property::stringProperty(prop, value));
+        break;
+      case PropertyDescriptor::PORT:
+        properties.set(parsePortProperty(prop, value));
+        break;
+      }
+    } else {
+      std::cerr << "Error: Unknown property \"" << name << "\"";
+      std::cerr << " for " << periph->getName() << std::endl;
+      std::exit(1);
+    }
+  }
+}
+
+static PeripheralDescriptor *parsePeripheralOption(const std::string arg)
+{
+  if (arg.substr(0, 2) != "--")
+    return 0;
+  return PeripheralRegistry::get(arg.substr(2));
+}
+
 int
 main(int argc, char **argv) {
+  registerAllPeripherals();
   if (argc < 2) {
     printUsage(argv[0]);
     return 1;
@@ -1435,14 +1531,11 @@ main(int argc, char **argv) {
   LoopbackPorts loopbackPorts;
   std::string vcdFile;
   std::string arg;
-  bool uartRx = false;
+  std::vector<std::pair<PeripheralDescriptor*, Properties> > peripherals;
   for (int i = 1; i < argc; i++) {
     arg = argv[i];
     if (arg == "-t") {
       tracing = true;
-    } else if (arg == "--uart-rx") {
-      // TODO support options such as --uart-rx port=PORT_1A,bitrate=28800
-      uartRx = true;
     } else if (arg == "--vcd") {
       if (i + 1 > argc) {
         printUsage(argv[0]);
@@ -1460,6 +1553,11 @@ main(int argc, char **argv) {
     } else if (arg == "--help") {
       printUsage(argv[0]);
       return 0;
+    } else if (PeripheralDescriptor *pd = parsePeripheralOption(arg)) {
+      peripherals.push_back(std::make_pair(pd, Properties()));
+      if (i + 1 < argc && argv[i + 1][0] != '-') {
+        parseProperties(argv[++i], pd, peripherals.back().second);
+      }
     } else {
       if (file) {
         printUsage(argv[0]);
@@ -1478,8 +1576,8 @@ main(int argc, char **argv) {
   }
 #endif
   if (tracing) {
-    return loop<true>(file, loopbackPorts, uartRx, vcdFile);
+    return loop<true>(file, loopbackPorts, vcdFile, peripherals);
   } else {
-    return loop<false>(file, loopbackPorts, uartRx, vcdFile);
+    return loop<false>(file, loopbackPorts, vcdFile, peripherals);
   }
 }

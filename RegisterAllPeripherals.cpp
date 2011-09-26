@@ -3,14 +3,12 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
+#include "registerAllPeripherals.h"
+#include "PeripheralRegistry.h"
+#include "UartRx.h"
+#include "PeripheralDescriptor.h"
 
-#ifndef _UartRx_h_
-#define _UartRx_h_
-
-#include <memory>
-
-class PeripheralDescriptor;
-
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorUartRx();
-
-#endif // _UartRx_h_
+void registerAllPeripherals()
+{
+  PeripheralRegistry::add(getPeripheralDescriptorUartRx());
+}

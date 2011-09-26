@@ -1,5 +1,5 @@
 // RUN: xcc -target=XC-5 %s -o %t1.xe
-// RUN: axe %t1.xe --uart-rx
+// RUN: axe %t1.xe --uart-rx port=0x10200,bitrate=115200
 
 #include <xs1.h>
 #include <print.h>
