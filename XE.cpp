@@ -80,22 +80,22 @@ uint8_t XE::ReadU8()
 
 uint16_t XE::ReadU16()
 {
-  char data[2];
-  s.read(data, 2);
+  uint8_t data[2];
+  s.read(reinterpret_cast<char*>(data), 2);
   return data[0] | (data[1] << 8);
 }
 
 uint32_t XE::ReadU32()
 {
-  char data[4];
-  s.read(data, 4);
+  uint8_t data[4];
+  s.read(reinterpret_cast<char*>(data), 4);
   return data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
 }
 
 uint64_t XE::ReadU64()
 {
-  char data[8];
-  s.read(data, 8);
+  uint8_t data[8];
+  s.read(reinterpret_cast<char*>(data), 8);
   return (uint8_t)data[0] | ((uint8_t)data[1] << 8) | ((uint8_t)data[2] << 16) | ((uint8_t)data[3] << 24) |
   ((uint64_t)(data[4] | (data[5] << 8) | (data[6] << 16) | (data[7] << 24)) << 32);
 }
