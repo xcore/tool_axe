@@ -42,6 +42,7 @@ public:
   SystemState *getParent() { return parent; }
   void setNodeID(unsigned value);
   uint32_t getNodeID() const { return nodeID; }
+  uint32_t getCoreID(unsigned coreNum) const;
   Type getType() const { return type; }
   static bool getTypeFromJtagID(unsigned jtagID, Type &type);
   bool hasMatchingNodeID(ResourceID ID);

@@ -146,11 +146,5 @@ void Core::seeNewNodeID()
 
 uint32_t Core::getCoreID() const
 {
-  switch (getParent()->getType()) {
-  default: assert(0 && "Unexpected node type");
-  case Node::XS1_G:
-    return ((getParent()->getNodeID() & 0xff) << 8) | (coreNumber & 0xff);
-  case Node::XS1_L:
-    return getParent()->getNodeID();
-  }
+  return getParent()->getCoreID(coreNumber);
 }
