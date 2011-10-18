@@ -876,13 +876,13 @@ createNodeFromConfig(xmlNode *config,
   std::auto_ptr<Node> node(new Node(nodeType));
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
-  node->setNodeID(nodeID);
   for (xmlNode *child = config->children; child; child = child->next) {
     if (child->type != XML_ELEMENT_NODE ||
         strcmp("Processor", (char*)child->name) != 0)
       continue;
     node->addCore(createCoreFromConfig(child));
   }
+  node->setNodeID(nodeID);
   return node;
 }
 

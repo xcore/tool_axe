@@ -31,15 +31,28 @@ void Node::setNodeID(unsigned value)
   }
 }
 
+/// Returns the minimum number of bits needed to encode the specified number
+/// of values.
+static unsigned getMinimumBits(unsigned values)
+{
+  if (values == 0)
+    return 0;
+  return 32 - countLeadingZeros(values - 1);
+}
+
+unsigned Node::getCoreNumberBits() const
+{
+  unsigned bits = getMinimumBits(cores.size());
+  if (getType() == Node::XS1_G && bits < 8)
+    bits = 8;
+  return bits;
+}
+
 uint32_t Node::getCoreID(unsigned coreNum) const
 {
-  switch (getType()) {
-  default: assert(0 && "Unexpected node type");
-  case Node::XS1_G:
-    return ((getNodeID() & 0xff) << 8) | (coreNum & 0xff);
-  case Node::XS1_L:
-    return getNodeID();
-  }
+  unsigned coreBits = getCoreNumberBits();
+  assert(coreNum <= makeMask(getCoreNumberBits()));
+  return (getNodeID() << coreBits) | coreNum;
 }
 
 bool Node::getTypeFromJtagID(unsigned jtagID, Type &type)

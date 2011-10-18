@@ -28,6 +28,7 @@ private:
   SystemState *parent;
   Type type;
   SSwitch sswitch;
+  unsigned getCoreNumberBits() const;
 public:
   typedef std::vector<Core *>::iterator core_iterator;
   typedef std::vector<Core *>::const_iterator const_core_iterator;
