@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 2.6)
 project(AXE)
 
+# Add path for custom modules
+set(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules"
+  )
+
 add_executable(not
   not.cpp
   )
@@ -120,12 +126,11 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /D_CRT_SECURE_NO_WARNINGS=1")
 endif()
 
-find_library(LIBELF_LIBRARY elf REQUIRED)
-find_path(LIBELF_INCLUDE_DIR libelf.h REQUIRED)
 find_package(LibXml2 REQUIRED)
+find_package(LibElf REQUIRED)
 
 include_directories(
-  ${LIBELF_INCLUDE_DIR}
+  ${LIBELF_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR})
 
 if (MSVC)
@@ -133,7 +138,7 @@ if (MSVC)
   include_directories(${LIBICONV_INCLUDE_DIR})
 endif()
 
-target_link_libraries(axe ${LIBELF_LIBRARY} ${LIBXML2_LIBRARIES})
+target_link_libraries(axe ${LIBELF_LIBRARIES} ${LIBXML2_LIBRARIES})
 
 install(TARGETS axe DESTINATION bin)
 if (MSVC)
