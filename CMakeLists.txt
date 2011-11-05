@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 2.6)
 project(AXE)
 
+if(CMAKE_COMPILER_IS_GNUCXX )
+  set(COMPILER_IS_GCC_COMPATIBLE ON)
+elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+  set(COMPILER_IS_GCC_COMPATIBLE ON)
+endif()
+
 # Add path for custom modules
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
@@ -115,7 +121,7 @@ add_custom_command(
  DEPENDS genHex ConfigSchema.rng
  )
 
-if(CMAKE_COMPILER_IS_GNUCXX)
+if(COMPILER_IS_GCC_COMPATIBLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -W -Wno-unused-parameter -fno-exceptions -fno-rtti")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W -Wno-unused-parameter")
 elseif(MSVC)
