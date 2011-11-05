@@ -107,7 +107,7 @@ void EventableResource::completeEvent()
   owner->pc = vector;
 }
 
-void EventableResource::setInUseOn(ThreadState &t)
+void EventableResource::eventableSetInUseOn(ThreadState &t)
 {
   if (isInUse())
     clearOwner();
@@ -119,7 +119,7 @@ void EventableResource::setInUseOn(ThreadState &t)
   Resource::setInUse(true);
 }
 
-void EventableResource::setInUseOff()
+void EventableResource::eventableSetInUseOff()
 {
   if (!isInUse())
     return;
@@ -127,12 +127,12 @@ void EventableResource::setInUseOff()
   Resource::setInUse(false);
 }
 
-void EventableResource::setInUse(ThreadState &t, bool val)
+void EventableResource::eventableSetInUse(ThreadState &t, bool val)
 {
   if (val)
-    setInUseOn(t);
+    eventableSetInUseOn(t);
   else
-    setInUseOff();
+    eventableSetInUseOff();
 }
 
 uint32_t EventableResource::getTruncatedEV(ThreadState &thread) const

@@ -82,7 +82,7 @@ public:
     pausedIn = 0;
     inPacket = false;
     junkPacket = false;
-    setInUseOn(t);
+    eventableSetInUseOn(t);
     setJunkIncoming(false);
     return true;
   }
@@ -92,7 +92,7 @@ public:
     if (!buf.empty() || getSource() || inPacket) {
       return false;
     }
-    setInUseOff();
+    eventableSetInUseOff();
     setJunkIncoming(true);
     return true;
   }

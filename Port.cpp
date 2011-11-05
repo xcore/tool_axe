@@ -81,7 +81,7 @@ bool Port::setCInUse(ThreadState &thread, bool val, ticks_t time)
     }
     clearReadyOut(time);
   }
-  setInUse(thread, val);
+  eventableSetInUse(thread, val);
   return true;
 }
 

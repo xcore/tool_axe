@@ -247,7 +247,7 @@ public:
 protected:
   Resource(ResourceType t) : inUse(0), ID(t) {}
 
-  virtual void setInUse(bool val)
+  void setInUse(bool val)
   {
     inUse = val;
   }
@@ -294,9 +294,9 @@ protected:
   /// executing, otherwise the owner is scheduled.s
   void event(ticks_t time);
 
-  void setInUse(ThreadState &t, bool val);
-  void setInUseOn(ThreadState &t);
-  void setInUseOff();
+  void eventableSetInUse(ThreadState &t, bool val);
+  void eventableSetInUseOn(ThreadState &t);
+  void eventableSetInUseOff();
 
   virtual bool seeEventEnable(ticks_t time) = 0;
 

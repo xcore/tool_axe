@@ -27,13 +27,13 @@ public:
     assert(!isInUse() && "Trying to allocate in use timer");
     after = false;
     data = 0;
-    setInUseOn(t);
+    eventableSetInUseOn(t);
     return true;
   }
 
   bool free()
   {
-    setInUseOff();
+    eventableSetInUseOff();
     return true;
   }
 

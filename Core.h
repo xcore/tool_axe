@@ -247,7 +247,7 @@ public:
       if (!resource[type][i]->isInUse()) {
         bool allocated = resource[type][i]->alloc(current);
         assert(allocated);
-        allocated = allocated; // Silence compiler.
+        (void)allocated; // Silence compiler.
         return resource[type][i];
       }
     }
