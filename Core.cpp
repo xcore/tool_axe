@@ -136,7 +136,7 @@ ChanEndpoint *Core::getChanendDest(ResourceID ID)
   return parent->getParent()->getChanendDest(ID);
 }
 
-void Core::seeNewNodeID()
+void Core::updateIDs()
 {
   unsigned coreID = getCoreID();
   for (unsigned i = 0; i < NUM_CHANENDS; i++) {

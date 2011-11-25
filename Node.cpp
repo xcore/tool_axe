@@ -27,7 +27,7 @@ void Node::setNodeID(unsigned value)
   nodeID = value;
   for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
        it != e; ++it) {
-    (*it)->seeNewNodeID();
+    (*it)->updateIDs();
   }
 }
 

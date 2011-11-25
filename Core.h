@@ -279,10 +279,12 @@ public:
     return ((ram_size >> 1) - 1) + NO_THREADS_ADDR_OFFSET;
   }
 
-  void seeNewNodeID();
+  void updateIDs();
+
+  /// Set the parent of the current core. updateIDs() must be called to update
+  /// The core IDs and the channel end resource IDs.
   void setParent(Node *n) {
     parent = n;
-    seeNewNodeID();
   }
   void setCoreNumber(unsigned value) { coreNumber = value; }
   unsigned getCoreNumber() const { return coreNumber; }
