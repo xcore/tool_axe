@@ -276,7 +276,6 @@ private:
 protected:
   EventableResource(ResourceType Type) :
     Resource(Type),
-    Runnable(Runnable::EVENTABLE_RESOURCE),
     owner(0),
     next(0),
     prev(0) {}

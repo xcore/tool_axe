@@ -27,7 +27,7 @@ void Core::dumpPaused() const
     if (!t->isInUse())
       continue;
     std::cout << "Thread " << std::dec << i;
-    ThreadState &ts = t->getState();
+    ThreadState &ts = *t;
     if (Resource *res = ts.pausedOn) {
       std::cout << " paused on ";
       std::cout << Resource::getResourceName(res->getType());
@@ -80,9 +80,28 @@ Resource *Core::getResourceByID(ResourceID ID)
   );
 }
 
+bool Core::setSyscallAddress(uint32_t value)
+{
+  uint32_t addr = physicalAddress(value) >> 1;
+  if (addr >= (ram_size << 1))
+    return false;
+  syscallAddress = addr;
+  return true;
+}
+
+bool Core::setExceptionAddress(uint32_t value)
+{
+  uint32_t addr = physicalAddress(value) >> 1;
+  if (addr >= (ram_size << 1))
+    return false;
+  exceptionAddress = addr;
+  return true;
+}
+
 void Core::
 initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-          OPCODE_TYPE illegalPCThread, OPCODE_TYPE noThreads)
+          OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
+          OPCODE_TYPE exception)
 {
   const uint32_t ramSizeShorts = ram_size >> 1;
   // Initialise instruction cache.
@@ -91,7 +110,11 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   }
   opcode[ramSizeShorts] = illegalPC;
   opcode[getIllegalPCThreadAddr()] = illegalPCThread;
-  opcode[getNoThreadsAddr()] = noThreads;
+  if (syscallAddress < ramSizeShorts)
+    opcode[syscallAddress] = syscall;
+  if (exceptionAddress < ramSizeShorts)
+    opcode[exceptionAddress] = exception;
+  cacheIsValid = true;
 }
 
 bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)

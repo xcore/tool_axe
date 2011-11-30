@@ -13,7 +13,10 @@ class RunnableQueue {
 private:
   class Sentinel : public Runnable {
   public:
-    Sentinel() : Runnable(SENTINEL) {}
+    Sentinel() : Runnable() {}
+    void run(ticks_t) {
+      assert(0 && "Unimplemented\n");
+    }
   };
   Sentinel head;
   bool contains(Runnable &thread) const

@@ -731,7 +731,7 @@ emitInstDispatch(Instruction &instruction)
     if (operands[i] == in)
       std::cout << "const ";
     if (isSR(instruction, i)) {
-      std::cout << "ThreadState::sr_t op" << i << ") = thread->sr";
+      std::cout << "ThreadState::sr_t op" << i << ") = this->sr";
     } else {
       std::cout << "uint32_t op" << i << ')';
       switch (operands[i]) {
@@ -1130,8 +1130,8 @@ void add()
   // current thread.
   inst("TSETR_3r", 2, ops(imm, in, in), "set t[%2]:r%0, %1",
        "ResourceID resID(%2);\n"
-       "if (Thread *t = checkThread(*thread, resID)) {\n"
-       "  t->getState().reg(%0) = %1;\n"
+       "if (Thread *t = checkThread(*this, resID)) {\n"
+       "  t->reg(%0) = %1;\n"
        "} else {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
        "}",
@@ -1205,8 +1205,8 @@ void add()
   fl2rus("ASHR_32", "ashr %0, %1, 32", "%0 = (int32_t)%1 >> 31;");
   fl2rus_in("OUTPW", "outpw res[%1], %0, %2",
             "ResourceID resID(%1);\n"
-            "if (Port *res = checkPort(*thread, resID)) {\n"
-            "  switch (res->outpw(*thread, %0, %2, TIME)) {\n"
+            "if (Port *res = checkPort(*this, resID)) {\n"
+            "  switch (res->outpw(*this, %0, %2, TIME)) {\n"
             "  default: assert(0 && \"Unexpected outpw result\");\n"
             "  case Resource::CONTINUE:\n"
             "    break;\n"
@@ -1221,9 +1221,9 @@ void add()
     .setSync();
   fl2rus("INPW", "inpw %0, res[%1], %2",
          "ResourceID resID(%1);\n"
-         "if (Port *res = checkPort(*thread, resID)) {\n"
+         "if (Port *res = checkPort(*this, resID)) {\n"
          "  uint32_t value;\n"
-         "  switch (res->inpw(*thread, %2, TIME, value)) {\n"
+         "  switch (res->inpw(*this, %2, TIME, value)) {\n"
          "  default: assert(0 && \"Unexpected inpw result\");\n"
          "  case Resource::CONTINUE:\n"
          "    %0 = value;\n"
@@ -1379,7 +1379,7 @@ void add()
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
   fru6_in("SETC", "setc res[%0], %1",
-       "if (!setC(*thread, TIME, ResourceID(%0), %1)) {\n"
+       "if (!setC(TIME, ResourceID(%0), %1)) {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, %0)\n"
        "}\n")
     .setSync().setCanEvent();
@@ -1561,16 +1561,16 @@ void add()
       "if (%1 > (uint32_t)LAST_STD_RES_TYPE)\n"
       "  %0 = 1;\n"
       "else if (Resource *res =\n"
-      "           core->allocResource(*thread, (ResourceType)IMM(OP(1))))\n"
+      "           core->allocResource(*this, (ResourceType)IMM(OP(1))))\n"
       "  %0 = res->getID();\n"
       "else\n"
       "  %0 = 0;\n");
   f2r("GETST", "getst %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Synchroniser *sync = checkSync(*thread, resID)) {\n"
-      "  if (Thread *t = core->allocThread(*thread)) {\n"
-      "    sync->addChild(t->getState());\n"
-      "    t->getState().setSync(*sync);\n"
+      "if (Synchroniser *sync = checkSync(*this, resID)) {\n"
+      "  if (Thread *t = core->allocThread(*this)) {\n"
+      "    sync->addChild(*t);\n"
+      "    t->setSync(*sync);\n"
       "    %0 = t->getID();\n"
       "  } else {\n"
       "    %0 = 0;\n"
@@ -1580,17 +1580,17 @@ void add()
       "}\n");
   f2r("PEEK", "peek %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Port *res = checkPort(*thread, resID)) {\n"
-      "  %0 = res->peek(*thread, TIME);\n"
+      "if (Port *res = checkPort(*this, resID)) {\n"
+      "  %0 = res->peek(*this, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n")
     .setSync();
   f2r("ENDIN", "endin %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Port *res = checkPort(*thread, resID)) {\n"
+      "if (Port *res = checkPort(*this, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch (res->endin(*thread, TIME, value)) {\n"
+      "  switch (res->endin(*this, TIME, value)) {\n"
       "  default: assert(0 && \"Unexpected endin result\");\n"
       "  case Resource::CONTINUE:\n"
       "    %0 = value;\n"
@@ -1604,8 +1604,8 @@ void add()
     .setSync();
   f2r_in("SETPSC", "setpsc res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (Port *res = checkPort(*thread, resID)) {\n"
-         "  switch (res->setpsc(*thread, %0, TIME)) {\n"
+         "if (Port *res = checkPort(*this, resID)) {\n"
+         "  switch (res->setpsc(*this, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected setpsc result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1621,9 +1621,9 @@ void add()
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r_in("TINITLR", "init t[%1]:lr, %0", 
           "ResourceID resID(%1);\n"
-          "Thread *t = checkThread(*thread, resID);\n"
-          "if (t && t->getState().inSSync()) {\n"
-          "  t->getState().reg(LR) = %0;\n"
+          "Thread *t = checkThread(*this, resID);\n"
+          "if (t && t->inSSync()) {\n"
+          "  t->reg(LR) = %0;\n"
           "} else {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
           "}\n");
@@ -1650,27 +1650,27 @@ void add()
           "  ERROR();\n"
           "}\n");
   fl2r_in("SETC", "setc res[%0], %1",
-          "if (!setC(*thread, TIME, ResourceID(%0), %1)) {\n"
+          "if (!setC(TIME, ResourceID(%0), %1)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
           "}\n").setSync().setCanEvent();
   fl2r_in("SETCLK", "setclk res[%1], %0",
-          "if (!setClock(*thread, ResourceID(%1), %0, TIME)) {\n"
+          "if (!setClock(ResourceID(%1), %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setSync();
   fl2r_in("SETTW", "settw res[%1], %0",
-          "Port *res = checkPort(*thread, ResourceID(%1));\n"
-          "if (!res || !res->setTransferWidth(*thread, %0, TIME)) {\n"
+          "Port *res = checkPort(*this, ResourceID(%1));\n"
+          "if (!res || !res->setTransferWidth(*this, %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setSync();
   fl2r_in("SETRDY", "setrdy res[%1], %0",
-          "if (!setReady(*thread, ResourceID(%1), %0, TIME)) {\n"
+          "if (!threadSetReady(ResourceID(%1), %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setSync();
   f2r("IN", "in %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Resource *res = checkResource(*thread, resID)) {\n"
+      "if (Resource *res = checkResource(*this, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch(res->in(*thread, TIME, value)) {\n"
+      "  switch(res->in(*this, TIME, value)) {\n"
       "  default: assert(0 && \"Unexpected in result\");\n"
       "  case Resource::CONTINUE:\n"
       "    %0 = value;\n"
@@ -1686,8 +1686,8 @@ void add()
     .setSync();
   f2r_in("OUT", "out %0, res[%1]",
          "ResourceID resID(%1);\n"
-         "if (Resource *res = checkResource(*thread, resID)) {\n"
-         "  switch (res->out(*thread, %0, TIME)) {\n"
+         "if (Resource *res = checkResource(*this, resID)) {\n"
+         "  switch (res->out(*this, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected out result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1703,9 +1703,9 @@ void add()
     .setCanEvent();
   f2r_in("TINITPC", "init t[%1]:pc, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*thread, resID);\n"
-         "if (t && t->getState().inSSync()) {\n"
-         "  ThreadState &threadState = t->getState();\n"
+         "Thread *t = checkThread(*this, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  ThreadState &threadState = *t;\n"
          "  unsigned newPc = TO_PC(%0);\n"
          "  if (CHECK_PC(newPc)) {;\n"
          "    // Set pc to one previous address since it will be incremented when\n"
@@ -1721,25 +1721,25 @@ void add()
          "}\n");
   f2r_in("TINITDP", "init t[%1]:dp, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*thread, resID);\n"
-         "if (t && t->getState().inSSync()) {\n"
-         "  t->getState().reg(DP) = %0;\n"
+         "Thread *t = checkThread(*this, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  t->reg(DP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
   f2r_in("TINITSP", "init t[%1]:sp, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*thread, resID);\n"
-         "if (t && t->getState().inSSync()) {\n"
-         "  t->getState().reg(SP) = %0;\n"
+         "Thread *t = checkThread(*this, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  t->reg(SP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
   f2r_in("TINITCP", "init t[%1]:cp, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*thread, resID);\n"
-         "if (t && t->getState().inSSync()) {\n"
-         "  t->getState().reg(CP) = %0;\n"
+         "Thread *t = checkThread(*this, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  t->reg(CP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -1748,14 +1748,14 @@ void add()
   
   f2r_in("SETD", "setd res[%1], %0",
          "ResourceID resID(%1);\n"
-         "Resource *res = checkResource(*thread, resID);\n"
-         "if (!res || !res->setData(*thread, %0, TIME)) {\n"
+         "Resource *res = checkResource(*this, resID);\n"
+         "if (!res || !res->setData(*this, %0, TIME)) {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "};\n").setSync();
   f2r_in("OUTCT", "outct res[%0], %1",
          "ResourceID resID(%0);\n"
-         "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-         "  switch (chanend->outct(*thread, %1, TIME)) {\n"
+         "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+         "  switch (chanend->outct(*this, %1, TIME)) {\n"
          "  default: assert(0 && \"Unexpected outct result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1769,8 +1769,8 @@ void add()
     .setCanEvent();
   frus_in("OUTCT", "outct res[%0], %1",
           "ResourceID resID(%0);\n"
-          "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-          "  switch (chanend->outct(*thread, %1, TIME)) {\n"
+          "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+          "  switch (chanend->outct(*this, %1, TIME)) {\n"
           "  default: assert(0 && \"Unexpected outct result\");\n"
           "  case Resource::CONTINUE:\n"
           "    break;\n"
@@ -1784,8 +1784,8 @@ void add()
     .setCanEvent();
   f2r_in("OUTT", "outt res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-         "  switch (chanend->outt(*thread, %0, TIME)) {\n"
+         "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+         "  switch (chanend->outt(*this, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected outct result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1799,9 +1799,9 @@ void add()
     .setCanEvent();
   f2r("INT", "int %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch (chanend->intoken(*thread, TIME, value)) {\n"
+      "  switch (chanend->intoken(*this, TIME, value)) {\n"
       "    default: assert(0 && \"Unexpected int result\");\n"
       "    case Resource::DESCHEDULE:\n"
       "      %pause_on(chanend);\n"
@@ -1816,9 +1816,9 @@ void add()
       "}\n");
   f2r("INCT", "inct %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch (chanend->inct(*thread, TIME, value)) {\n"
+      "  switch (chanend->inct(*this, TIME, value)) {\n"
       "    default: assert(0 && \"Unexpected int result\");\n"
       "    case Resource::DESCHEDULE:\n"
       "      %pause_on(chanend);\n"
@@ -1834,8 +1834,8 @@ void add()
       "};\n");
   f2r_in("CHKCT", "chkct res[%0], %1",
          "ResourceID resID(%0);\n"
-         "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-         "  switch (chanend->chkct(*thread, TIME, %1)) {\n"
+         "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+         "  switch (chanend->chkct(*this, TIME, %1)) {\n"
          "    default: assert(0 && \"Unexpected chkct result\");\n"
          "    case Resource::DESCHEDULE:\n"
          "      %pause_on(chanend);\n"
@@ -1849,8 +1849,8 @@ void add()
          "}\n");
   frus_in("CHKCT", "chkct res[%0], %1",
           "ResourceID resID(%0);\n"
-          "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
-          "  switch (chanend->chkct(*thread, TIME, %1)) {\n"
+          "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+          "  switch (chanend->chkct(*this, TIME, %1)) {\n"
           "    default: assert(0 && \"Unexpected chkct result\");\n"
           "    case Resource::DESCHEDULE:\n"
           "      %pause_on(chanend);\n"
@@ -1864,9 +1864,9 @@ void add()
           "}\n");
   f2r("TESTCT", "testct %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
       "  bool isCt;\n"
-      "  if (chanend->testct(*thread, TIME, isCt)) {\n"
+      "  if (chanend->testct(*this, TIME, isCt)) {\n"
       "    %0 = isCt;\n"
       "  } else {\n"
       "    %pause_on(chanend);\n"
@@ -1876,9 +1876,9 @@ void add()
       "}\n");
   f2r("TESTWCT", "testwct %0, res[%0]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*thread, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
       "  uint32_t value;\n"
-      "  if (chanend->testwct(*thread, TIME, value)) {\n"
+      "  if (chanend->testwct(*this, TIME, value)) {\n"
       "    %0 = value;\n"
       "  } else {\n"
       "    %pause_on(chanend);\n"
@@ -1888,11 +1888,11 @@ void add()
       "}\n");
   f2r_in("EET", "eet res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"
+         "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
          "  if (%0 != 0) {\n"
-         "    res->eventEnable(*thread);\n"
+         "    res->eventEnable(*this);\n"
          "  } else {\n"
-         "    res->eventDisable(*thread);\n"
+         "    res->eventDisable(*this);\n"
          "  }\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
@@ -1901,11 +1901,11 @@ void add()
     .setCanEvent();
   f2r_in("EEF", "eef res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"
+         "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
          "  if (%0 == 0) {\n"
-         "    res->eventEnable(*thread);\n"
+         "    res->eventEnable(*this);\n"
          "  } else {\n"
-         "    res->eventDisable(*thread);\n"
+         "    res->eventDisable(*this);\n"
          "  }\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
@@ -1914,9 +1914,9 @@ void add()
     .setCanEvent();
   f2r_inout("INSHR", "inshr %0, res[%1]",
             "ResourceID resID(%1);\n"
-            "if (Port *res = checkPort(*thread, resID)) {\n"
+            "if (Port *res = checkPort(*this, resID)) {\n"
             "  uint32_t value;\n"
-            "  Resource::ResOpResult result = res->in(*thread, TIME, value);\n"
+            "  Resource::ResOpResult result = res->in(*this, TIME, value);\n"
             "  switch (result) {\n"
             "  default: assert(0 && \"Unexpected in result\");\n"
             "  case Resource::CONTINUE:\n"
@@ -1934,8 +1934,8 @@ void add()
     .setSync();
   f2r_inout("OUTSHR", "outshr %0, res[%1]",
             "ResourceID resID(%1);\n"
-            "if (Port *res = checkPort(*thread, resID)) {\n"
-            "  Resource::ResOpResult result = res->out(*thread, %0, TIME);\n"
+            "if (Port *res = checkPort(*this, resID)) {\n"
+            "  Resource::ResOpResult result = res->out(*this, %0, TIME);\n"
             "  switch (result) {\n"
             "  default: assert(0 && \"Unexpected outshr result\");\n"
             "  case Resource::CONTINUE:\n"
@@ -1950,15 +1950,15 @@ void add()
     .setSync();
   f2r("GETTS", "getts %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Port *res = checkPort(*thread, resID)) {\n"
-      "  %0 = res->getTimestamp(*thread, TIME);\n"
+      "if (Port *res = checkPort(*this, resID)) {\n"
+      "  %0 = res->getTimestamp(*this, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
       "}\n").setSync();
   f2r_in("SETPT", "setpt res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (Port *res = checkPort(*thread, resID)) {\n"
-         "  switch (res->setPortTime(*thread, %0, TIME)) {\n"
+         "if (Port *res = checkPort(*this, resID)) {\n"
+         "  switch (res->setPortTime(*this, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected setPortTime result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -2019,25 +2019,25 @@ void add()
       "%next\n");
   f1r("TSTART", "start t[%0]",
       "ResourceID resID(%0);\n"
-      "Thread *t = checkThread(*thread, resID);\n"
-      "if (t && t->getState().inSSync() && !t->getState().getSync()) {\n"
-      "  t->getState().setSSync(false);\n"
-      "  t->getState().pc++;"
-      "  t->getState().schedule();"
+      "Thread *t = checkThread(*this, resID);\n"
+      "if (t && t->inSSync() && !t->getSync()) {\n"
+      "  t->setSSync(false);\n"
+      "  t->pc++;"
+      "  t->schedule();"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n");
   f1r_out("DGETREG", "dgetreg %0", "").setUnimplemented();
   f1r("KCALL",  "kcall %0", "%kcall(%0)");
   f1r("FREER", "freer res[%0]",
-      "Resource *res = checkResource(*thread, ResourceID(%0));\n"
+      "Resource *res = checkResource(*this, ResourceID(%0));\n"
       "if (!res || !res->free()) {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
       "}\n");
   f1r("MSYNC", "msync res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Synchroniser *sync = checkSync(*thread, resID)) {\n"
-      "  switch (sync->msync(*thread)) {\n"
+      "if (Synchroniser *sync = checkSync(*this, resID)) {\n"
+      "  switch (sync->msync(*this)) {\n"
       "  default: assert(0 && \"Unexpected sync result\");\n"
       "  case Synchroniser::SYNC_CONTINUE:\n"
       "    break;\n"
@@ -2049,8 +2049,8 @@ void add()
       "}\n");
   f1r("MJOIN", "mjoin res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Synchroniser *sync = checkSync(*thread, resID)) {\n"
-      "  switch (sync->mjoin(*thread)) {\n"
+      "if (Synchroniser *sync = checkSync(*this, resID)) {\n"
+      "  switch (sync->mjoin(*this)) {\n"
       "    default: assert(0 && \"Unexpected mjoin result\");\n"
       "    case Synchroniser::SYNC_CONTINUE:\n"
       "      break;\n"
@@ -2063,10 +2063,10 @@ void add()
       "}\n");
   f1r("SETV", "setv res[%0], %1",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"
+      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
       "  uint32_t target = TO_PC(%1);\n"
       "  if (CHECK_PC(target)) {\n"
-      "    res->setVector(*thread, target);\n"
+      "    res->setVector(*this, target);\n"
       "  } else {\n"
       "    // TODO\n"
       "    ERROR();\n"
@@ -2076,39 +2076,39 @@ void add()
       "}\n").addImplicitOp(r11, in).setSync();
   f1r("SETEV", "setev res[%0], %1",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"
-      "  res->setEV(*thread, %1);\n"
+      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
+      "  res->setEV(*this, %1);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").addImplicitOp(r11, in).setSync();
   f1r("EDU", "edu res[%0]",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"
-      "  res->eventDisable(*thread);\n"
+      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
+      "  res->eventDisable(*this);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync();
   f1r("EEU", "eeu res[%0]",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*thread, resID)) {\n"
-      "  res->eventEnable(*thread);\n"
+      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
+      "  res->eventEnable(*this);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync().setCanEvent();
   f1r("WAITET", "waitet %0",
       "if (%0) {\n"
-      "  thread->enableEvents();\n"
+      "  this->enableEvents();\n"
       "  %deschedule\n"
       "}\n").setSync().setCanEvent();
   f1r("WAITEF", "waitef %0",
       "if (!%0) {\n"
-      "  thread->enableEvents();\n"
+      "  this->enableEvents();\n"
       "  %deschedule\n"
       "}\n").setSync().setCanEvent();
   f1r("SYNCR", "syncr res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Port *port = checkPort(*thread, resID)) {\n"
-      "  switch (port->sync(*thread, TIME)) {\n"
+      "if (Port *port = checkPort(*this, resID)) {\n"
+      "  switch (port->sync(*this, TIME)) {\n"
       "  default: assert(0 && \"Unexpected syncr result\");\n"
       "  case Resource::CONTINUE: PC++; break;\n"
       "  case Resource::DESCHEDULE:\n"
@@ -2120,12 +2120,12 @@ void add()
       ).setSync();
   f1r("CLRPT", "clrpt res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Port *res = checkPort(*thread, resID)) {\n"
-      "  res->clearPortTime(*thread, TIME);\n"
+      "if (Port *res = checkPort(*this, resID)) {\n"
+      "  res->clearPortTime(*this, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync();
-  f0r("GETID", "get %0, id", "%0 = thread->getID();")
+  f0r("GETID", "get %0, id", "%0 = this->getNum();")
     .addImplicitOp(r11, out);
   f0r("GETET", "get %0, %1", "%0 = %1;")
     .addImplicitOp(r11, out)
@@ -2233,15 +2233,14 @@ void add()
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
   f0r("DENTSP", "dentsp", "").setUnimplemented();
-  f0r("CLRE", "clre", "thread->clre();\n").setSync();
+  f0r("CLRE", "clre", "this->clre();\n").setSync();
   f0r("WAITEU", "waiteu",
-      "thread->enableEvents();\n"
+      "this->enableEvents();\n"
       "%deschedule\n").setSync().setCanEvent();
   f0r("SSYNC", "", "").setCustom();
 
   pseudoInst("ILLEGAL_PC", "", "").setCustom();
   pseudoInst("ILLEGAL_PC_THREAD", "", "").setCustom();
-  pseudoInst("NO_THREADS", "", "").setCustom();
   pseudoInst("ILLEGAL_INSTRUCTION", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
   pseudoInst("SYSCALL", "", "").setCustom();

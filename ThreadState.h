@@ -14,6 +14,13 @@
 
 class Synchroniser;
 
+class ExitException {
+  unsigned status;
+public:
+  ExitException(unsigned s) : status(s) {}
+  unsigned getStatus() const { return status; }
+};
+
 enum Register {
   R0,
   R1,
@@ -103,11 +110,9 @@ private:
   EventableResource *head;
 };
 
-class Thread;
 class Core;
 
-class ThreadState : public Runnable {
-  Thread &threadRes;
+class ThreadState : public Runnable, public Resource {
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -141,8 +146,7 @@ public:
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
 
-  ThreadState(Thread &r) : Runnable(THREAD), threadRes(r), parent(0)
-  {
+  ThreadState() : Resource(RES_TYPE_THREAD), parent(0) {
     time = 0;
     pc = 0;
     regs[KEP] = 0;
@@ -153,6 +157,19 @@ public:
     regs[ED] = 0;
     eeble() = false;
     ieble() = false;
+    setInUse(false);
+  }
+
+  bool alloc(ThreadState &CurrentThread)
+  {
+    alloc(CurrentThread.time);
+    return true;
+  }
+
+  bool free()
+  {
+    setInUse(false);
+    return true;
   }
 
   void setParent(Core &p) { parent = &p; }
@@ -180,15 +197,18 @@ public:
   {
     interruptEnabledResources.remove(res);
   }
-  
+
   void alloc(ticks_t t)
   {
+    assert(!isInUse() && "Trying to allocate in use thread");
+    setInUse(true);
     sync = 0;
     ssync = true;
     time = t;
     pausedOn = 0;
   }
-  
+
+private:
   void setSync(Synchroniser &s)
   {
     assert(!sync && "Synchroniser set twice");
@@ -200,16 +220,19 @@ public:
     return ssync;
   }
 
+public:
   void setSSync(bool value)
   {
     ssync = value;
   }
   
+private:
   Synchroniser *getSync()
   {
     return sync;
   }
-  
+
+public:
   uint32_t &reg(unsigned RegNum)
   {
     return regs[RegNum];
@@ -251,22 +274,12 @@ public:
     return sr[WAITING];
   }
 
-  Thread &getRes()
-  {
-    return threadRes;
-  }
-  
-  const Thread &getRes() const
-  {
-    return threadRes;
-  }
-
-  unsigned getID() const;
-
+public:
   void dump() const;
 
   void schedule();
-
+  
+private:
   /// Enable for events on the current thread.
   /// \return true if there is a pending event, false otherwise.
   bool enableEvents()
@@ -298,9 +311,16 @@ public:
     }
   }
 
+public:
   bool isExecuting() const;
+  void run(ticks_t time);
 private:
+  template <bool tracing> void runAux(ticks_t time);
   bool setSRSlowPath(sr_t old);
+  uint32_t exception(Core &state, uint32_t pc, int et, uint32_t ed);
+  bool setC(ticks_t time, ResourceID resID, uint32_t val);
+  bool setClock(ResourceID resID, uint32_t val, ticks_t time);
+  bool threadSetReady(ResourceID resID, uint32_t val, ticks_t time);
 };
 
 struct PendingEvent {
@@ -309,5 +329,7 @@ struct PendingEvent {
   bool interrupt;
   ticks_t time;
 };
+
+typedef ThreadState Thread;
 
 #endif // _ThreadState_h_

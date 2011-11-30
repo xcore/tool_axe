@@ -11,23 +11,12 @@
 
 class Runnable {
 public:
-  enum RunnableType {
-    THREAD,
-    EVENTABLE_RESOURCE,
-    SENTINEL
-  };
-private:
-  RunnableType type;
-public:
   Runnable *prev;
   Runnable *next;
   ticks_t wakeUpTime;
 
-  RunnableType getType() const { return type; }
-  virtual void run(ticks_t time) {
-    assert(0 && "Unimplemented");
-  }
-  Runnable(RunnableType t) : type(t), prev(0), next(0) {}
+  virtual void run(ticks_t time) = 0;
+  Runnable() : prev(0), next(0) {}
 };
 
 #endif // _Runnable_h_

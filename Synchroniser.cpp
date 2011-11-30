@@ -46,14 +46,14 @@ sync(ThreadState &thread, bool isMaster)
   if (isMaster) {
     result = SYNC_CONTINUE;
     for (unsigned i = 1; i < NumThreads; i++) {
-      threads[i]->getRes().free();
+      threads[i]->free();
     }
   } else {
     master().schedule();
     result = SYNC_KILL;    
     for (unsigned i = 1; i < NumThreads; i++) {
       if (threads[i] != &thread) {
-        threads[i]->getRes().free();
+        threads[i]->free();
       }
     }
   }

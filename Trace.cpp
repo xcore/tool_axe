@@ -74,7 +74,7 @@ void Tracer::printCommonStart()
 void Tracer::printThreadName()
 {
   *line.buf << line.thread->getParent().getCoreName();
-  *line.buf << ":t" << line.thread->getID();
+  *line.buf << ":t" << line.thread->getNum();
 }
 
 void Tracer::printCommonStart(const ThreadState &t)
@@ -321,7 +321,7 @@ void Tracer::dumpThreadSummary(const Core &core)
     const Thread &t = core.getThread(i);
     if (!t.isInUse())
       continue;
-    const ThreadState &ts = t.getState();
+    const ThreadState &ts = t;
     printCommonStart();
     line.thread = &ts;
     *line.buf << "Thread ";

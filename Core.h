@@ -19,7 +19,6 @@
 #include "Chanend.h"
 #include "ClockBlock.h"
 #include "Port.h"
-#include "Thread.h"
 #include "ThreadState.h"
 #include "Timer.h"
 #include "Instruction.h"
@@ -35,7 +34,6 @@ class Core {
 public:
   enum {
     ILLEGAL_PC_THREAD_ADDR_OFFSET = 2,
-    NO_THREADS_ADDR_OFFSET = 3,
   };
 private:
   Thread * const thread;
@@ -63,11 +61,15 @@ public:
   // are use for communicating illegal states.
   OPCODE_TYPE *opcode;
   Operands *operands;
+  bool cacheIsValid;
 
   const uint32_t ram_size;
   const uint32_t ram_base;
   uint32_t vector_base;
-  
+
+  uint32_t syscallAddress;
+  uint32_t exceptionAddress;
+
   Core(uint32_t RamSize, uint32_t RamBase) :
     thread(new Thread[NUM_THREADS]),
     sync(new Synchroniser[NUM_SYNCS]),
@@ -82,10 +84,13 @@ public:
     memory(new uint32_t[RamSize >> 2]),
     coreNumber(0),
     parent(0),
-    opcode(new OPCODE_TYPE[(RamSize >> 1) + NO_THREADS_ADDR_OFFSET]),
+    opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
     operands(new Operands[RamSize >> 1]),
+    cacheIsValid(false),
     ram_size(RamSize),
-    ram_base(RamBase)
+    ram_base(RamBase),
+    syscallAddress(~0),
+    exceptionAddress(~0)
   {
     resource[RES_TYPE_PORT] = 0;
     resourceNum[RES_TYPE_PORT] = 0;
@@ -110,7 +115,7 @@ public:
 
     resource[RES_TYPE_THREAD] = new Resource*[NUM_THREADS];
     for (unsigned i = 0; i < NUM_THREADS; i++) {
-      thread[i].getState().setParent(*this);
+      thread[i].setParent(*this);
       resource[RES_TYPE_THREAD][i] = &thread[i];
     }
     resourceNum[RES_TYPE_THREAD] = NUM_THREADS;
@@ -156,8 +161,20 @@ public:
     thread[0].alloc(0);
   }
 
+  bool setSyscallAddress(uint32_t value);
+  bool setExceptionAddress(uint32_t value);
+
+  void ensureCacheIsValid(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
+                          OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
+                          OPCODE_TYPE exception) {
+    if (cacheIsValid)
+      return;
+    initCache(decode, illegalPC, illegalPCThread, syscall, exception);
+  }
+
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE noThreads);
+                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
+                 OPCODE_TYPE exception);
 
   ~Core() {
     delete[] opcode;
@@ -274,11 +291,6 @@ public:
   unsigned getIllegalPCThreadAddr() const
   {
     return ((ram_size >> 1) - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
-  }
-  
-  unsigned getNoThreadsAddr() const
-  {
-    return ((ram_size >> 1) - 1) + NO_THREADS_ADDR_OFFSET;
   }
 
   void updateIDs();
