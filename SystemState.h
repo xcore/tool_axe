@@ -21,7 +21,7 @@ class SystemState {
   Runnable *currentRunnable;
   PendingEvent pendingEvent;
 
-  void completeEvent(ThreadState &t, EventableResource &res, bool interrupt);
+  void completeEvent(Thread &t, EventableResource &res, bool interrupt);
 
 public:
   typedef std::vector<Node*>::iterator node_iterator;
@@ -46,7 +46,7 @@ public:
   int run();
   
   /// Schedule a thread.
-  void schedule(ThreadState &thread) {
+  void schedule(Thread &thread) {
     thread.waiting() = false;
     thread.pausedOn = 0;
     scheduler.push(thread, thread.time);
@@ -57,7 +57,7 @@ public:
   }
   
   /// Take an event on a thread. The thread must not be the current thread.
-  void takeEvent(ThreadState &thread, EventableResource &res, bool interrupt)
+  void takeEvent(Thread &thread, EventableResource &res, bool interrupt)
   {
     if (thread.waiting()) {
       if (thread.pausedOn) {
@@ -72,7 +72,7 @@ public:
   /// \param CycleThread Whether to cycle the running thread after the
   ///        event is taken.
   /// \return The new time and pc.
-  void takeEvent(ThreadState &current)
+  void takeEvent(Thread &current)
   {
     current.time = std::max(current.time, pendingEvent.time);
     // TODO this is probably the wrong place for this.

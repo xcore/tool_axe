@@ -23,7 +23,7 @@ void SystemState::addNode(std::auto_ptr<Node> n)
 }
 
 void SystemState::
-completeEvent(ThreadState &t, EventableResource &res, bool interrupt)
+completeEvent(Thread &t, EventableResource &res, bool interrupt)
 {
   if (interrupt) {
     t.regs[SSR] = t.sr.to_ulong();

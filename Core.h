@@ -258,7 +258,7 @@ public:
     ((uint8_t *)memory)[address] = value;
   }
   
-  Resource *allocResource(ThreadState &current, ResourceType type)
+  Resource *allocResource(Thread &current, ResourceType type)
   {
     if (type > LAST_STD_RES_TYPE || !allocatable[type])
       return 0;
@@ -273,7 +273,7 @@ public:
     return 0;
   }
 
-  Thread *allocThread(ThreadState &current)
+  Thread *allocThread(Thread &current)
   {
     return static_cast<Thread*>(allocResource(current, RES_TYPE_THREAD));
   }

@@ -40,7 +40,7 @@ const char *registerNames[] = {
   "ssr"
 };
 
-void ThreadState::dump() const
+void Thread::dump() const
 {
   std::cout << std::hex;
   for (unsigned i = 0; i < NUM_REGISTERS; i++) {
@@ -50,12 +50,12 @@ void ThreadState::dump() const
   std::cout << std::dec;
 }
 
-void ThreadState::schedule()
+void Thread::schedule()
 {
   getParent().getParent()->getParent()->schedule(*this);
 }
 
-bool ThreadState::setSRSlowPath(sr_t enabled)
+bool Thread::setSRSlowPath(sr_t enabled)
 {
   if (enabled[EEBLE]) {
     EventableResourceList &EER = eventEnabledResources;
@@ -78,7 +78,7 @@ bool ThreadState::setSRSlowPath(sr_t enabled)
   return false;
 }
 
-bool ThreadState::isExecuting() const
+bool Thread::isExecuting() const
 {
   return this == parent->getParent()->getParent()->getExecutingRunnable();
 }
@@ -112,7 +112,7 @@ enum {
   SETC_PORT_READYPORT = 0x5017
 };
 
-uint32_t ThreadState::
+uint32_t Thread::
 exception(Core &state, uint32_t pc, int et, uint32_t ed)
 {
   uint32_t sed = regs[ED];
@@ -142,7 +142,7 @@ exception(Core &state, uint32_t pc, int et, uint32_t ed)
   return newPc >> 1;
 }
 
-static void internalError(const ThreadState &thread, const char *file, int line) {
+static void internalError(const Thread &thread, const char *file, int line) {
   std::cout << "Internal error in " << file << ":" << line << "\n"
   << "Register state:\n";
   thread.dump();
@@ -205,7 +205,7 @@ checkResource(Core &state, ResourceID id)
 }
 
 static inline Resource *
-checkResource(ThreadState &thread, ResourceID id)
+checkResource(Thread &thread, ResourceID id)
 {
   return checkResource(thread.getParent(), id);
 }
@@ -222,7 +222,7 @@ checkSync(Core &state, ResourceID id)
 }
 
 static inline Synchroniser *
-checkSync(ThreadState &thread, ResourceID id)
+checkSync(Thread &thread, ResourceID id)
 {
   return checkSync(thread.getParent(), id);
 }
@@ -239,7 +239,7 @@ checkThread(Core &state, ResourceID id)
 }
 
 static inline Thread *
-checkThread(ThreadState &thread, ResourceID id)
+checkThread(Thread &thread, ResourceID id)
 {
   return checkThread(thread.getParent(), id);
 }
@@ -256,7 +256,7 @@ checkLock(Core &state, ResourceID id)
 }
 
 static inline Lock *
-checkLock(ThreadState &thread, ResourceID id)
+checkLock(Thread &thread, ResourceID id)
 {
   return checkLock(thread.getParent(), id);
 }
@@ -273,7 +273,7 @@ checkChanend(Core &state, ResourceID id)
 }
 
 static inline Chanend *
-checkChanend(ThreadState &thread, ResourceID id)
+checkChanend(Thread &thread, ResourceID id)
 {
   return checkChanend(thread.getParent(), id);
 }
@@ -290,7 +290,7 @@ checkTimer(Core &state, ResourceID id)
 }
 
 static inline Timer *
-checkTimer(ThreadState &thread, ResourceID id)
+checkTimer(Thread &thread, ResourceID id)
 {
   return checkTimer(thread.getParent(), id);
 }
@@ -307,7 +307,7 @@ checkPort(Core &state, ResourceID id)
 }
 
 static inline Port *
-checkPort(ThreadState &thread, ResourceID id)
+checkPort(Thread &thread, ResourceID id)
 {
   return checkPort(thread.getParent(), id);
 }
@@ -324,7 +324,7 @@ checkEventableResource(Core &state, ResourceID id)
 }
 
 static inline EventableResource *
-checkEventableResource(ThreadState &thread, ResourceID id)
+checkEventableResource(Thread &thread, ResourceID id)
 {
   return checkEventableResource(thread.getParent(), id);
 }
@@ -376,7 +376,7 @@ getPortType(uint32_t val)
   }
 }
 
-bool ThreadState::
+bool Thread::
 setC(ticks_t time, ResourceID resID, uint32_t val)
 {
   Resource *res = getParent().getResourceByID(resID);
@@ -458,7 +458,7 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 
 const uint32_t CLK_REF = 0x1;
 
-bool ThreadState::
+bool Thread::
 setClock(ResourceID resID, uint32_t val, ticks_t time)
 {
   Core &state = getParent();
@@ -496,7 +496,7 @@ setClock(ResourceID resID, uint32_t val, ticks_t time)
   return true;
 }
 
-bool ThreadState::
+bool Thread::
 threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
 {
   Core &state = getParent();
@@ -640,7 +640,7 @@ do { \
 
 #define INSTRUCTION_CYCLES 4
 
-void ThreadState::run(ticks_t time)
+void Thread::run(ticks_t time)
 {
   if (Tracer::get().getTracingEnabled())
     runAux<true>(time);
@@ -649,7 +649,7 @@ void ThreadState::run(ticks_t time)
 }
 
 template <bool tracing>
-void ThreadState::runAux(ticks_t time) {
+void Thread::runAux(ticks_t time) {
   getParent().ensureCacheIsValid(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
                                  OPCODE(ILLEGAL_PC_THREAD),
                                  OPCODE(SYSCALL), OPCODE(EXCEPTION));

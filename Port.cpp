@@ -49,7 +49,7 @@ Signal Port::getPinsValue() const {
   return getPinsOutputValue();
 }
 
-bool Port::setCInUse(ThreadState &thread, bool val, ticks_t time)
+bool Port::setCInUse(Thread &thread, bool val, ticks_t time)
 {
   // TODO call update()?
   if (val) {
@@ -86,7 +86,7 @@ bool Port::setCInUse(ThreadState &thread, bool val, ticks_t time)
 }
 
 bool Port::
-setCondition(ThreadState &thread, Condition c, ticks_t time)
+setCondition(Thread &thread, Condition c, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -98,7 +98,7 @@ setCondition(ThreadState &thread, Condition c, ticks_t time)
 }
 
 bool Port::
-setData(ThreadState &thread, uint32_t d, ticks_t time)
+setData(Thread &thread, uint32_t d, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -460,7 +460,7 @@ bool Port::isValidPortShiftCount(uint32_t count) const
 }
 
 Resource::ResOpResult Port::
-in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
+in(Thread &thread, ticks_t threadTime, uint32_t &value)
 {
   update(threadTime);
   updateOwner(thread);
@@ -494,7 +494,7 @@ in(ThreadState &thread, ticks_t threadTime, uint32_t &value)
 }
 
 Resource::ResOpResult Port::
-inpw(ThreadState &thread, uint32_t width, ticks_t threadTime, uint32_t &value)
+inpw(Thread &thread, uint32_t width, ticks_t threadTime, uint32_t &value)
 {
   update(threadTime);
   updateOwner(thread);
@@ -533,7 +533,7 @@ inpw(ThreadState &thread, uint32_t width, ticks_t threadTime, uint32_t &value)
 }
 
 Resource::ResOpResult Port::
-out(ThreadState &thread, uint32_t value, ticks_t threadTime)
+out(Thread &thread, uint32_t value, ticks_t threadTime)
 {
   update(threadTime);
   updateOwner(thread);
@@ -559,7 +559,7 @@ out(ThreadState &thread, uint32_t value, ticks_t threadTime)
 }
 
 Resource::ResOpResult Port::
-outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
+outpw(Thread &thread, uint32_t value, uint32_t width, ticks_t threadTime)
 {
   update(threadTime);
   updateOwner(thread);
@@ -589,7 +589,7 @@ outpw(ThreadState &thread, uint32_t value, uint32_t width, ticks_t threadTime)
 }
 
 Port::ResOpResult Port::
-setpsc(ThreadState &thread, uint32_t width, ticks_t threadTime)
+setpsc(Thread &thread, uint32_t width, ticks_t threadTime)
 {
   update(threadTime);
   updateOwner(thread);
@@ -606,7 +606,7 @@ setpsc(ThreadState &thread, uint32_t width, ticks_t threadTime)
 }
 
 Port::ResOpResult Port::
-endin(ThreadState &thread, ticks_t threadTime, uint32_t &value)
+endin(Thread &thread, ticks_t threadTime, uint32_t &value)
 {
   update(threadTime);
   updateOwner(thread);
@@ -636,7 +636,7 @@ endin(ThreadState &thread, ticks_t threadTime, uint32_t &value)
 }
 
 Resource::ResOpResult Port::
-sync(ThreadState &thread, ticks_t time)
+sync(Thread &thread, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -648,7 +648,7 @@ sync(ThreadState &thread, ticks_t time)
 }
 
 uint32_t Port::
-peek(ThreadState &thread, ticks_t threadTime)
+peek(Thread &thread, ticks_t threadTime)
 {
   update(threadTime);
   updateOwner(thread);
@@ -656,7 +656,7 @@ peek(ThreadState &thread, ticks_t threadTime)
 }
 
 uint32_t Port::
-getTimestamp(ThreadState &thread, ticks_t time)
+getTimestamp(Thread &thread, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -664,7 +664,7 @@ getTimestamp(ThreadState &thread, ticks_t time)
 }
 
 Resource::ResOpResult
-Port::setPortTime(ThreadState &thread, uint32_t value, ticks_t time)
+Port::setPortTime(Thread &thread, uint32_t value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -682,14 +682,14 @@ Port::setPortTime(ThreadState &thread, uint32_t value, ticks_t time)
   return CONTINUE;
 }
 
-void Port::clearPortTime(ThreadState &thread, ticks_t time)
+void Port::clearPortTime(Thread &thread, ticks_t time)
 {
   update(time);
   updateOwner(thread);
   timeRegValid = false;
 }
 
-void Port::clearBuf(ThreadState &thread, ticks_t time)
+void Port::clearBuf(Thread &thread, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -715,7 +715,7 @@ bool Port::checkTransferWidth(uint32_t value)
   }
 }
 
-void Port::setClk(ThreadState &thread, ClockBlock *c, ticks_t time)
+void Port::setClk(Thread &thread, ClockBlock *c, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -726,7 +726,7 @@ void Port::setClk(ThreadState &thread, ClockBlock *c, ticks_t time)
   seeClockChange(time);
 }
 
-bool Port::setReady(ThreadState &thread, Port *p, ticks_t time)
+bool Port::setReady(Thread &thread, Port *p, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -741,7 +741,7 @@ bool Port::setReady(ThreadState &thread, Port *p, ticks_t time)
   return true;
 }
 
-bool Port::setBuffered(ThreadState &thread, bool value, ticks_t time)
+bool Port::setBuffered(Thread &thread, bool value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -751,7 +751,7 @@ bool Port::setBuffered(ThreadState &thread, bool value, ticks_t time)
   return true;
 }
 
-bool Port::setReadyMode(ThreadState &thread, ReadyMode mode, ticks_t time)
+bool Port::setReadyMode(Thread &thread, ReadyMode mode, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -762,7 +762,7 @@ bool Port::setReadyMode(ThreadState &thread, ReadyMode mode, ticks_t time)
   return true;
 }
 
-bool Port::setMasterSlave(ThreadState &thread, MasterSlave value, ticks_t time)
+bool Port::setMasterSlave(Thread &thread, MasterSlave value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -771,7 +771,7 @@ bool Port::setMasterSlave(ThreadState &thread, MasterSlave value, ticks_t time)
   return true;
 }
 
-bool Port::setPortType(ThreadState &thread, PortType type, ticks_t time)
+bool Port::setPortType(Thread &thread, PortType type, ticks_t time)
 {
   update(time);
   updateOwner(thread);
@@ -790,7 +790,7 @@ bool Port::setPortType(ThreadState &thread, PortType type, ticks_t time)
   return true;
 }
 
-bool Port::setTransferWidth(ThreadState &thread, uint32_t value, ticks_t time)
+bool Port::setTransferWidth(Thread &thread, uint32_t value, ticks_t time)
 {
   update(time);
   updateOwner(thread);

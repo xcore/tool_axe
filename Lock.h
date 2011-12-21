@@ -13,11 +13,11 @@ private:
   /// Is the lock currently held by a thread?
   bool held;
   /// Paused threads.
-  std::queue<ThreadState *> threads;
+  std::queue<Thread *> threads;
 public:
   Lock() : Resource(RES_TYPE_LOCK) {}
 
-  bool alloc(ThreadState &master)
+  bool alloc(Thread &master)
   {
     assert(!isInUse() && "Trying to allocate in use lock");
     setInUse(true);
@@ -36,8 +36,8 @@ public:
   }
 
 
-  ResOpResult in(ThreadState &thread, ticks_t time, uint32_t &value);
-  ResOpResult out(ThreadState &thread, uint32_t value, ticks_t time);
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
 };
 
 #endif // _Lock_h_

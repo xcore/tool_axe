@@ -17,7 +17,7 @@ ticks_t Synchroniser::MaxThreadTime() const
 }
 
 Synchroniser::SyncResult Synchroniser::
-sync(ThreadState &thread, bool isMaster)
+sync(Thread &thread, bool isMaster)
 {
   if (getNumPaused() + 1 < getNumThreads()) {
     // Pause the current thread
@@ -63,7 +63,7 @@ sync(ThreadState &thread, bool isMaster)
 }
 
 Synchroniser::SyncResult Synchroniser::
-mjoin(ThreadState &thread)
+mjoin(Thread &thread)
 {
   join = true;
   return sync(thread, true);

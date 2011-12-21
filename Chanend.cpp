@@ -81,7 +81,7 @@ bool Chanend::openRoute()
   return true;
 }
 
-bool Chanend::setData(ThreadState &thread, uint32_t value, ticks_t time)
+bool Chanend::setData(Thread &thread, uint32_t value, ticks_t time)
 {
   updateOwner(thread);
   if (inPacket)
@@ -95,7 +95,7 @@ bool Chanend::setData(ThreadState &thread, uint32_t value, ticks_t time)
 }
 
 Resource::ResOpResult Chanend::
-outt(ThreadState &thread, uint8_t value, ticks_t time)
+outt(Thread &thread, uint8_t value, ticks_t time)
 {
   updateOwner(thread);
   if (!openRoute()) {
@@ -113,7 +113,7 @@ outt(ThreadState &thread, uint8_t value, ticks_t time)
 }
 
 Resource::ResOpResult Chanend::
-out(ThreadState &thread, uint32_t value, ticks_t time)
+out(Thread &thread, uint32_t value, ticks_t time)
 {
   updateOwner(thread);
   if (!openRoute()) {
@@ -138,7 +138,7 @@ out(ThreadState &thread, uint32_t value, ticks_t time)
 }
 
 Resource::ResOpResult Chanend::
-outct(ThreadState &thread, uint8_t value, ticks_t time)
+outct(Thread &thread, uint8_t value, ticks_t time)
 {
   updateOwner(thread);
   if (!openRoute()) {
@@ -164,7 +164,7 @@ outct(ThreadState &thread, uint8_t value, ticks_t time)
 }
 
 bool Chanend::
-testct(ThreadState &thread, ticks_t time, bool &isCt)
+testct(Thread &thread, ticks_t time, bool &isCt)
 {
   updateOwner(thread);
   if (buf.empty()) {
@@ -176,7 +176,7 @@ testct(ThreadState &thread, ticks_t time, bool &isCt)
 }
 
 bool Chanend::
-testwct(ThreadState &thread, ticks_t time, unsigned &position)
+testwct(Thread &thread, ticks_t time, unsigned &position)
 {
   updateOwner(thread);
   position = 0;
@@ -205,14 +205,14 @@ uint8_t Chanend::poptoken(ticks_t time)
   return value;
 }
 
-void Chanend::setPausedIn(ThreadState &t, bool wordInput)
+void Chanend::setPausedIn(Thread &t, bool wordInput)
 {
   pausedIn = &t;
   waitForWord = wordInput;
 }
 
 Resource::ResOpResult Chanend::
-intoken(ThreadState &thread, ticks_t time, uint32_t &val)
+intoken(Thread &thread, ticks_t time, uint32_t &val)
 {
   bool isCt;
   if (!testct(thread, time, isCt)) {
@@ -225,7 +225,7 @@ intoken(ThreadState &thread, ticks_t time, uint32_t &val)
 }
 
 Resource::ResOpResult Chanend::
-inct(ThreadState &thread, ticks_t time, uint32_t &val)
+inct(Thread &thread, ticks_t time, uint32_t &val)
 {
   bool isCt;
   if (!testct(thread, time, isCt)) {
@@ -238,7 +238,7 @@ inct(ThreadState &thread, ticks_t time, uint32_t &val)
 }
 
 Resource::ResOpResult Chanend::
-chkct(ThreadState &thread, ticks_t time, uint32_t value)
+chkct(Thread &thread, ticks_t time, uint32_t value)
 {
   bool isCt;
   if (!testct(thread, time, isCt)) {
@@ -251,7 +251,7 @@ chkct(ThreadState &thread, ticks_t time, uint32_t value)
 }
 
 Resource::ResOpResult Chanend::
-in(ThreadState &thread, ticks_t time, uint32_t &value)
+in(Thread &thread, ticks_t time, uint32_t &value)
 {
   unsigned Position;
   if (!testwct(thread, time, Position))

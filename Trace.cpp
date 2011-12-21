@@ -77,7 +77,7 @@ void Tracer::printThreadName()
   *line.buf << ":t" << line.thread->getNum();
 }
 
-void Tracer::printCommonStart(const ThreadState &t)
+void Tracer::printCommonStart(const Thread &t)
 {
   printCommonStart();
   line.thread = &t;
@@ -117,7 +117,7 @@ void Tracer::printThreadPC()
   }
 }
 
-void Tracer::printInstructionStart(const ThreadState &t)
+void Tracer::printInstructionStart(const Thread &t)
 {
   printCommonStart(t);
   *line.buf << ' ';
@@ -258,7 +258,7 @@ void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
 }
 
 void Tracer::
-event(const ThreadState &t, const EventableResource &res, uint32_t pc,
+event(const Thread &t, const EventableResource &res, uint32_t pc,
       uint32_t ev)
 {
   PushLineState save;
@@ -273,7 +273,7 @@ event(const ThreadState &t, const EventableResource &res, uint32_t pc,
 }
 
 void Tracer::
-interrupt(const ThreadState &t, const EventableResource &res, uint32_t pc,
+interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
           uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed)
 {
   PushLineState save;
@@ -291,7 +291,7 @@ interrupt(const ThreadState &t, const EventableResource &res, uint32_t pc,
 }
 
 void Tracer::
-exception(const ThreadState &t, uint32_t et, uint32_t ed, 
+exception(const Thread &t, uint32_t et, uint32_t ed, 
           uint32_t sed, uint32_t ssr, uint32_t spc)
 {
   PushLineState save;
@@ -308,7 +308,7 @@ exception(const ThreadState &t, uint32_t et, uint32_t ed,
 }
 
 void Tracer::
-syscallBegin(const ThreadState &t)
+syscallBegin(const Thread &t)
 {
   printCommonStart(t);
   red();
@@ -321,7 +321,7 @@ void Tracer::dumpThreadSummary(const Core &core)
     const Thread &t = core.getThread(i);
     if (!t.isInUse())
       continue;
-    const ThreadState &ts = t;
+    const Thread &ts = t;
     printCommonStart();
     line.thread = &ts;
     *line.buf << "Thread ";

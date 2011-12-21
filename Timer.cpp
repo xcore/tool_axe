@@ -14,7 +14,7 @@ bool Timer::conditionMet(ticks_t time) const
 }
 
 bool Timer::
-setCondition(ThreadState &thread, Condition c, ticks_t time)
+setCondition(Thread &thread, Condition c, ticks_t time)
 {
   updateOwner(thread);
   switch (c) {
@@ -30,7 +30,7 @@ setCondition(ThreadState &thread, Condition c, ticks_t time)
 }
 
 bool Timer::
-setData(ThreadState &thread, uint32_t d, ticks_t time)
+setData(Thread &thread, uint32_t d, ticks_t time)
 {
   updateOwner(thread);
   data = d;
@@ -38,7 +38,7 @@ setData(ThreadState &thread, uint32_t d, ticks_t time)
 }
 
 Resource::ResOpResult Timer::
-in(ThreadState &thread, ticks_t time, uint32_t &val)
+in(Thread &thread, ticks_t time, uint32_t &val)
 {
   updateOwner(thread);
   if (!conditionMet(time)) {

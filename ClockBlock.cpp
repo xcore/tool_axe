@@ -43,7 +43,7 @@ seeEdgeOnAttachedPorts(Edge::Type edgeType, ticks_t time) {
 }
   
 bool ClockBlock::
-setCInUse(ThreadState &thread, bool val, ticks_t time)
+setCInUse(Thread &thread, bool val, ticks_t time)
 {
   updateAttachedPorts(time);
   running = false;
@@ -58,7 +58,7 @@ setCInUse(ThreadState &thread, bool val, ticks_t time)
   return true;
 }
 
-bool ClockBlock::setSource(ThreadState &thread, Port *p, ticks_t time)
+bool ClockBlock::setSource(Thread &thread, Port *p, ticks_t time)
 {
   if (divide != 1)
     return false;
@@ -71,7 +71,7 @@ bool ClockBlock::setSource(ThreadState &thread, Port *p, ticks_t time)
   return true;
 }
 
-void ClockBlock::setSourceRefClock(ThreadState &thread, ticks_t time)
+void ClockBlock::setSourceRefClock(Thread &thread, ticks_t time)
 {
   updateAttachedPorts(time);
   if (source) {
@@ -83,7 +83,7 @@ void ClockBlock::setSourceRefClock(ThreadState &thread, ticks_t time)
   setValue(newValue, time);
 }
 
-bool ClockBlock::setData(ThreadState &thread, uint32_t newDivide, ticks_t time) {
+bool ClockBlock::setData(Thread &thread, uint32_t newDivide, ticks_t time) {
   if (source)
     return false;
   newDivide = newDivide & 0xff;
@@ -123,7 +123,7 @@ Signal ClockBlock::getValue() const
   return Signal(0);
 }
 
-bool ClockBlock::setReady(ThreadState &thread, Port *p, ticks_t time)
+bool ClockBlock::setReady(Thread &thread, Port *p, ticks_t time)
 {
   updateAttachedPorts(time);
   p->update(time);
@@ -138,7 +138,7 @@ bool ClockBlock::setReady(ThreadState &thread, Port *p, ticks_t time)
   return true;
 }
 
-void ClockBlock::start(ThreadState &thread, ticks_t time)
+void ClockBlock::start(Thread &thread, ticks_t time)
 {
   updateAttachedPorts(time);
   // Start the clock
@@ -153,7 +153,7 @@ void ClockBlock::start(ThreadState &thread, ticks_t time)
   }
 }
 
-void ClockBlock::stop(ThreadState &thread, ticks_t time)
+void ClockBlock::stop(Thread &thread, ticks_t time)
 {
   if (!running)
     return;

@@ -27,7 +27,7 @@ void Core::dumpPaused() const
     if (!t->isInUse())
       continue;
     std::cout << "Thread " << std::dec << i;
-    ThreadState &ts = *t;
+    Thread &ts = *t;
     if (Resource *res = ts.pausedOn) {
       std::cout << " paused on ";
       std::cout << Resource::getResourceName(res->getType());

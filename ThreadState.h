@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#ifndef _ThreadState_h_
-#define _ThreadState_h_
+#ifndef _Thread_h_
+#define _Thread_h_
 
 #include <stdint.h>
 #include <ostream>
@@ -112,7 +112,7 @@ private:
 
 class Core;
 
-class ThreadState : public Runnable, public Resource {
+class Thread : public Runnable, public Resource {
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -146,7 +146,7 @@ public:
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
 
-  ThreadState() : Resource(RES_TYPE_THREAD), parent(0) {
+  Thread() : Resource(RES_TYPE_THREAD), parent(0) {
     time = 0;
     pc = 0;
     regs[KEP] = 0;
@@ -160,7 +160,7 @@ public:
     setInUse(false);
   }
 
-  bool alloc(ThreadState &CurrentThread)
+  bool alloc(Thread &CurrentThread)
   {
     alloc(CurrentThread.time);
     return true;
@@ -330,6 +330,4 @@ struct PendingEvent {
   ticks_t time;
 };
 
-typedef ThreadState Thread;
-
-#endif // _ThreadState_h_
+#endif // _Thread_h_

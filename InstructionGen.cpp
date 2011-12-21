@@ -731,7 +731,7 @@ emitInstDispatch(Instruction &instruction)
     if (operands[i] == in)
       std::cout << "const ";
     if (isSR(instruction, i)) {
-      std::cout << "ThreadState::sr_t op" << i << ") = this->sr";
+      std::cout << "Thread::sr_t op" << i << ") = this->sr";
     } else {
       std::cout << "uint32_t op" << i << ')';
       switch (operands[i]) {
@@ -1459,10 +1459,10 @@ void add()
     .addImplicitOp(r11, out)
     .addImplicitOp(cp, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
-  fu6("SETSR", "setsr %0", "%1 = %1 | ThreadState::sr_t((int)%0);")
+  fu6("SETSR", "setsr %0", "%1 = %1 | Thread::sr_t((int)%0);")
     .addImplicitOp(sr, inout)
     .setSync();
-  fu6("CLRSR", "clrsr %0", "%1 = %1 & ~ThreadState::sr_t((int)%0);")
+  fu6("CLRSR", "clrsr %0", "%1 = %1 & ~Thread::sr_t((int)%0);")
     .addImplicitOp(sr, inout)
     .setSync();
   fu6("BLAT", "blat %0",
@@ -1705,7 +1705,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(*this, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  ThreadState &threadState = *t;\n"
+         "  Thread &threadState = *t;\n"
          "  unsigned newPc = TO_PC(%0);\n"
          "  if (CHECK_PC(newPc)) {;\n"
          "    // Set pc to one previous address since it will be incremented when\n"
@@ -2147,8 +2147,8 @@ void add()
   f0r("KRET", "kret",
       "%pc = TO_PC(%0);\n"
       "%3 = %1;\n"
-      "ThreadState::sr_t value((int)%2);\n"
-      "value[ThreadState::WAITING] = false;\n"
+      "Thread::sr_t value((int)%2);\n"
+      "value[Thread::WAITING] = false;\n"
       "%4 = value;")
     .addImplicitOp(spc, in)
     .addImplicitOp(sed, in)

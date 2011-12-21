@@ -137,7 +137,7 @@ public:
   }
 };
 
-class ThreadState;
+class Thread;
 class Port;
 
 /// Resource base class.
@@ -188,7 +188,7 @@ public:
     return false;
   }
 
-  virtual bool setCInUse(ThreadState &thread, bool val, ticks_t time)
+  virtual bool setCInUse(Thread &thread, bool val, ticks_t time)
   {
     return false;
   }
@@ -200,22 +200,22 @@ public:
     COND_NEQ
   };
 
-  virtual bool setCondition(ThreadState &thread, Condition c, ticks_t time)
+  virtual bool setCondition(Thread &thread, Condition c, ticks_t time)
   {
     return false;
   }
 
-  virtual bool setData(ThreadState &thread, uint32_t value, ticks_t time)
+  virtual bool setData(Thread &thread, uint32_t value, ticks_t time)
   {
     return false;
   }
 
-  virtual bool setReady(ThreadState &thread, Port *p, ticks_t time)
+  virtual bool setReady(Thread &thread, Port *p, ticks_t time)
   {
     return false;
   }
 
-  virtual bool alloc(ThreadState &master)
+  virtual bool alloc(Thread &master)
   {
     return false;
   }
@@ -235,12 +235,12 @@ public:
     ILLEGAL
   };
 
-  virtual ResOpResult in(ThreadState &thread, ticks_t time, uint32_t &value)
+  virtual ResOpResult in(Thread &thread, ticks_t time, uint32_t &value)
   {
     return ILLEGAL;
   }
 
-  virtual ResOpResult out(ThreadState &thread, uint32_t value, ticks_t time)
+  virtual ResOpResult out(Thread &thread, uint32_t value, ticks_t time)
   {
     return ILLEGAL;
   }
@@ -266,12 +266,12 @@ private:
   bool interruptMode;
   /// The thread which owns this resource. This is the last thread to perform
   /// an operation on the resource.
-  ThreadState *owner;
+  Thread *owner;
 
-  uint32_t getTruncatedEV(ThreadState &s) const;
+  uint32_t getTruncatedEV(Thread &s) const;
   
   void clearOwner();
-  void updateOwnerAux(ThreadState &t);
+  void updateOwnerAux(Thread &t);
 
 protected:
   EventableResource(ResourceType Type) :
@@ -280,7 +280,7 @@ protected:
     next(0),
     prev(0) {}
 
-  void updateOwner(ThreadState &t)
+  void updateOwner(Thread &t)
   {
     if (owner == &t)
       return;
@@ -293,28 +293,28 @@ protected:
   /// executing, otherwise the owner is scheduled.s
   void event(ticks_t time);
 
-  void eventableSetInUse(ThreadState &t, bool val);
-  void eventableSetInUseOn(ThreadState &t);
+  void eventableSetInUse(Thread &t, bool val);
+  void eventableSetInUseOn(Thread &t);
   void eventableSetInUseOff();
 
   virtual bool seeEventEnable(ticks_t time) = 0;
 
   void scheduleUpdate(ticks_t time);
 public:
-  ThreadState &getOwner()
+  Thread &getOwner()
   {
     return *owner;
   }
   virtual void completeEvent();
 
-  void setVector(ThreadState &thread, uint32_t v);
-  void setEV(ThreadState &thread, uint32_t ev);
+  void setVector(Thread &thread, uint32_t v);
+  void setEV(Thread &thread, uint32_t ev);
   /// Set the interrupt mode on this resource.
-  void setInterruptMode(ThreadState &thread, bool Enable);
-  void eventDisable(ThreadState &thread);
+  void setInterruptMode(Thread &thread, bool Enable);
+  void eventDisable(Thread &thread);
 
   /// Enable events on this resource.
-  void eventEnable(ThreadState &thread);
+  void eventEnable(Thread &thread);
   
   /// Checks to see if the resource can event. This should only be called if
   /// the resource's owner is the current thread. If the resource can event then

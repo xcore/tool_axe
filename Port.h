@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <set>
 
-class ThreadState;
+class Thread;
 class ClockBlock;
 struct Signal;
 
@@ -48,11 +48,11 @@ private:
   /// Ready out ports.
   std::set<Port*> readyOutPorts;
   /// Thread paused on an output instruction.
-  ThreadState *pausedOut;
+  Thread *pausedOut;
   /// Thread paused on an input instruction.
-  ThreadState *pausedIn;
+  Thread *pausedIn;
   /// Thread paused on a sync instruction.
-  ThreadState *pausedSync;
+  Thread *pausedSync;
   /// Number of port width entries in the transfer register.
   unsigned shiftRegEntries;
   /// Number of port width entries for the current input / next output.
@@ -154,24 +154,24 @@ public:
   Port();
   std::string getName() const;
   Signal getPinsValue() const;
-  bool setCInUse(ThreadState &thread, bool val, ticks_t time);
+  bool setCInUse(Thread &thread, bool val, ticks_t time);
 
-  bool setCondition(ThreadState &thread, Condition c, ticks_t time);
-  bool setData(ThreadState &thread, uint32_t d, ticks_t time);
+  bool setCondition(Thread &thread, Condition c, ticks_t time);
+  bool setData(Thread &thread, uint32_t d, ticks_t time);
 
-  ResOpResult in(ThreadState &thread, ticks_t time, uint32_t &value);
-  ResOpResult inpw(ThreadState &thread, uint32_t width, ticks_t time,
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
+  ResOpResult inpw(Thread &thread, uint32_t width, ticks_t time,
                    uint32_t &value);
-  ResOpResult out(ThreadState &thread, uint32_t value, ticks_t time);
-  ResOpResult outpw(ThreadState &thread, uint32_t value, uint32_t width,
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult outpw(Thread &thread, uint32_t value, uint32_t width,
                     ticks_t time);
-  ResOpResult setpsc(ThreadState &thread, uint32_t value, ticks_t time);
-  ResOpResult endin(ThreadState &thread, ticks_t time, uint32_t &value);
-  ResOpResult sync(ThreadState &thread, ticks_t time);
-  uint32_t peek(ThreadState &thread, ticks_t time);
-  ResOpResult setPortTime(ThreadState &thread, uint32_t value, ticks_t time);
-  uint32_t getTimestamp(ThreadState &thread, ticks_t time);
-  void clearPortTime(ThreadState &thread, ticks_t time);
+  ResOpResult setpsc(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult endin(Thread &thread, ticks_t time, uint32_t &value);
+  ResOpResult sync(Thread &thread, ticks_t time);
+  uint32_t peek(Thread &thread, ticks_t time);
+  ResOpResult setPortTime(Thread &thread, uint32_t value, ticks_t time);
+  uint32_t getTimestamp(Thread &thread, ticks_t time);
+  void clearPortTime(Thread &thread, ticks_t time);
 
   void setLoopback(PortInterface *p) { loopback = p; }
   void setTracer(PortInterface *p) { tracer = p; }
@@ -197,25 +197,25 @@ public:
     seeClockChange(time);
   }
 
-  void setClk(ThreadState &thread, ClockBlock *c, ticks_t time);
+  void setClk(Thread &thread, ClockBlock *c, ticks_t time);
 
-  bool setReady(ThreadState &thread, Port *p, ticks_t time);
+  bool setReady(Thread &thread, Port *p, ticks_t time);
 
-  bool setBuffered(ThreadState &thread, bool value, ticks_t time);
+  bool setBuffered(Thread &thread, bool value, ticks_t time);
 
-  bool setReadyMode(ThreadState &thread, ReadyMode readMode, ticks_t time);
+  bool setReadyMode(Thread &thread, ReadyMode readMode, ticks_t time);
 
-  bool setMasterSlave(ThreadState &thread, MasterSlave value, ticks_t time);
+  bool setMasterSlave(Thread &thread, MasterSlave value, ticks_t time);
 
-  bool setPortType(ThreadState &thread, PortType portType, ticks_t time);
+  bool setPortType(Thread &thread, PortType portType, ticks_t time);
 
-  bool setTransferWidth(ThreadState &thread, uint32_t value, ticks_t time);
+  bool setTransferWidth(Thread &thread, uint32_t value, ticks_t time);
 
   void seeClockStart(ticks_t time);
 
   void seeClockChange(ticks_t time);
 
-  void clearBuf(ThreadState &thread, ticks_t time);
+  void clearBuf(Thread &thread, ticks_t time);
 
   void registerAsSourceOf(ClockBlock *c) {
     sourceOf.insert(c);

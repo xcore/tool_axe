@@ -57,7 +57,7 @@ private:
       out(&o),
       buf(&b),
       pending(&pendingBuf) {}
-    const ThreadState *thread;
+    const Thread *thread;
     bool hadRegWrite;
     size_t numEscapeChars;
     std::ostream *out;
@@ -90,10 +90,10 @@ private:
   void printThreadName();
   void printCommonStart();
   void printCommonStart(const Node &n);
-  void printCommonStart(const ThreadState &t);
+  void printCommonStart(const Thread &t);
   void printCommonEnd();
   void printThreadPC();
-  void printInstructionStart(const ThreadState &t);
+  void printInstructionStart(const Thread &t);
 
   template <typename T>
     void printOperand(const T &op)
@@ -116,14 +116,14 @@ public:
   void setColour(bool enable);
 
   template<typename T0>
-  void trace(const ThreadState &t, T0 op0)
+  void trace(const Thread &t, T0 op0)
   {
     printInstructionStart(t);
     printOperand(op0);
   }
   
   template<typename T0, typename T1>
-  void trace(const ThreadState &t, T0 op0, T1 op1)
+  void trace(const Thread &t, T0 op0, T1 op1)
   {
     printInstructionStart(t);
     printOperand(op0);
@@ -131,7 +131,7 @@ public:
   }
   
   template<typename T0, typename T1, typename T2>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2)
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2)
   {
     printInstructionStart(t);
     printOperand(op0);
@@ -140,7 +140,7 @@ public:
   }
   
   template<typename T0, typename T1, typename T2, typename T3>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2,
              T3 op3)
   {
     printInstructionStart(t);
@@ -151,7 +151,7 @@ public:
   }
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4)
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4)
   {
     printInstructionStart(t);
     printOperand(op0);
@@ -163,7 +163,7 @@ public:
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5)
   {
     printInstructionStart(t);
@@ -177,7 +177,7 @@ public:
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
            typename T5, typename T6>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5, T6 op6)
   {
     printInstructionStart(t);
@@ -192,7 +192,7 @@ public:
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
            typename T5, typename T6, typename T7>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5, T6 op6, T7 op7)
   {
     printInstructionStart(t);
@@ -208,7 +208,7 @@ public:
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5, T6 op6, T7 op7, T8 op8)
   {
     printInstructionStart(t);
@@ -225,7 +225,7 @@ public:
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8, typename T9>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5, T6 op6, T7 op7, T8 op8, T9 op9)
   {
     printInstructionStart(t);
@@ -243,7 +243,7 @@ public:
   
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5, T6 op6, T7 op7, T8 op8, T9 op9, T10 op10)
   {
     printInstructionStart(t);
@@ -263,7 +263,7 @@ public:
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8, typename T9, typename T10,
   typename T11>
-  void trace(const ThreadState &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
+  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
              T5 op5, T6 op6, T7 op7, T8 op8, T9 op9, T10 op10, T11 op11)
   {
     printInstructionStart(t);
@@ -294,24 +294,24 @@ public:
   void SSwitchAck(const Node &node, uint32_t dest);
   void SSwitchAck(const Node &node, uint32_t data, uint32_t dest);
 
-  void exception(const ThreadState &t, uint32_t et, uint32_t ed, 
+  void exception(const Thread &t, uint32_t et, uint32_t ed, 
                  uint32_t sed, uint32_t ssr, uint32_t spc);
 
-  void event(const ThreadState &t, const EventableResource &res, uint32_t pc,
+  void event(const Thread &t, const EventableResource &res, uint32_t pc,
              uint32_t ev);
   
-  void interrupt(const ThreadState &t, const EventableResource &res, uint32_t pc,
+  void interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
                  uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed);
 
-  void syscallBegin(const ThreadState &t);
+  void syscallBegin(const Thread &t);
 
-  void syscall(const ThreadState &t, const std::string &s) {
+  void syscall(const Thread &t, const std::string &s) {
     syscallBegin(t);
     *line.buf << s << "()";
     reset();
   }
   template<typename T0>
-  void syscall(const ThreadState &t, const std::string &s,
+  void syscall(const Thread &t, const std::string &s,
                T0 op0) {
     syscallBegin(t);
     *line.buf << s << '(' << op0 << ')';
