@@ -19,7 +19,7 @@
 #include "Chanend.h"
 #include "ClockBlock.h"
 #include "Port.h"
-#include "ThreadState.h"
+#include "Thread.h"
 #include "Timer.h"
 #include "Instruction.h"
 #include "Trace.h"

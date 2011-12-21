@@ -8,7 +8,7 @@
 
 #include <vector>
 #include <memory>
-#include "ThreadState.h"
+#include "Thread.h"
 #include "RunnableQueue.h"
 
 class Node;

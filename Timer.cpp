@@ -4,7 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "Timer.h"
-#include "ThreadState.h"
+#include "Thread.h"
 
 bool Timer::conditionMet(ticks_t time) const
 {

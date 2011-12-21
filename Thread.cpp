@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include "ThreadState.h"
+#include "Thread.h"
 #include "Core.h"
 #include "Node.h"
 #include "SystemState.h"

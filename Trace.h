@@ -7,7 +7,7 @@
 #define _Trace_h_
 
 #include "SymbolInfo.h"
-#include "ThreadState.h"
+#include "Thread.h"
 #include "TerminalColours.h"
 #include <iostream>
 #include <sstream>
