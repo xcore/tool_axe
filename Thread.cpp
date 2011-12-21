@@ -509,17 +509,17 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
 }
 
 #ifdef DIRECT_THREADED
-#define START_DISPATCH_LOOP goto *opcode[PC];
-#define END_DISPATCH_LOOP
 #define INST(s) s ## _label
-#define ENDINST goto *opcode[PC]
-#define OPCODE(s) &&INST(s)
+#define ENDINST goto *(opcode[PC] + (char*)&&INST(DECODE))
+#define OPCODE(s) ((char*)&&INST(s) - (char*)&&INST(DECODE))
+#define START_DISPATCH_LOOP ENDINST;
+#define END_DISPATCH_LOOP
 #else
-#define START_DISPATCH_LOOP while(1) { switch (opcode[PC]) {
-#define END_DISPATCH_LOOP } }
 #define INST(inst) case (inst)
 #define ENDINST break
 #define OPCODE(s) s
+#define START_DISPATCH_LOOP while(1) { switch (opcode[PC]) {
+#define END_DISPATCH_LOOP } }
 #endif
 
 #define LOAD_WORD(addr) core->loadWord(addr)

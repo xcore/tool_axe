@@ -7,6 +7,7 @@
 #define _Instruction_h_
 
 #include "Config.h"
+#include <cstddef>
 
 /// Below are all the instructions supported by the interpreter.
 /// The instructions match those of the XCore except where noted below.
@@ -34,7 +35,7 @@ enum InstructionOpcode {
 };
 
 #ifdef DIRECT_THREADED
-typedef void * OPCODE_TYPE;
+typedef ptrdiff_t OPCODE_TYPE;
 #else
 typedef InstructionOpcode OPCODE_TYPE;
 #endif
