@@ -2245,6 +2245,7 @@ void add()
   pseudoInst("DECODE", "", "").setCustom();
   pseudoInst("SYSCALL", "", "").setCustom();
   pseudoInst("EXCEPTION", "", "").setCustom();
+  pseudoInst("INITIALIZE", "", "").setCustom();
 }
 
 int main()

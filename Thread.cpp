@@ -510,8 +510,8 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
 
 #ifdef DIRECT_THREADED
 #define INST(s) s ## _label
-#define ENDINST goto *(opcode[PC] + (char*)&&INST(DECODE))
-#define OPCODE(s) ((char*)&&INST(s) - (char*)&&INST(DECODE))
+#define ENDINST goto *(opcode[PC] + (char*)&&INST(INITIALIZE))
+#define OPCODE(s) ((char*)&&INST(s) - (char*)&&INST(INITIALIZE))
 #define START_DISPATCH_LOOP ENDINST;
 #define END_DISPATCH_LOOP
 #else
@@ -650,9 +650,6 @@ void Thread::run(ticks_t time)
 
 template <bool tracing>
 void Thread::runAux(ticks_t time) {
-  getParent().ensureCacheIsValid(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
-                                 OPCODE(ILLEGAL_PC_THREAD),
-                                 OPCODE(SYSCALL), OPCODE(EXCEPTION));
   SystemState &sys = *getParent().getParent()->getParent();
   uint32_t pc = this->pc;
   Core *core = &this->getParent();
@@ -663,6 +660,11 @@ void Thread::runAux(ticks_t time) {
   // NEXT_THREAD() to ensure one thread which never pauses cannot starve the
   // other threads.
   START_DISPATCH_LOOP
+  INST(INITIALIZE):
+    getParent().initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
+                          OPCODE(ILLEGAL_PC_THREAD), OPCODE(SYSCALL),
+                          OPCODE(EXCEPTION));
+    ENDINST;
 #define EMIT_INSTRUCTION_DISPATCH
 #include "InstructionGenOutput.inc"
 #undef EMIT_INSTRUCTION_DISPATCH

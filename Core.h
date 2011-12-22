@@ -61,7 +61,6 @@ public:
   // are use for communicating illegal states.
   OPCODE_TYPE *opcode;
   Operands *operands;
-  bool cacheIsValid;
 
   const uint32_t ram_size;
   const uint32_t ram_base;
@@ -86,7 +85,6 @@ public:
     parent(0),
     opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
     operands(new Operands[RamSize >> 1]),
-    cacheIsValid(false),
     ram_size(RamSize),
     ram_base(RamBase),
     syscallAddress(~0),
@@ -159,18 +157,20 @@ public:
       portNum[width] = num;
     }
     thread[0].alloc(0);
+
+    // Initialise instruction cache.
+    for (unsigned i = 0; i < (RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
+         ++i) {
+#ifdef DIRECT_THREADED
+      opcode[i] = 0;
+#else
+      opcode[i] = INITIALIZE;
+#endif
+    }
   }
 
   bool setSyscallAddress(uint32_t value);
   bool setExceptionAddress(uint32_t value);
-
-  void ensureCacheIsValid(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                          OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-                          OPCODE_TYPE exception) {
-    if (cacheIsValid)
-      return;
-    initCache(decode, illegalPC, illegalPCThread, syscall, exception);
-  }
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,

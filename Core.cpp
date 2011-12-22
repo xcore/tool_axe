@@ -114,7 +114,6 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
     opcode[syscallAddress] = syscall;
   if (exceptionAddress < ramSizeShorts)
     opcode[exceptionAddress] = exception;
-  cacheIsValid = true;
 }
 
 bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)
