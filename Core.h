@@ -209,12 +209,20 @@ public:
     return address < ram_size;
   }
 
+  uint8_t *mem() {
+    return reinterpret_cast<uint8_t*>(memory);
+  }
+
+  const uint8_t *mem() const {
+    return reinterpret_cast<uint8_t*>(memory);
+  }
+
   uint32_t loadWord(uint32_t address) const
   {
     if (HOST_LITTLE_ENDIAN) {
-      return memory[address >> 2];
+      return *reinterpret_cast<const uint32_t*>((mem() + address));
     } else {
-      return bswap32(memory[address >> 2]);
+      return bswap32(*reinterpret_cast<const uint32_t*>((mem() + address)));
     }
   }
 
@@ -225,25 +233,20 @@ public:
 
   uint8_t loadByte(uint32_t address) const
   {
-    return ((uint8_t *)memory)[address];
+    return mem()[address];
   }
-  
+
   uint8_t &byte(uint32_t address)
   {
-    return ((uint8_t *)memory)[address];
-  }
-  
-  uint8_t *mem()
-  {
-    return (uint8_t *)memory;
+    return mem()[address];
   }
 
   void storeWord(uint32_t value, uint32_t address)
   {
     if (HOST_LITTLE_ENDIAN) {
-      memory[address >> 2] = value;
+      *reinterpret_cast<uint32_t*>((mem() + address)) = value;
     } else {
-      memory[address >> 2] = bswap32(value);
+      *reinterpret_cast<uint32_t*>((mem() + address)) = bswap32(value);
     }
   }
 
@@ -255,7 +258,7 @@ public:
 
   void storeByte(uint8_t value, uint32_t address)
   {
-    ((uint8_t *)memory)[address] = value;
+    mem()[address] = value;
   }
   
   Resource *allocResource(Thread &current, ResourceType type)
