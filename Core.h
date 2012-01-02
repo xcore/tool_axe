@@ -25,6 +25,7 @@
 #include "Instruction.h"
 #include "Trace.h"
 #include "RunnableQueue.h"
+#include <string>
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
@@ -51,6 +52,7 @@ private:
   uint32_t * const memory;
   unsigned coreNumber;
   Node *parent;
+  std::string codeReference;
 
   bool hasMatchingNodeID(ResourceID ID);
 public:
@@ -294,6 +296,8 @@ public:
   void dumpPaused() const;
   Thread &getThread(unsigned num) { return thread[num]; }
   const Thread &getThread(unsigned num) const { return thread[num]; }
+  void setCodeReference(const std::string &value) { codeReference = value; }
+  std::string getCoreName() const;
 
   class port_iterator {
     Core *core;

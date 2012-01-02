@@ -87,7 +87,7 @@ private:
   void red() { escapeCode(colours.red); }
   void green() { escapeCode(colours.green); }
 
-  void printThreadID();
+  void printThreadName();
   void printCommonStart();
   void printCommonStart(const Node &n);
   void printCommonStart(const ThreadState &t);

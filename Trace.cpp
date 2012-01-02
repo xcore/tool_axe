@@ -13,8 +13,8 @@
 #include <sstream>
 #include <cstring>
 
-const unsigned mnemonicColumn = 40;
-const unsigned regWriteColumn = 78;
+const unsigned mnemonicColumn = 49;
+const unsigned regWriteColumn = 87;
 
 Tracer Tracer::instance;
 
@@ -71,10 +71,10 @@ void Tracer::printCommonStart()
   line.thread = 0;
 }
 
-void Tracer::printThreadID()
+void Tracer::printThreadName()
 {
-  *line.buf << 'c' << line.thread->getParent().getCoreID()
-            << 't' << line.thread->getID();
+  *line.buf << line.thread->getParent().getCoreName();
+  *line.buf << ":t" << line.thread->getID();
 }
 
 void Tracer::printCommonStart(const ThreadState &t)
@@ -85,9 +85,9 @@ void Tracer::printCommonStart(const ThreadState &t)
   // TODO add option to show cycles?
   //*line.buf << std::setw(6) << (uint64_t)line.thread->time;
   green();
-  *line.buf << '[';
-  printThreadID();
-  *line.buf << ']';
+  *line.buf << '<';
+  printThreadName();
+  *line.buf << '>';
   reset();
 }
 
@@ -96,9 +96,9 @@ void Tracer::printCommonStart(const Node &n)
   printCommonStart();
 
   green();
-  *line.buf << '[';
+  *line.buf << '<';
   *line.buf << 'n' << n.getNodeID();
-  *line.buf << ']';
+  *line.buf << '>';
   reset();
 }
 
@@ -325,7 +325,7 @@ void Tracer::dumpThreadSummary(const Core &core)
     printCommonStart();
     line.thread = &ts;
     *line.buf << "Thread ";
-    printThreadID();
+    printThreadName();
     if (ts.waiting()) {
       if (Resource *res = ts.pausedOn) {
         *line.buf << " paused on ";

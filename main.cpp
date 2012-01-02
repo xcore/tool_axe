@@ -810,12 +810,9 @@ connectLoopbackPorts(Core &state, const LoopbackPorts &ports)
 
 static void connectWaveformTracer(Core &core, WaveformTracer &waveformTracer)
 {
-  std::ostringstream buf;
-  buf << "core_" << core.getCoreID();
-  std::string coreName = buf.str();
   for (Core::port_iterator it = core.port_begin(), e = core.port_end();
        it != e; ++it) {
-    waveformTracer.add(coreName, *it);
+    waveformTracer.add(core.getCoreName(), *it);
   }
   waveformTracer.finalizePorts();
 }
@@ -853,13 +850,15 @@ createCoreFromConfig(xmlNode *config)
 {
   uint32_t ram_size = RAM_SIZE;
   uint32_t ram_base = RAM_BASE;
-  long coreNumber = readNumberAttribute(config, "number");
-  config = findChild(config, "MemoryController");
-  config = findChild(config, "Ram");
-  ram_base = readNumberAttribute(config, "base");
-  ram_size = readNumberAttribute(config, "size");
+  xmlNode *memoryController = findChild(config, "MemoryController");
+  xmlNode *ram = findChild(memoryController, "Ram");
+  ram_base = readNumberAttribute(ram, "base");
+  ram_size = readNumberAttribute(ram, "size");
   std::auto_ptr<Core> core(new Core(ram_size, ram_base));
-  core->setCoreNumber(coreNumber);
+  core->setCoreNumber(readNumberAttribute(config, "number"));
+  if (xmlAttr *codeReference = findAttribute(config, "codeReference")) {
+    core->setCodeReference((char*)codeReference->children->content);
+  }
   return core;
 }
 

@@ -8,6 +8,7 @@
 #include "Node.h"
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 bool Core::allocatable[LAST_STD_RES_TYPE + 1] = {
   false, // RES_TYPE_PORT
@@ -147,4 +148,13 @@ void Core::updateIDs()
 uint32_t Core::getCoreID() const
 {
   return getParent()->getCoreID(coreNumber);
+}
+
+std::string Core::getCoreName() const
+{
+  if (!codeReference.empty())
+    return codeReference;
+  std::ostringstream buf;
+  buf << 'c' << getCoreID();
+  return buf.str();
 }

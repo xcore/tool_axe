@@ -102,11 +102,19 @@
       <attribute name="number">
         <ref name="numberAnyBase"/>
       </attribute>
+      <optional>
+        <attribute name="codeReference">
+          <data type="string">
+            <param name="pattern">[_\[\]\.0-9a-zA-Z]+</param>
+          </data>
+        </attribute>
+      </optional>
       <zeroOrMore>
         <attribute>
           <anyName>
             <except>
               <name>number</name>
+              <name>codeReference</name>
             </except>
           </anyName>
         </attribute>
