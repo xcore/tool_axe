@@ -1,5 +1,5 @@
 // RUN: xcc -target=XC-5 %s -o %t1.xe
-// RUN: axe %t1.xe --loopback 0x10000 0x10200
+// RUN: axe %t1.xe --loopback XS1_PORT_1A XS1_PORT_1B
 
 #include <xs1.h>
 #include <print.h>
