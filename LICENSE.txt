@@ -1,6 +1,6 @@
 The following copyright notice and license applies to AXE:
 ---
-Copyright (c) 2011, Richard Osborne, All rights reserved.
+Copyright (c) 2011-2012, Richard Osborne, All rights reserved.
 
 The copyright holders hereby grant to any person obtaining a copy of this software (the "Software") and/or its associated 
 documentation files (the Documentation), the perpetual, irrevocable (except in the case of breach of this license) no-cost, 

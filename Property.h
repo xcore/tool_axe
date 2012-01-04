@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -9,13 +9,14 @@
 #include <cassert>
 
 #include "PeripheralDescriptor.h"
+#include "PortArg.h"
 #include <stdint.h>
 
 class Property {
   const PropertyDescriptor *descriptor;
   int32_t integer;
   std::string string;
-  uint32_t port;
+  PortArg port;
   Property(const PropertyDescriptor *d) : descriptor(d), integer(0) {}
   void setInteger(int32_t value) {
     assert(descriptor->getType() == PropertyDescriptor::INTEGER);
@@ -25,7 +26,7 @@ class Property {
     assert(descriptor->getType() == PropertyDescriptor::STRING);
     string = value;
   }
-  void setPort(const uint32_t value) {
+  void setPort(const PortArg &value) {
     assert(descriptor->getType() == PropertyDescriptor::PORT);
     port = value;
   }
@@ -34,7 +35,7 @@ public:
   static Property stringProperty(const PropertyDescriptor *d,
                                  const std::string &value);
   static Property portProperty(const PropertyDescriptor *d,
-                               uint32_t value);
+                               const PortArg &value);
   const PropertyDescriptor *getDescriptor() const { return descriptor; }
   int32_t getAsInteger() const {
     assert(descriptor->getType() == PropertyDescriptor::INTEGER);
@@ -44,7 +45,7 @@ public:
     assert(descriptor->getType() == PropertyDescriptor::STRING);
     return string;
   }
-  uint32_t getAsPort() const {
+  const PortArg &getAsPort() const {
     assert(descriptor->getType() == PropertyDescriptor::PORT);
     return port;
   }

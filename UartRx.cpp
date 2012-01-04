@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -164,8 +164,15 @@ createUartRx(SystemState &system, const Properties &properties)
   ticks_t bitTime = (CYCLES_PER_TICK*100000000)/bitrate;
   UartRx *p = new UartRx(system.getScheduler(), bitTime) ;
   Core &core = **(*system.node_begin())->core_begin();
-  Resource *res = core.getResourceByID(properties.get("port")->getAsPort());
-  Port *port = static_cast<Port *>(res);
+  PortArg portArg = properties.get("port")->getAsPort();
+  Port *port = portArg.lookup(core);
+  if (!port) {
+    // TODO check this in generic code.
+    std::cerr << "Error: Invalid port ";
+    portArg.dump(std::cerr);
+    std::cerr << '\n';
+    std::exit(1);
+  }
   port->setLoopback(p);
   return p;
 }

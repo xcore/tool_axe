@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -38,6 +38,7 @@
 #include "registerAllPeripherals.h"
 #include "UartRx.h"
 #include "Property.h"
+#include "PortArg.h"
 
 #define XCORE_ELF_MACHINE 0xB49E
 
@@ -781,29 +782,29 @@ do { \
 
 #define INSTRUCTION_CYCLES 4
 
-typedef std::vector<std::pair<uint32_t, uint32_t> > LoopbackPorts;
+typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
 static bool
 connectLoopbackPorts(Core &state, const LoopbackPorts &ports)
 {
   for (LoopbackPorts::const_iterator it = ports.begin(), e = ports.end();
        it != e; ++it) {
-    Resource *first = state.getResourceByID(it->first);
-    Resource *second = state.getResourceByID(it->second);
-    if (!first || first->getType() != RES_TYPE_PORT) {
-      std::cerr << std::hex;
-      std::cerr << "Error: Invalid port resource ID 0x" << it->first << "\n";
+    Port *first = it->first.lookup(state);
+    if (!first) {
+      std::cerr << "Error: Invalid port ";
+      it->first.dump(std::cerr);
+      std::cerr << '\n';
       return false;
     }
-    if (!second || second->getType() != RES_TYPE_PORT) {
-      std::cerr << std::hex;
-      std::cerr << "Error: Invalid port resource ID 0x" << it->second << "\n";
+    Port *second = it->second.lookup(state);
+    if (!second) {
+      std::cerr << "Error: Invalid port ";
+      it->second.dump(std::cerr);
+      std::cerr << '\n';
       return false;
     }
-    Port *firstPort = static_cast<Port*>(first);
-    Port *secondPort = static_cast<Port*>(second);
-    firstPort->setLoopback(secondPort);
-    secondPort->setLoopback(firstPort);
+    first->setLoopback(second);
+    second->setLoopback(first);
   }
   return true;
 }
@@ -1422,18 +1423,17 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
 
 static void loopbackOption(const char *a, const char *b, LoopbackPorts &loopbackPorts)
 {
-  char *endp;
-  uint32_t first = strtol(a, &endp, 0);
-  if (*endp != '\0') {
-    std::cerr << "Error: Invalid port resource ID " << a << "\n";
+  PortArg firstArg;
+  if (!PortArg::parse(a, firstArg)) {
+    std::cerr << "Error: Invalid port " << a << '\n';
     exit(1);
   }
-  uint32_t second = strtol(b, &endp, 0);
-  if (*endp != '\0') {
-    std::cerr << "Error: Invalid port resource ID " << b << "\n";
+  PortArg secondArg;
+  if (!PortArg::parse(b, secondArg)) {
+    std::cerr << "Error: Invalid port " << b << '\n';
     exit(1);
   }
-  loopbackPorts.push_back(std::make_pair(first, second));
+  loopbackPorts.push_back(std::make_pair(firstArg, secondArg));
 }
 
 static Property
@@ -1452,14 +1452,13 @@ parseIntegerProperty(const PropertyDescriptor *prop, const std::string &s)
 static Property
 parsePortProperty(const PropertyDescriptor *prop, const std::string &s)
 {
-  char *endp;
-  long value = std::strtol(s.c_str(), &endp, 0);
-  if (*endp != '\0') {
+  PortArg portArg;
+  if (!PortArg::parse(s, portArg)) {
     std::cerr << "Error: property " << prop->getName();
     std::cerr << " requires an port argument\n";
     std::exit(1);
   }
-  return Property::portProperty(prop, (uint32_t)value);
+  return Property::portProperty(prop, portArg);
 }
 
 static void

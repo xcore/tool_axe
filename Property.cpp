@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -21,7 +21,7 @@ stringProperty(const PropertyDescriptor *d, const std::string &value)
 }
 
 Property Property::
-portProperty(const PropertyDescriptor *d, uint32_t value)
+portProperty(const PropertyDescriptor *d, const PortArg &value)
 {
   Property p(d);
   p.setPort(value);
