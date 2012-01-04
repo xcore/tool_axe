@@ -7,15 +7,28 @@
 #include "PortNames.h"
 #include <iostream>
 #include <cstdlib>
+#include "SystemState.h"
+#include "Node.h"
 #include "Core.h"
 
 bool PortArg::parse(const std::string &s, PortArg &arg)
 {
-  arg = PortArg(s);
+  size_t pos;
+  std::string core;
+  std::string port;
+  if ((pos = s.find_first_of(':')) != std::string::npos) {
+    port = s.substr(pos + 1);
+    if (port.find_first_of(':') != std::string::npos)
+      return false;
+    core = s.substr(0, pos);
+  } else {
+    port = s;
+  }
+  arg = PortArg(core, port);
   return true;
 };
 
-static bool getPortResourceID(const std::string &s, uint32_t &id)
+static bool convertPortString(const std::string &s, uint32_t &id)
 {
   if (s.substr(0, 4) == "XS1_") {
     return getPortId(s.substr(4), id);
@@ -31,12 +44,32 @@ static bool getPortResourceID(const std::string &s, uint32_t &id)
   return true;
 }
 
-Port *PortArg::lookup(Core &c) const
+/// Finds the first core match with the specified code reference. If the
+/// code reference is empty then the first core is returned.
+static Core *findMatchingCore(const std::string &s, SystemState &system)
 {
-  uint32_t id;
-  if (!getPortResourceID(port, id))
+  for (SystemState::node_iterator outerIt = system.node_begin(),
+       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (Node::core_iterator innerIt = node.core_begin(),
+         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      Core *core = *innerIt;
+      if (s.empty() || core->getCodeReference() == s)
+        return core;
+    }
+  }
+  return 0;
+}
+
+Port *PortArg::lookup(SystemState &system) const
+{
+  Core *c = findMatchingCore(core, system);
+  if (!c)
     return 0;
-  Resource *res = c.getResourceByID(id);
+  uint32_t id;
+  if (!convertPortString(port, id))
+    return 0;
+  Resource *res = c->getResourceByID(id);
   if (!res || res->getType() != RES_TYPE_PORT)
     return 0;
   return static_cast<Port*>(res);

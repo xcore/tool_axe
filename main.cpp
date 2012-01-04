@@ -785,7 +785,7 @@ do { \
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
 static bool
-connectLoopbackPorts(Core &state, const LoopbackPorts &ports)
+connectLoopbackPorts(SystemState &state, const LoopbackPorts &ports)
 {
   for (LoopbackPorts::const_iterator it = ports.begin(), e = ports.end();
        it != e; ++it) {
@@ -1039,8 +1039,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
                                                entryPoints);
   SystemState &sys = *statePtr;
 
-  // TODO update to handle multiple cores.
-  if (!connectLoopbackPorts(**coresWithImage.begin(), loopbackPorts)) {
+  if (!connectLoopbackPorts(sys, loopbackPorts)) {
     std::exit(1);
   }
 

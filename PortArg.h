@@ -10,15 +10,16 @@
 #include <iosfwd>
 
 class Port;
-class Core;
+class SystemState;
 
 class PortArg {
+  std::string core;
   std::string port;
 public:
   PortArg() {}
-  PortArg(const std::string s) : port(s) {}
+  PortArg(const std::string &c, const std::string &p) : core(c), port(p) {}
   static bool parse(const std::string &s, PortArg &arg);
-  Port *lookup(Core &c) const;
+  Port *lookup(SystemState &system) const;
   void dump(std::ostream &s) const;
 };
 

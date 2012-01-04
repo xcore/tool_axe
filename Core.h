@@ -297,6 +297,7 @@ public:
   Thread &getThread(unsigned num) { return thread[num]; }
   const Thread &getThread(unsigned num) const { return thread[num]; }
   void setCodeReference(const std::string &value) { codeReference = value; }
+  const std::string &getCodeReference() const { return codeReference; }
   std::string getCoreName() const;
 
   class port_iterator {

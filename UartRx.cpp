@@ -163,9 +163,8 @@ createUartRx(SystemState &system, const Properties &properties)
     bitrate =  p->getAsInteger();
   ticks_t bitTime = (CYCLES_PER_TICK*100000000)/bitrate;
   UartRx *p = new UartRx(system.getScheduler(), bitTime) ;
-  Core &core = **(*system.node_begin())->core_begin();
   PortArg portArg = properties.get("port")->getAsPort();
-  Port *port = portArg.lookup(core);
+  Port *port = portArg.lookup(system);
   if (!port) {
     // TODO check this in generic code.
     std::cerr << "Error: Invalid port ";
