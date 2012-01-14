@@ -702,6 +702,7 @@ void Thread::runAux(ticks_t time) {
           PC++;
           break;
         case Synchroniser::SYNC_DESCHEDULE:
+          TRACE_END();
           PAUSE_ON(PC, sync);
           break;
         case Synchroniser::SYNC_KILL:
