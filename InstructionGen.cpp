@@ -22,30 +22,30 @@ enum OpType {
 };
 
 enum Register {
-  r0,
-  r1,
-  r2,
-  r3,
-  r4,
-  r5,
-  r6,
-  r7,
-  r8,
-  r9,
-  r10,
-  r11,
-  cp,
-  dp,
-  sp,
-  lr,
-  ed,
-  et,
-  kep,
-  ksp,
-  sr,
-  spc,
-  sed,
-  ssr
+  R0,
+  R1,
+  R2,
+  R3,
+  R4,
+  R5,
+  R6,
+  R7,
+  R8,
+  R9,
+  R10,
+  R11,
+  CP,
+  DP,
+  SP,
+  LR,
+  ED,
+  ET,
+  KEP,
+  KSP,
+  SR,
+  SPC,
+  SED,
+  SSR
 };
 
 const char *getRegisterName(Register reg) {
@@ -53,29 +53,29 @@ const char *getRegisterName(Register reg) {
   default:
     assert(0 && "Unexpected register");
     return "?";
-  case r0: return "R0";
-  case r1: return "R1";
-  case r2: return "R2";
-  case r3: return "R3";
-  case r4: return "R4";
-  case r5: return "R5";
-  case r6: return "R6";
-  case r7: return "R7";
-  case r8: return "R8";
-  case r9: return "R9";
-  case r10: return "R10";
-  case r11: return "R11";
-  case cp: return "CP";
-  case dp: return "DP";
-  case sp: return "SP";
-  case lr: return "LR";
-  case et: return "ET";
-  case ed: return "ED";
-  case kep: return "KEP";
-  case ksp: return "KSP";
-  case spc: return "SPC";
-  case sed: return "SED";
-  case ssr: return "SSR";
+  case R0: return "R0";
+  case R1: return "R1";
+  case R2: return "R2";
+  case R3: return "R3";
+  case R4: return "R4";
+  case R5: return "R5";
+  case R6: return "R6";
+  case R7: return "R7";
+  case R8: return "R8";
+  case R9: return "R9";
+  case R10: return "R10";
+  case R11: return "R11";
+  case CP: return "CP";
+  case DP: return "DP";
+  case SP: return "SP";
+  case LR: return "LR";
+  case ET: return "ET";
+  case ED: return "ED";
+  case KEP: return "KEP";
+  case KSP: return "KSP";
+  case SPC: return "SPC";
+  case SED: return "SED";
+  case SSR: return "SSR";
   }
 }
 
@@ -416,7 +416,7 @@ isSR(const Instruction &inst, unsigned i)
   Register value;
   if (!isFixedRegister(inst, i, value))
     return false;
-  return value == sr;
+  return value == SR;
 }
 
 static void
@@ -1624,7 +1624,7 @@ void add()
        "%3 = (uint32_t)Result;");
   fru6_out("LDAWDP", "ldaw %0, dp[%{dp}1]",
            "%0 = %2 + %1;")
-    .addImplicitOp(dp, in)
+    .addImplicitOp(DP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDWDP", "ldw %0, dp[%{dp}1]",
            "uint32_t Addr = %2 + %1;\n"
@@ -1633,7 +1633,7 @@ void add()
            "  %exception(ET_LOAD_STORE, Addr)\n"
            "}\n"
            "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(dp, in)
+    .addImplicitOp(DP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDWCP", "ldw %0, cp[%{cp}1]",
            "uint32_t Addr = %2 + %1;\n"
@@ -1642,7 +1642,7 @@ void add()
            "  %exception(ET_LOAD_STORE, Addr)\n"
            "}\n"
            "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(cp, in)
+    .addImplicitOp(CP, in)
   .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDWSP", "ldw %0, sp[%1]",
            "uint32_t Addr = %2 + %1;\n"
@@ -1651,7 +1651,7 @@ void add()
            "  %exception(ET_LOAD_STORE, Addr)\n"
            "}\n"
            "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(sp, in)
+    .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_in("STWDP", "stw %0, dp[%{dp}1]",
           "uint32_t Addr = %2 + %1;\n"
@@ -1660,7 +1660,7 @@ void add()
           "  %exception(ET_LOAD_STORE, Addr)\n"
           "}\n"
           "STORE_WORD(%0, PhyAddr);\n")
-    .addImplicitOp(dp, in)
+    .addImplicitOp(DP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_in("STWSP", "stw %0, sp[%1]",
           "uint32_t Addr = %2 + %1;\n"
@@ -1669,11 +1669,11 @@ void add()
           "  %exception(ET_LOAD_STORE, Addr)\n"
           "}\n"
           "STORE_WORD(%0, PhyAddr);\n")
-    .addImplicitOp(sp, in)
+    .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDAWSP", "ldaw %0, sp[%1]",
            "%0 = %2 + %1;")
-    .addImplicitOp(sp, in)
+    .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDC", "ldc %0, %1", "%0 = %1;");
   fru6_in("BRFT", "bt %0, %1",
@@ -1724,10 +1724,10 @@ void add()
        "}\n")
     .setSync().setCanEvent();
   fu6("EXTSP", "extsp %0", "%1 = %1 - %0;")
-    .addImplicitOp(sp, inout)
+    .addImplicitOp(SP, inout)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("EXTDP", "extdp %0", "%1 = %1 - %0;")
-    .addImplicitOp(dp, inout)
+    .addImplicitOp(DP, inout)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("ENTSP", "entsp %0",
       "if (%0 > 0) {\n"
@@ -1739,8 +1739,8 @@ void add()
       "  STORE_WORD(%2, PhyAddr);\n"
       "  %1 = %1 - %0;\n"
       "}\n")
-    .addImplicitOp(sp, inout)
-    .addImplicitOp(lr, in)
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(LR, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("RETSP", "retsp %0",
       "uint32_t target;\n"
@@ -1761,8 +1761,8 @@ void add()
       "%pc = target;\n"
       "%next"
       )
-    .addImplicitOp(sp, inout)
-    .addImplicitOp(lr, inout)
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(LR, inout)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
     // retsp always causes an fnop.
     .setCycles(2 * INSTRUCTION_CYCLES);
@@ -1774,8 +1774,8 @@ void add()
       "}\n"
       "%2 = Addr;\n"
       "%1 = LOAD_WORD(PhyAddr);")
-    .addImplicitOp(sp, inout)
-    .addImplicitOp(ksp, out)
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(KSP, out)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("KENTSP", "kentsp %0",
       "uint32_t PhyAddr = PHYSICAL_ADDR(%2);\n"
@@ -1784,8 +1784,8 @@ void add()
       "}\n"
       "STORE_WORD(%1, PhyAddr);\n"
       "%1 = %2 - OP(0);")
-    .addImplicitOp(sp, inout)
-    .addImplicitOp(ksp, in)
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(KSP, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("BRFU", "bu %0", "%pc = %0;")
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
@@ -1796,14 +1796,14 @@ void add()
   fu6("BRBU_illegal", "bu -%0", "%exception(ET_ILLEGAL_PC, %0)")
     .transform("%0 = %pc - %0;", "%0 = %0 - %pc;");  
   fu6("LDAWCP", "ldaw %1, cp[%{cp}0]", "%1 = %2 + %0;")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(cp, in)
+    .addImplicitOp(R11, out)
+    .addImplicitOp(CP, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("SETSR", "setsr %0", "%1 = %1 | Thread::sr_t((int)%0);")
-    .addImplicitOp(sr, inout)
+    .addImplicitOp(SR, inout)
     .setSync();
   fu6("CLRSR", "clrsr %0", "%1 = %1 & ~Thread::sr_t((int)%0);")
-    .addImplicitOp(sr, inout)
+    .addImplicitOp(SR, inout)
     .setSync();
   fu6("BLAT", "blat %0",
       "uint32_t Addr = %2 + (%0<<2);\n"
@@ -1824,14 +1824,14 @@ void add()
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
       "%next")
-    .addImplicitOp(lr, out)
-    .addImplicitOp(r11, in)
+    .addImplicitOp(LR, out)
+    .addImplicitOp(R11, in)
     // BLAT always causes an fnop.
     .setCycles(2 * INSTRUCTION_CYCLES);
   fu6("KCALL", "kcall %0", "%kcall(%0)");
   fu6("GETSR", "getsr %1, %0", "%1 = %0 & (uint32_t) %2.to_ulong();")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(sr, in);
+    .addImplicitOp(R11, out)
+    .addImplicitOp(SR, in);
   fu10("LDWCPL", "ldw %1, cp[%{cp}0]",
        "uint32_t Addr = %2 + %0;\n"
        "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -1839,20 +1839,20 @@ void add()
        "  %exception(ET_LOAD_STORE, Addr)\n"
        "}\n"
        "%1 = LOAD_WORD(PhyAddr);")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(cp, in)
+    .addImplicitOp(R11, out)
+    .addImplicitOp(CP, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   // TODO could be optimised to %1 = ram_base + %0
   fu10("LDAPF", "ldap %1, %0", "%1 = FROM_PC(%pc) + %0;")
-    .addImplicitOp(r11, out)
+    .addImplicitOp(R11, out)
     .transform("%0 = %0 << 1;", "%0 = %0 >> 1;");
   fu10("LDAPB", "ldap %1, -%0", "%1 = FROM_PC(%pc) - %0;")
-    .addImplicitOp(r11, out)
+    .addImplicitOp(R11, out)
     .transform("%0 = %0 << 1;", "%0 = %0 >> 1;");
   fu10("BLRF", "bl %0",
        "%1 = FROM_PC(%pc);\n"
        "%pc = %0;")
-    .addImplicitOp(lr, out)
+    .addImplicitOp(LR, out)
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
   fu10("BLRF_illegal", "bl %0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
@@ -1860,7 +1860,7 @@ void add()
        "%1 = FROM_PC(%pc);\n"
        "%pc = %0;\n"
        "%next")
-    .addImplicitOp(lr, out)
+    .addImplicitOp(LR, out)
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
   fu10("BLRB_illegal", "bl -%0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
@@ -1883,8 +1883,8 @@ void add()
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
       "%next\n")
-    .addImplicitOp(lr, out)
-    .addImplicitOp(cp, in)
+    .addImplicitOp(LR, out)
+    .addImplicitOp(CP, in)
     // BLACP always causes an fnop.
     .setCycles(2 * INSTRUCTION_CYCLES);
   f2r("NOT", "not %0, %1", "%0 = ~%1;");
@@ -2311,13 +2311,13 @@ void add()
          "}\n").setSync();
 
   f1r("SETSP", "set sp, %0", "%1 = %0;")
-    .addImplicitOp(sp, out);
+    .addImplicitOp(SP, out);
   // TODO should we check the pc range?
   f1r("SETDP", "set dp, %0", "%1 = %0;")
-    .addImplicitOp(dp, out);
+    .addImplicitOp(DP, out);
   // TODO should we check the pc range?
   f1r("SETCP", "set cp, %0", "%1 = %0;")
-    .addImplicitOp(cp, out);
+    .addImplicitOp(CP, out);
   f1r("ECALLT", "ecallt %0",
       "if (%0) {\n"
       "  %exception(ET_ECALL, 0)"
@@ -2349,7 +2349,7 @@ void add()
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
       "%next\n")
-    .addImplicitOp(lr, out);
+    .addImplicitOp(LR, out);
   f1r("BRU", "bru %0",
       "uint32_t target = %pc + %0;\n"
       "if (!CHECK_PC(target)) {\n"
@@ -2413,14 +2413,14 @@ void add()
       "  }\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").addImplicitOp(r11, in).setSync();
+      "}\n").addImplicitOp(R11, in).setSync();
   f1r("SETEV", "setev res[%0], %1",
       "ResourceID resID(%0);\n"
       "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
       "  res->setEV(THREAD, %1);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").addImplicitOp(r11, in).setSync();
+      "}\n").addImplicitOp(R11, in).setSync();
   f1r("EDU", "edu res[%0]",
       "ResourceID resID(%0);\n"
       "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
@@ -2466,23 +2466,23 @@ void add()
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync();
   f0r("GETID", "get %0, id", "%0 = THREAD.getNum();")
-    .addImplicitOp(r11, out);
+    .addImplicitOp(R11, out);
   f0r("GETET", "get %0, %1", "%0 = %1;")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(et, in);
+    .addImplicitOp(R11, out)
+    .addImplicitOp(ET, in);
   f0r("GETED", "get %0, %1", "%0 = %1;")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(ed, in);
+    .addImplicitOp(R11, out)
+    .addImplicitOp(ED, in);
   f0r("GETKEP", "get %0, %1", "%0 = %1;")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(kep, in);
+    .addImplicitOp(R11, out)
+    .addImplicitOp(KEP, in);
   f0r("GETKSP", "get %0, %1", "%0 = %1;")
-    .addImplicitOp(r11, out)
-    .addImplicitOp(ksp, in);
+    .addImplicitOp(R11, out)
+    .addImplicitOp(KSP, in);
   // KEP is 128-byte aligned, the lower 7 bits are set to 0.
   f0r("SETKEP", "set %0, %1", "%0 = %1 & ~((1 << 7) - 1);")
-    .addImplicitOp(kep, out)
-    .addImplicitOp(r11, in);
+    .addImplicitOp(KEP, out)
+    .addImplicitOp(R11, in);
   // TODO handle illegal spc
   f0r("KRET", "kret",
       "%pc = TO_PC(%0);\n"
@@ -2490,11 +2490,11 @@ void add()
       "Thread::sr_t value((int)%2);\n"
       "value[Thread::WAITING] = false;\n"
       "%4 = value;")
-    .addImplicitOp(spc, in)
-    .addImplicitOp(sed, in)
-    .addImplicitOp(ssr, in)
-    .addImplicitOp(ed, out)
-    .addImplicitOp(sr, out)
+    .addImplicitOp(SPC, in)
+    .addImplicitOp(SED, in)
+    .addImplicitOp(SSR, in)
+    .addImplicitOp(ED, out)
+    .addImplicitOp(SR, out)
     .setSync();
   f0r("DRESTSP", "drestsp", "").setUnimplemented();
   f0r("LDSPC", "ldw %0, sp[1]", 
@@ -2504,8 +2504,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(spc, out)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(SPC, out)
+    .addImplicitOp(SP, in);
   f0r("LDSSR", "ldw %0, sp[2]", 
       "uint32_t Addr = %1 + (2 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2513,8 +2513,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(ssr, out)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(SSR, out)
+    .addImplicitOp(SP, in);
   f0r("LDSED", "ldw %0, sp[3]", 
       "uint32_t Addr = %1 + (3 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2522,8 +2522,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(sed, out)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(SED, out)
+    .addImplicitOp(SP, in);
   f0r("LDET", "ldw %0, sp[4]", 
       "uint32_t Addr = %1 + (4 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2531,8 +2531,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "%0 = LOAD_WORD(PhyAddr);\n")
-    .addImplicitOp(et, out)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(ET, out)
+    .addImplicitOp(SP, in);
   f0r("STSPC", "stw %0, sp[1]", 
       "uint32_t Addr = %1 + (1 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2540,8 +2540,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "STORE_WORD(%0, PhyAddr);\n")
-    .addImplicitOp(spc, in)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(SPC, in)
+    .addImplicitOp(SP, in);
   f0r("STSSR", "stw %0, sp[2]", 
       "uint32_t Addr = %1 + (2 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2549,8 +2549,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "STORE_WORD(%0, PhyAddr);\n")
-    .addImplicitOp(ssr, in)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(SSR, in)
+    .addImplicitOp(SP, in);
   f0r("STSED", "stw %0, sp[3]", 
       "uint32_t Addr = %1 + (3 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2558,8 +2558,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "STORE_WORD(%0, PhyAddr);\n")
-    .addImplicitOp(sed, in)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(SED, in)
+    .addImplicitOp(SP, in);
   f0r("STET", "stw %0, sp[4]", 
       "uint32_t Addr = %1 + (4 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2567,8 +2567,8 @@ void add()
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
       "STORE_WORD(%0, PhyAddr);\n")
-    .addImplicitOp(et, in)
-    .addImplicitOp(sp, in);
+    .addImplicitOp(ET, in)
+    .addImplicitOp(SP, in);
   f0r("FREET", "freet", "").setCustom();
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
