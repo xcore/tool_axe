@@ -10,6 +10,7 @@
 #include "llvm-c/BitReader.h"
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Target.h"
+#include "llvm-c/Transforms/Scalar.h"
 #include "Instruction.h"
 #include "Core.h"
 #include "InstructionBitcode.h"
@@ -23,6 +24,7 @@ static LLVMModuleRef module;
 static LLVMBuilderRef builder;
 static LLVMExecutionEngineRef executionEngine;
 static LLVMTypeRef jitFunctionType;
+static LLVMPassManagerRef FPM;
 
 void JIT::init()
 {
@@ -36,7 +38,8 @@ void JIT::init()
     std::cerr << "Error loading bitcode: " << outMessage << '\n';
     std::abort();
   }
-  if (LLVMCreateJITCompilerForModule(&executionEngine, module, 0,
+  // TODO experiment with opt level.
+  if (LLVMCreateJITCompilerForModule(&executionEngine, module, 2,
                                       &outMessage)) {
     std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
     std::abort();
@@ -46,6 +49,12 @@ void JIT::init()
   LLVMValueRef callee = LLVMGetNamedFunction(module, properties.function);
   assert(callee && "Function for GETID_0r not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
+  FPM = LLVMCreateFunctionPassManagerForModule(module);
+  LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
+  LLVMAddInstructionCombiningPass(FPM);
+  LLVMAddConstantPropagationPass(FPM);
+  LLVMExtraAddDeadCodeEliminationPass(FPM);
+  LLVMInitializeFunctionPassManager(FPM);
 }
 
 static bool
@@ -119,6 +128,7 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
        it != e; ++it) {
     LLVMExtraInlineFunction(*it);
   }
+  LLVMRunFunctionPassManager(FPM, f);
   // Compile.
   out = reinterpret_cast<void (*)(Thread &)>(
           LLVMGetPointerToGlobal(executionEngine, f));

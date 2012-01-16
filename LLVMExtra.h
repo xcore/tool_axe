@@ -15,6 +15,9 @@ LLVMMemoryBufferRef
 LLVMExtraCreateMemoryBufferWithPtr(const char *ptr, size_t length);
 
 LLVMBool LLVMExtraInlineFunction(LLVMValueRef call);
+
+void LLVMExtraAddDeadCodeEliminationPass(LLVMPassManagerRef PM);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -7,6 +7,8 @@
 #include "llvm/Support/CallSite.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/PassManager.h"
 
 using namespace llvm;
 
@@ -20,4 +22,8 @@ LLVMBool LLVMExtraInlineFunction(LLVMValueRef call)
 {
   InlineFunctionInfo IFI;
   return InlineFunction(CallSite(unwrap(call)), IFI);
+}
+
+void LLVMExtraAddDeadCodeEliminationPass(LLVMPassManagerRef PM) {
+  unwrap(PM)->add(createDeadCodeEliminationPass());
 }
