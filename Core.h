@@ -30,6 +30,11 @@
 
 class Node;
 
+enum ProcessorState {
+  PS_RAM_BASE = 0x00b,
+  PS_VECTOR_BASE = 0x10b
+};
+
 class Core {
 public:
   enum {

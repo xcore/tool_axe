@@ -158,6 +158,7 @@ private:
   bool canEvent;
   bool unimplemented;
   bool custom;
+  bool canJit;
 public:
   Instruction(const std::string &n,
               unsigned s,
@@ -174,12 +175,16 @@ public:
     sync(false),
     canEvent(false),
     unimplemented(false),
-    custom(false)
+    custom(false),
+    canJit(false)
   {
   }
   const std::string &getName() const { return name; }
   unsigned getSize() const { return size; }
   const std::vector<OpType> &getOperands() const { return operands; }
+  unsigned getNumExplicitOperands() const {
+    return operands.size() - implicitOps.size();
+  }
   const std::vector<Register> &getImplicitOps() const { return implicitOps; }
   const std::string &getFormat() const { return format; }
   const std::string &getCode() const { return code; }
@@ -190,6 +195,7 @@ public:
   bool getCanEvent() const { return canEvent; }
   bool getUnimplemented() const { return unimplemented; }
   bool getCustom() const { return custom; }
+  bool getCanJit() const { return canJit; }
   Instruction &addImplicitOp(Register reg, OpType type) {
     assert(type != imm);
     implicitOps.push_back(reg);
@@ -219,6 +225,10 @@ public:
   }
   Instruction &setCustom() {
     custom = true;
+    return *this;
+  }
+  Instruction &setCanJit() {
+    canJit = true;
     return *this;
   }
 };
@@ -370,35 +380,12 @@ std::string getEndLabel(const Instruction &instruction)
   return instruction.getName() + "_end";
 }
 
-static std::string
-getOperandName(const Instruction &instruction, unsigned i)
-{
-  std::ostringstream buf;
-  
-  const std::vector<OpType> &ops = instruction.getOperands();
-  const std::vector<Register> &implicitOps = instruction.getImplicitOps();
-  unsigned numExplicitOperands = ops.size() - implicitOps.size();
-  if (i >= numExplicitOperands) {
-    if (i >= ops.size()) {
-      std::cerr << "error: operand out of range\n";
-      std::exit(1);
-    }
-    assert(ops[i] != imm);
-    buf << getRegisterName(implicitOps[i - numExplicitOperands]);
-  } else {
-    const char *opMacro = ops.size() > 3 ? "LOP" : "OP";
-    buf << opMacro << '(' << i << ')';
-  }
-  return buf.str();
-}
-
 static bool
-isSR(const Instruction &instruction, unsigned i)
+isFixedRegister(const Instruction &inst, unsigned i, Register &value)
 {
-  const std::vector<OpType> &ops = instruction.getOperands();
-  const std::vector<Register> &implicitOps = instruction.getImplicitOps();
+  const std::vector<OpType> &ops = inst.getOperands();
+  const std::vector<Register> &implicitOps = inst.getImplicitOps();
   unsigned numExplicitOperands = ops.size() - implicitOps.size();
-  
   if (i < numExplicitOperands)
     return false;
   if (i >= ops.size()) {
@@ -406,7 +393,30 @@ isSR(const Instruction &instruction, unsigned i)
     std::exit(1);
   }
   assert(ops[i] != imm);
-  return implicitOps[i - numExplicitOperands] == sr;
+  value = implicitOps[i - numExplicitOperands];
+  return true;
+}
+
+static std::string
+getOperandName(const Instruction &inst, unsigned i)
+{
+  Register reg;
+  if (isFixedRegister(inst, i, reg)) {
+    return getRegisterName(reg);
+  }
+  std::ostringstream buf;
+  const char *opMacro = inst.getOperands().size() > 3 ? "LOP" : "OP";
+  buf << opMacro << '(' << i << ')';
+  return buf.str();
+}
+
+static bool
+isSR(const Instruction &inst, unsigned i)
+{
+  Register value;
+  if (!isFixedRegister(inst, i, value))
+    return false;
+  return value == sr;
 }
 
 static void
@@ -491,12 +501,35 @@ emitCode(const Instruction &instruction,
   emitCode(instruction, code, dummy);
 }
 
-static void
-emitCode(const Instruction &instruction,
-         const std::string &code,
-         bool &emitEndLabel)
+class CodeEmitter {
+  const Instruction *inst;
+public:
+  void emit(const Instruction &instruction, const std::string &code);
+protected:
+  void emitNested(const std::string &code);
+  const Instruction &getInstruction() const { return *inst; }
+  virtual void emitBegin() = 0;
+  virtual void emitRaw(const std::string &s) = 0;
+  void emitRaw(char c) { emitRaw(std::string(1, c)); }
+  virtual void emitOp(unsigned num) = 0;
+  virtual void emitNextPc() = 0;
+  virtual void emitException(const std::string &args) = 0;
+  virtual void emitKCall(const std::string &args) = 0;
+  virtual void emitPauseOn(const std::string &args) = 0;
+  virtual void emitNext() = 0;
+  virtual void emitDeschedule() = 0;
+};
+
+void CodeEmitter::emit(const Instruction &instruction, const std::string &code)
 {
-  const std::vector<OpType> operands = instruction.getOperands();
+  emitBegin();
+  inst = &instruction;
+  emitNested(code);
+}
+
+void CodeEmitter::emitNested(const std::string &code)
+{
+  const std::vector<OpType> operands = inst->getOperands();
   const char *s = code.c_str();
   for (unsigned i = 0, e = code.size(); i != e; i++) {
     if (s[i] == '%') {
@@ -506,7 +539,7 @@ emitCode(const Instruction &instruction,
       }
       i++;
       if (s[i] == '%') {
-        std::cout << '%';
+        emitRaw('%');
       } else if (isdigit(s[i])) {
         char *endp;
         long value = std::strtol(&s[i], &endp, 10);
@@ -515,71 +548,248 @@ emitCode(const Instruction &instruction,
           std::cerr << "error: operand out of range in code string\n";
           std::exit(1);
         }
-        std::cout << "op" << value;
+        emitOp(value);
       } else if (std::strncmp(&s[i], "pc", 2) == 0) {
-        std::cout << "nextPc";
+        emitNextPc();
         i++;
       } else if (std::strncmp(&s[i], "exception(", 10) == 0) {
         i += 10;
-        emitCycles(instruction);
-        emitTraceEnd();
-        std::cout << "EXCEPTION(";
         const char *close = scanClosingBracket(&s[i]);
         std::string content(&s[i], close);
-        emitCode(instruction, content);
-        std::cout << ");\n";
-        std::cout << "goto " << getEndLabel(instruction) << ";\n";
-        emitEndLabel = true;
+        emitException(content);
         i = (close - s);
       } else if (std::strncmp(&s[i], "kcall(", 6) == 0) {
         i += 6;
-        emitCycles(instruction);
-        emitRegWriteBack(instruction);
-        emitTraceEnd();
-        std::cout << "EXCEPTION(ET_KCALL, ";
         const char *close = scanClosingBracket(&s[i]);
         std::string content(&s[i], close);
-        emitCode(instruction, content);
-        std::cout << ");\n";
-        std::cout << "goto " << getEndLabel(instruction) << ";\n";
-        emitEndLabel = true;
+        emitKCall(content);
         i = (close - s);
       } else if (std::strncmp(&s[i], "pause_on(", 9) == 0) {
         i += 9;
-        emitCycles(instruction);
-        emitTraceEnd();
-        std::cout << "PAUSE_ON(PC, ";
         const char *close = scanClosingBracket(&s[i]);
         std::string content(&s[i], close);
-        emitCode(instruction, content);
-        std::cout << ");\n";
-        std::cout << "goto " << getEndLabel(instruction) << ";\n";
-        emitEndLabel = true;
+        emitPauseOn(content);
         i = (close - s);
       } else if (std::strncmp(&s[i], "next", 4) == 0) {
         i += 3;
-        emitCycles(instruction);
-        emitRegWriteBack(instruction);
-        emitCheckEvents(instruction);
-        emitTraceEnd();
-        std::cout << "NEXT_THREAD(PC);\n";
-        std::cout << "goto " << getEndLabel(instruction) << ";\n";
-        emitEndLabel = true;
+        emitNext();
       } else if (std::strncmp(&s[i], "deschedule", 10) == 0) {
         i += 10;
-        emitCycles(instruction);
-        emitCheckEventsOrDeschedule(instruction);
-        emitTraceEnd();
-        std::cout << "goto " << getEndLabel(instruction) << ";\n";
-        emitEndLabel = true;
+        emitDeschedule();
       } else {
         std::cerr << "error: stray % in code string\n";
         std::exit(1);
       }
     } else {
-      std::cout << s[i];
+      emitRaw(s[i]);
     }
   }
+}
+
+class InlineCodeEmitter : public CodeEmitter {
+  bool emitEndLabel;
+public:
+  InlineCodeEmitter() : emitEndLabel(false) {}
+  bool getEmitEndLabel() const { return emitEndLabel; }
+protected:
+  virtual void emitBegin();
+  virtual void emitRaw(const std::string &s);
+  virtual void emitOp(unsigned);
+  virtual void emitNextPc();
+  virtual void emitException(const std::string &args);
+  virtual void emitKCall(const std::string &args);
+  virtual void emitPauseOn(const std::string &args);
+  virtual void emitNext();
+  virtual void emitDeschedule();
+};
+
+void InlineCodeEmitter::emitBegin()
+{
+  emitEndLabel = false;
+}
+
+void InlineCodeEmitter::emitRaw(const std::string &s)
+{
+  std::cout << s;
+}
+
+void InlineCodeEmitter::emitOp(unsigned num)
+{
+  std::cout << "op" << num;
+}
+
+void InlineCodeEmitter::emitNextPc()
+{
+  std::cout << "nextPc";
+}
+
+void InlineCodeEmitter::emitException(const std::string &args)
+{
+  emitCycles(getInstruction());
+  emitTraceEnd();
+  std::cout << "EXCEPTION(";
+  emitNested(args);
+  std::cout << ");\n";
+  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  emitEndLabel = true;
+}
+
+void InlineCodeEmitter::emitKCall(const std::string &args)
+{
+  emitCycles(getInstruction());
+  emitRegWriteBack(getInstruction());
+  emitTraceEnd();
+  std::cout << "EXCEPTION(ET_KCALL, ";
+  emitNested(args);
+  std::cout << ");\n";
+  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  emitEndLabel = true;
+}
+
+void InlineCodeEmitter::emitPauseOn(const std::string &args)
+{
+  emitCycles(getInstruction());
+  emitTraceEnd();
+  std::cout << "PAUSE_ON(PC, ";
+  emitNested(args);
+  std::cout << ");\n";
+  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  emitEndLabel = true;
+}
+
+void InlineCodeEmitter::emitNext()
+{
+  emitCycles(getInstruction());
+  emitRegWriteBack(getInstruction());
+  emitCheckEvents(getInstruction());
+  emitTraceEnd();
+  std::cout << "NEXT_THREAD(PC);\n";
+  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  emitEndLabel = true;
+}
+
+void InlineCodeEmitter::emitDeschedule()
+{
+  emitCycles(getInstruction());
+  emitCheckEventsOrDeschedule(getInstruction());
+  emitTraceEnd();
+  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  emitEndLabel = true;
+}
+
+class FunctionCodeEmitter : public CodeEmitter {
+protected:
+  virtual void emitBegin();
+  virtual void emitRaw(const std::string &s);
+  virtual void emitOp(unsigned);
+  virtual void emitNextPc();
+  virtual void emitException(const std::string &args);
+  virtual void emitKCall(const std::string &args);
+  virtual void emitPauseOn(const std::string &args);
+  virtual void emitNext();
+  virtual void emitDeschedule();
+};
+
+void FunctionCodeEmitter::emitBegin()
+{
+}
+
+void FunctionCodeEmitter::emitRaw(const std::string &s)
+{
+  std::cout << s;
+}
+
+void FunctionCodeEmitter::emitOp(unsigned num)
+{
+  std::cout << "op" << num;
+}
+
+void FunctionCodeEmitter::emitNextPc()
+{
+  std::cout << "nextPc";
+}
+
+void FunctionCodeEmitter::emitException(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitKCall(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitPauseOn(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitNext()
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitDeschedule()
+{
+  assert(0);
+}
+
+class CodePropertyExtractor : public CodeEmitter {
+  bool usesPc;
+  bool hasException;
+  bool hasKCall;
+  bool hasPauseOn;
+  bool hasNext;
+  bool hasDeschedule;
+  void reset() {
+    usesPc = false;
+    hasException = false;
+    hasKCall = false;
+    hasPauseOn = false;
+    hasNext = false;
+    hasDeschedule = false;
+  }
+protected:
+  virtual void emitBegin() {
+    reset();
+  }
+  virtual void emitRaw(const std::string &s) {}
+  virtual void emitOp(unsigned) {}
+  virtual void emitNextPc() {
+    usesPc = true;
+  }
+  virtual void emitException(const std::string &args) {
+    hasException = true;
+    emitNested(args);
+  }
+  virtual void emitKCall(const std::string &args) {
+    hasKCall = true;
+    emitNested(args);
+  }
+  virtual void emitPauseOn(const std::string &args) {
+    hasPauseOn = true;
+    emitNested(args);
+  }
+  virtual void emitNext() { hasNext = true; }
+  virtual void emitDeschedule() { hasDeschedule = true; }
+public:
+  CodePropertyExtractor() { reset(); }
+  bool getUsesPc() const { return usesPc; }
+  bool getHasException() const { return hasException; }
+  bool getHasKCall() const { return hasKCall; }
+  bool getHasPauseOn() const { return hasPauseOn; }
+  bool getHasNext() const { return hasNext; }
+  bool getHasDeschedule() const { return hasDeschedule; }
+};
+
+static void
+emitCode(const Instruction &instruction,
+         const std::string &code,
+         bool &emitEndLabel)
+{
+  InlineCodeEmitter emitter;
+  emitter.emit(instruction, code);
+  emitEndLabel = emitter.getEmitEndLabel();
 }
 
 static std::string
@@ -703,21 +913,28 @@ emitTrace(Instruction &instruction)
   std::cout << "}\n";
 }
 
+static std::string getInstFunctionName(Instruction &inst)
+{
+  return "Instruction_" + inst.getName();
+}
+
 static void
 emitInstDispatch(Instruction &instruction)
 {
   if (instruction.getCustom())
     return;
   const std::string &name = instruction.getName();
+  std::cout << "INST(" << name << "):";
+
   unsigned size = instruction.getSize();
   const std::vector<OpType> &operands = instruction.getOperands();
   const std::string &code = instruction.getCode();
+
 
   if (size % 2 != 0) {
     std::cerr << "error: unexpected instruction size " << size << "\n";
     std::exit(1);
   }
-  std::cout << "INST(" << name << "):";
   if (instruction.getSync()) {
     std::cout << "\n"
                  "if (sys.hasTimeSliceExpired(TIME)) {\n"
@@ -782,6 +999,71 @@ static void emitInstDispatch()
   std::cout << "#endif //EMIT_INSTRUCTION_DISPATCH\n";
 }
 
+static void emitFunctionCode(Instruction &inst, const std::string &code)
+{
+  FunctionCodeEmitter emitter;
+  emitter.emit(inst, code);
+}
+
+static void emitInstFunction(Instruction &inst)
+{
+  if (!inst.getCanJit())
+    return;
+  std::cout << "extern \"C\" void " << getInstFunctionName(inst) << '(';
+  std::cout << "Thread &thread";
+  for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
+    std::cout << ", uint32_t field" << i;
+  }
+  std::cout << ") {\n";
+  // Read operands.
+  const std::vector<OpType> &operands = inst.getOperands();
+  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
+    std::cout << "UNUSED(";
+    if (operands[i] == in)
+      std::cout << "const ";
+    std::cout << "uint32_t op" << i << ')';
+    switch (operands[i]) {
+    default:
+      break;
+    case in:
+    case inout:
+      std::cout << " = THREAD.regs[" << getOperandName(inst, i) << ']';
+      break;
+    case imm:
+      std::cout << " = field" << i;
+      break;
+    }
+    std::cout << ";\n";
+  }
+  emitFunctionCode(inst, inst.getCode());
+  std::cout << '\n';
+  // Write operands.
+  std::cout << "THREAD.time += " << inst.getCycles() << ";\n";
+  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
+    switch (operands[i]) {
+    default:
+      break;
+    case out:
+    case inout:
+      std::cout << "THREAD.regs[" << getOperandName(inst, i) << "] = ";
+      std::cout << "op" << i << ";\n";
+      break;
+    }
+  }
+  std::cout << "THREAD.pc += " << inst.getSize() / 2 << ";\n";
+  std::cout << "}\n";
+}
+
+static void emitInstFunctions()
+{
+  std::cout << "#ifdef EMIT_INSTRUCTION_FUNCTIONS\n";
+  for (std::vector<Instruction*>::iterator it = instructions.begin(),
+       e = instructions.end(); it != e; ++it) {
+    emitInstFunction(**it);
+  }
+  std::cout << "#endif //EMIT_INSTRUCTION_FUNCTIONS\n";
+}
+
 static void emitInstList(Instruction &instruction)
 {
   std::cout << "DO_INSTRUCTION(" << instruction.getName() << ")\n";
@@ -795,6 +1077,64 @@ static void emitInstList()
     emitInstList(**it);
   }
   std::cout << "#endif //EMIT_INSTRUCTION_LIST\n";
+}
+
+static void analyzeInst(Instruction &inst) {
+  if (inst.getCanEvent() || inst.getCustom() || inst.getSync() ||
+      inst.getUnimplemented() || !inst.getTransform().empty())
+    return;
+  const std::vector<OpType> &operands = inst.getOperands();
+  for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {
+    if (isSR(inst, i)) {
+      return;
+    }
+  }
+  CodePropertyExtractor propertyExtractor;
+  propertyExtractor.emit(inst, inst.getCode());
+  if (propertyExtractor.getUsesPc() ||
+      propertyExtractor.getHasException() ||
+      propertyExtractor.getHasKCall() ||
+      propertyExtractor.getHasPauseOn() ||
+      propertyExtractor.getHasNext() ||
+      propertyExtractor.getHasDeschedule())
+    return;
+  inst.setCanJit();
+}
+
+static void analyze()
+{
+  CodePropertyExtractor propertyExtractor;
+  for (std::vector<Instruction*>::iterator it = instructions.begin(),
+       e = instructions.end(); it != e; ++it) {
+    analyzeInst(**it);
+  }
+}
+
+static void emitInstProperties(Instruction &inst)
+{
+  std::cout << "{ ";
+  if (inst.getCanJit())
+    std::cout << '"' << getInstFunctionName(inst) << '"';
+  else
+    std::cout << '0';
+  std::cout << ", " << inst.getSize();
+  std::cout << ", " << inst.getNumExplicitOperands();
+  std::cout << " }";
+}
+
+static void emitInstProperties()
+{
+  std::cout << "#ifdef EMIT_INSTRUCTION_PROPERTIES\n";
+  bool needComma = false;
+  for (std::vector<Instruction*>::iterator it = instructions.begin(),
+       e = instructions.end(); it != e; ++it) {
+    if (needComma)
+      std::cout << ",\n";
+    emitInstProperties(**it);
+    needComma = true;
+  }
+  std::cout << '\n';
+  std::cout << "#endif //EMIT_INSTRUCTION_PROPERTIES\n";
 }
 
 #define INSTRUCTION_CYCLES 4
@@ -1130,7 +1470,7 @@ void add()
   // current thread.
   inst("TSETR_3r", 2, ops(imm, in, in), "set t[%2]:r%0, %1",
        "ResourceID resID(%2);\n"
-       "if (Thread *t = checkThread(*this, resID)) {\n"
+       "if (Thread *t = checkThread(THREAD, resID)) {\n"
        "  t->reg(%0) = %1;\n"
        "} else {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
@@ -1205,8 +1545,8 @@ void add()
   fl2rus("ASHR_32", "ashr %0, %1, 32", "%0 = (int32_t)%1 >> 31;");
   fl2rus_in("OUTPW", "outpw res[%1], %0, %2",
             "ResourceID resID(%1);\n"
-            "if (Port *res = checkPort(*this, resID)) {\n"
-            "  switch (res->outpw(*this, %0, %2, TIME)) {\n"
+            "if (Port *res = checkPort(THREAD, resID)) {\n"
+            "  switch (res->outpw(THREAD, %0, %2, TIME)) {\n"
             "  default: assert(0 && \"Unexpected outpw result\");\n"
             "  case Resource::CONTINUE:\n"
             "    break;\n"
@@ -1221,9 +1561,9 @@ void add()
     .setSync();
   fl2rus("INPW", "inpw %0, res[%1], %2",
          "ResourceID resID(%1);\n"
-         "if (Port *res = checkPort(*this, resID)) {\n"
+         "if (Port *res = checkPort(THREAD, resID)) {\n"
          "  uint32_t value;\n"
-         "  switch (res->inpw(*this, %2, TIME, value)) {\n"
+         "  switch (res->inpw(THREAD, %2, TIME, value)) {\n"
          "  default: assert(0 && \"Unexpected inpw result\");\n"
          "  case Resource::CONTINUE:\n"
          "    %0 = value;\n"
@@ -1561,14 +1901,14 @@ void add()
       "if (%1 > (uint32_t)LAST_STD_RES_TYPE)\n"
       "  %0 = 1;\n"
       "else if (Resource *res =\n"
-      "           core->allocResource(*this, (ResourceType)IMM(OP(1))))\n"
+      "           CORE.allocResource(THREAD, (ResourceType)%1))\n"
       "  %0 = res->getID();\n"
       "else\n"
       "  %0 = 0;\n");
   f2r("GETST", "getst %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Synchroniser *sync = checkSync(*this, resID)) {\n"
-      "  if (Thread *t = core->allocThread(*this)) {\n"
+      "if (Synchroniser *sync = checkSync(THREAD, resID)) {\n"
+      "  if (Thread *t = CORE.allocThread(THREAD)) {\n"
       "    sync->addChild(*t);\n"
       "    t->setSync(*sync);\n"
       "    %0 = t->getID();\n"
@@ -1580,17 +1920,17 @@ void add()
       "}\n");
   f2r("PEEK", "peek %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Port *res = checkPort(*this, resID)) {\n"
-      "  %0 = res->peek(*this, TIME);\n"
+      "if (Port *res = checkPort(THREAD, resID)) {\n"
+      "  %0 = res->peek(THREAD, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n")
     .setSync();
   f2r("ENDIN", "endin %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Port *res = checkPort(*this, resID)) {\n"
+      "if (Port *res = checkPort(THREAD, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch (res->endin(*this, TIME, value)) {\n"
+      "  switch (res->endin(THREAD, TIME, value)) {\n"
       "  default: assert(0 && \"Unexpected endin result\");\n"
       "  case Resource::CONTINUE:\n"
       "    %0 = value;\n"
@@ -1604,8 +1944,8 @@ void add()
     .setSync();
   f2r_in("SETPSC", "setpsc res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (Port *res = checkPort(*this, resID)) {\n"
-         "  switch (res->setpsc(*this, %0, TIME)) {\n"
+         "if (Port *res = checkPort(THREAD, resID)) {\n"
+         "  switch (res->setpsc(THREAD, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected setpsc result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1621,7 +1961,7 @@ void add()
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r_in("TINITLR", "init t[%1]:lr, %0", 
           "ResourceID resID(%1);\n"
-          "Thread *t = checkThread(*this, resID);\n"
+          "Thread *t = checkThread(THREAD, resID);\n"
           "if (t && t->inSSync()) {\n"
           "  t->reg(LR) = %0;\n"
           "} else {\n"
@@ -1634,7 +1974,7 @@ void add()
   fl2r("GETPS", "get %0, ps[%1]",
        "switch (%1) {\n"
        "case PS_RAM_BASE:\n"
-       "  %0 = core->ram_base;\n"
+       "  %0 = CORE.ram_base;\n"
        "  break;\n"
        "default:\n"
        "  // TODO\n"
@@ -1643,7 +1983,7 @@ void add()
   fl2r_in("SETPS", "set %0, ps[%1]",
           "switch (%1) {\n"
           "case PS_VECTOR_BASE:\n"
-          "  core->vector_base = %0;\n"
+          "  CORE.vector_base = %0;\n"
           "  break;\n"
           "default:\n"
           "  // TODO\n"
@@ -1658,8 +1998,8 @@ void add()
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setSync();
   fl2r_in("SETTW", "settw res[%1], %0",
-          "Port *res = checkPort(*this, ResourceID(%1));\n"
-          "if (!res || !res->setTransferWidth(*this, %0, TIME)) {\n"
+          "Port *res = checkPort(THREAD, ResourceID(%1));\n"
+          "if (!res || !res->setTransferWidth(THREAD, %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setSync();
   fl2r_in("SETRDY", "setrdy res[%1], %0",
@@ -1668,9 +2008,9 @@ void add()
           "}\n").setSync();
   f2r("IN", "in %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Resource *res = checkResource(*this, resID)) {\n"
+      "if (Resource *res = checkResource(THREAD, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch(res->in(*this, TIME, value)) {\n"
+      "  switch(res->in(THREAD, TIME, value)) {\n"
       "  default: assert(0 && \"Unexpected in result\");\n"
       "  case Resource::CONTINUE:\n"
       "    %0 = value;\n"
@@ -1686,8 +2026,8 @@ void add()
     .setSync();
   f2r_in("OUT", "out %0, res[%1]",
          "ResourceID resID(%1);\n"
-         "if (Resource *res = checkResource(*this, resID)) {\n"
-         "  switch (res->out(*this, %0, TIME)) {\n"
+         "if (Resource *res = checkResource(THREAD, resID)) {\n"
+         "  switch (res->out(THREAD, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected out result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1703,7 +2043,7 @@ void add()
     .setCanEvent();
   f2r_in("TINITPC", "init t[%1]:pc, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*this, resID);\n"
+         "Thread *t = checkThread(THREAD, resID);\n"
          "if (t && t->inSSync()) {\n"
          "  Thread &threadState = *t;\n"
          "  unsigned newPc = TO_PC(%0);\n"
@@ -1713,7 +2053,7 @@ void add()
          "    // TODO is this right?\n"
          "    threadState.pc = newPc - 1;\n"
          "  } else {\n"
-         "    threadState.pc = core->getIllegalPCThreadAddr();\n"
+         "    threadState.pc = CORE.getIllegalPCThreadAddr();\n"
          "    threadState.illegal_pc = newPc;\n"
          "  }\n"
          "} else {\n"
@@ -1721,7 +2061,7 @@ void add()
          "}\n");
   f2r_in("TINITDP", "init t[%1]:dp, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*this, resID);\n"
+         "Thread *t = checkThread(THREAD, resID);\n"
          "if (t && t->inSSync()) {\n"
          "  t->reg(DP) = %0;\n"
          "} else {\n"
@@ -1729,7 +2069,7 @@ void add()
          "}\n");
   f2r_in("TINITSP", "init t[%1]:sp, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*this, resID);\n"
+         "Thread *t = checkThread(THREAD, resID);\n"
          "if (t && t->inSSync()) {\n"
          "  t->reg(SP) = %0;\n"
          "} else {\n"
@@ -1737,7 +2077,7 @@ void add()
          "}\n");
   f2r_in("TINITCP", "init t[%1]:cp, %0",
          "ResourceID resID(%1);\n"
-         "Thread *t = checkThread(*this, resID);\n"
+         "Thread *t = checkThread(THREAD, resID);\n"
          "if (t && t->inSSync()) {\n"
          "  t->reg(CP) = %0;\n"
          "} else {\n"
@@ -1748,14 +2088,14 @@ void add()
   
   f2r_in("SETD", "setd res[%1], %0",
          "ResourceID resID(%1);\n"
-         "Resource *res = checkResource(*this, resID);\n"
-         "if (!res || !res->setData(*this, %0, TIME)) {\n"
+         "Resource *res = checkResource(THREAD, resID);\n"
+         "if (!res || !res->setData(THREAD, %0, TIME)) {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "};\n").setSync();
   f2r_in("OUTCT", "outct res[%0], %1",
          "ResourceID resID(%0);\n"
-         "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
-         "  switch (chanend->outct(*this, %1, TIME)) {\n"
+         "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
+         "  switch (chanend->outct(THREAD, %1, TIME)) {\n"
          "  default: assert(0 && \"Unexpected outct result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1769,8 +2109,8 @@ void add()
     .setCanEvent();
   frus_in("OUTCT", "outct res[%0], %1",
           "ResourceID resID(%0);\n"
-          "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
-          "  switch (chanend->outct(*this, %1, TIME)) {\n"
+          "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
+          "  switch (chanend->outct(THREAD, %1, TIME)) {\n"
           "  default: assert(0 && \"Unexpected outct result\");\n"
           "  case Resource::CONTINUE:\n"
           "    break;\n"
@@ -1784,8 +2124,8 @@ void add()
     .setCanEvent();
   f2r_in("OUTT", "outt res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
-         "  switch (chanend->outt(*this, %0, TIME)) {\n"
+         "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
+         "  switch (chanend->outt(THREAD, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected outct result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -1799,9 +2139,9 @@ void add()
     .setCanEvent();
   f2r("INT", "int %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch (chanend->intoken(*this, TIME, value)) {\n"
+      "  switch (chanend->intoken(THREAD, TIME, value)) {\n"
       "    default: assert(0 && \"Unexpected int result\");\n"
       "    case Resource::DESCHEDULE:\n"
       "      %pause_on(chanend);\n"
@@ -1816,9 +2156,9 @@ void add()
       "}\n");
   f2r("INCT", "inct %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
       "  uint32_t value;\n"
-      "  switch (chanend->inct(*this, TIME, value)) {\n"
+      "  switch (chanend->inct(THREAD, TIME, value)) {\n"
       "    default: assert(0 && \"Unexpected int result\");\n"
       "    case Resource::DESCHEDULE:\n"
       "      %pause_on(chanend);\n"
@@ -1834,8 +2174,8 @@ void add()
       "};\n");
   f2r_in("CHKCT", "chkct res[%0], %1",
          "ResourceID resID(%0);\n"
-         "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
-         "  switch (chanend->chkct(*this, TIME, %1)) {\n"
+         "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
+         "  switch (chanend->chkct(THREAD, TIME, %1)) {\n"
          "    default: assert(0 && \"Unexpected chkct result\");\n"
          "    case Resource::DESCHEDULE:\n"
          "      %pause_on(chanend);\n"
@@ -1849,8 +2189,8 @@ void add()
          "}\n");
   frus_in("CHKCT", "chkct res[%0], %1",
           "ResourceID resID(%0);\n"
-          "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
-          "  switch (chanend->chkct(*this, TIME, %1)) {\n"
+          "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
+          "  switch (chanend->chkct(THREAD, TIME, %1)) {\n"
           "    default: assert(0 && \"Unexpected chkct result\");\n"
           "    case Resource::DESCHEDULE:\n"
           "      %pause_on(chanend);\n"
@@ -1864,9 +2204,9 @@ void add()
           "}\n");
   f2r("TESTCT", "testct %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
       "  bool isCt;\n"
-      "  if (chanend->testct(*this, TIME, isCt)) {\n"
+      "  if (chanend->testct(THREAD, TIME, isCt)) {\n"
       "    %0 = isCt;\n"
       "  } else {\n"
       "    %pause_on(chanend);\n"
@@ -1876,9 +2216,9 @@ void add()
       "}\n");
   f2r("TESTWCT", "testwct %0, res[%0]",
       "ResourceID resID(%1);\n"
-      "if (Chanend *chanend = checkChanend(*this, resID)) {\n"
+      "if (Chanend *chanend = checkChanend(THREAD, resID)) {\n"
       "  uint32_t value;\n"
-      "  if (chanend->testwct(*this, TIME, value)) {\n"
+      "  if (chanend->testwct(THREAD, TIME, value)) {\n"
       "    %0 = value;\n"
       "  } else {\n"
       "    %pause_on(chanend);\n"
@@ -1888,11 +2228,11 @@ void add()
       "}\n");
   f2r_in("EET", "eet res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
+         "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
          "  if (%0 != 0) {\n"
-         "    res->eventEnable(*this);\n"
+         "    res->eventEnable(THREAD);\n"
          "  } else {\n"
-         "    res->eventDisable(*this);\n"
+         "    res->eventDisable(THREAD);\n"
          "  }\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
@@ -1901,11 +2241,11 @@ void add()
     .setCanEvent();
   f2r_in("EEF", "eef res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
+         "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
          "  if (%0 == 0) {\n"
-         "    res->eventEnable(*this);\n"
+         "    res->eventEnable(THREAD);\n"
          "  } else {\n"
-         "    res->eventDisable(*this);\n"
+         "    res->eventDisable(THREAD);\n"
          "  }\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
@@ -1914,9 +2254,9 @@ void add()
     .setCanEvent();
   f2r_inout("INSHR", "inshr %0, res[%1]",
             "ResourceID resID(%1);\n"
-            "if (Port *res = checkPort(*this, resID)) {\n"
+            "if (Port *res = checkPort(THREAD, resID)) {\n"
             "  uint32_t value;\n"
-            "  Resource::ResOpResult result = res->in(*this, TIME, value);\n"
+            "  Resource::ResOpResult result = res->in(THREAD, TIME, value);\n"
             "  switch (result) {\n"
             "  default: assert(0 && \"Unexpected in result\");\n"
             "  case Resource::CONTINUE:\n"
@@ -1934,8 +2274,8 @@ void add()
     .setSync();
   f2r_inout("OUTSHR", "outshr %0, res[%1]",
             "ResourceID resID(%1);\n"
-            "if (Port *res = checkPort(*this, resID)) {\n"
-            "  Resource::ResOpResult result = res->out(*this, %0, TIME);\n"
+            "if (Port *res = checkPort(THREAD, resID)) {\n"
+            "  Resource::ResOpResult result = res->out(THREAD, %0, TIME);\n"
             "  switch (result) {\n"
             "  default: assert(0 && \"Unexpected outshr result\");\n"
             "  case Resource::CONTINUE:\n"
@@ -1950,15 +2290,15 @@ void add()
     .setSync();
   f2r("GETTS", "getts %0, res[%1]",
       "ResourceID resID(%1);\n"
-      "if (Port *res = checkPort(*this, resID)) {\n"
-      "  %0 = res->getTimestamp(*this, TIME);\n"
+      "if (Port *res = checkPort(THREAD, resID)) {\n"
+      "  %0 = res->getTimestamp(THREAD, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
       "}\n").setSync();
   f2r_in("SETPT", "setpt res[%1], %0",
          "ResourceID resID(%1);\n"
-         "if (Port *res = checkPort(*this, resID)) {\n"
-         "  switch (res->setPortTime(*this, %0, TIME)) {\n"
+         "if (Port *res = checkPort(THREAD, resID)) {\n"
+         "  switch (res->setPortTime(THREAD, %0, TIME)) {\n"
          "  default: assert(0 && \"Unexpected setPortTime result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
@@ -2019,7 +2359,7 @@ void add()
       "%next\n");
   f1r("TSTART", "start t[%0]",
       "ResourceID resID(%0);\n"
-      "Thread *t = checkThread(*this, resID);\n"
+      "Thread *t = checkThread(THREAD, resID);\n"
       "if (t && t->inSSync() && !t->getSync()) {\n"
       "  t->setSSync(false);\n"
       "  t->pc++;"
@@ -2030,14 +2370,14 @@ void add()
   f1r_out("DGETREG", "dgetreg %0", "").setUnimplemented();
   f1r("KCALL",  "kcall %0", "%kcall(%0)");
   f1r("FREER", "freer res[%0]",
-      "Resource *res = checkResource(*this, ResourceID(%0));\n"
+      "Resource *res = checkResource(THREAD, ResourceID(%0));\n"
       "if (!res || !res->free()) {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
       "}\n");
   f1r("MSYNC", "msync res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Synchroniser *sync = checkSync(*this, resID)) {\n"
-      "  switch (sync->msync(*this)) {\n"
+      "if (Synchroniser *sync = checkSync(THREAD, resID)) {\n"
+      "  switch (sync->msync(THREAD)) {\n"
       "  default: assert(0 && \"Unexpected sync result\");\n"
       "  case Synchroniser::SYNC_CONTINUE:\n"
       "    break;\n"
@@ -2049,8 +2389,8 @@ void add()
       "}\n");
   f1r("MJOIN", "mjoin res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Synchroniser *sync = checkSync(*this, resID)) {\n"
-      "  switch (sync->mjoin(*this)) {\n"
+      "if (Synchroniser *sync = checkSync(THREAD, resID)) {\n"
+      "  switch (sync->mjoin(THREAD)) {\n"
       "    default: assert(0 && \"Unexpected mjoin result\");\n"
       "    case Synchroniser::SYNC_CONTINUE:\n"
       "      break;\n"
@@ -2063,10 +2403,10 @@ void add()
       "}\n");
   f1r("SETV", "setv res[%0], %1",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
+      "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
       "  uint32_t target = TO_PC(%1);\n"
       "  if (CHECK_PC(target)) {\n"
-      "    res->setVector(*this, target);\n"
+      "    res->setVector(THREAD, target);\n"
       "  } else {\n"
       "    // TODO\n"
       "    ERROR();\n"
@@ -2076,39 +2416,39 @@ void add()
       "}\n").addImplicitOp(r11, in).setSync();
   f1r("SETEV", "setev res[%0], %1",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
-      "  res->setEV(*this, %1);\n"
+      "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
+      "  res->setEV(THREAD, %1);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").addImplicitOp(r11, in).setSync();
   f1r("EDU", "edu res[%0]",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
-      "  res->eventDisable(*this);\n"
+      "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
+      "  res->eventDisable(THREAD);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync();
   f1r("EEU", "eeu res[%0]",
       "ResourceID resID(%0);\n"
-      "if (EventableResource *res = checkEventableResource(*this, resID)) {\n"
-      "  res->eventEnable(*this);\n"
+      "if (EventableResource *res = checkEventableResource(THREAD, resID)) {\n"
+      "  res->eventEnable(THREAD);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync().setCanEvent();
   f1r("WAITET", "waitet %0",
       "if (%0) {\n"
-      "  this->enableEvents();\n"
+      "  THREAD.enableEvents();\n"
       "  %deschedule\n"
       "}\n").setSync().setCanEvent();
   f1r("WAITEF", "waitef %0",
       "if (!%0) {\n"
-      "  this->enableEvents();\n"
+      "  THREAD.enableEvents();\n"
       "  %deschedule\n"
       "}\n").setSync().setCanEvent();
   f1r("SYNCR", "syncr res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Port *port = checkPort(*this, resID)) {\n"
-      "  switch (port->sync(*this, TIME)) {\n"
+      "if (Port *port = checkPort(THREAD, resID)) {\n"
+      "  switch (port->sync(THREAD, TIME)) {\n"
       "  default: assert(0 && \"Unexpected syncr result\");\n"
       "  case Resource::CONTINUE: PC++; break;\n"
       "  case Resource::DESCHEDULE:\n"
@@ -2120,12 +2460,12 @@ void add()
       ).setSync();
   f1r("CLRPT", "clrpt res[%0]",
       "ResourceID resID(%0);\n"
-      "if (Port *res = checkPort(*this, resID)) {\n"
-      "  res->clearPortTime(*this, TIME);\n"
+      "if (Port *res = checkPort(THREAD, resID)) {\n"
+      "  res->clearPortTime(THREAD, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setSync();
-  f0r("GETID", "get %0, id", "%0 = this->getNum();")
+  f0r("GETID", "get %0, id", "%0 = THREAD.getNum();")
     .addImplicitOp(r11, out);
   f0r("GETET", "get %0, %1", "%0 = %1;")
     .addImplicitOp(r11, out)
@@ -2233,9 +2573,9 @@ void add()
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
   f0r("DENTSP", "dentsp", "").setUnimplemented();
-  f0r("CLRE", "clre", "this->clre();\n").setSync();
+  f0r("CLRE", "clre", "THREAD.clre();\n").setSync();
   f0r("WAITEU", "waiteu",
-      "this->enableEvents();\n"
+      "THREAD.enableEvents();\n"
       "%deschedule\n").setSync().setCanEvent();
   f0r("SSYNC", "", "").setCustom();
 
@@ -2246,11 +2586,15 @@ void add()
   pseudoInst("SYSCALL", "", "").setCustom();
   pseudoInst("EXCEPTION", "", "").setCustom();
   pseudoInst("INITIALIZE", "", "").setCustom();
+  pseudoInst("JIT_INSTRUCTION", "", "").setCustom();
 }
 
 int main()
 {
   add();
+  analyze();
+  emitInstFunctions();
   emitInstDispatch();
   emitInstList();
+  emitInstProperties();
 }

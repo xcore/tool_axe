@@ -13,6 +13,11 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules"
   )
 
+find_package(LibXml2 REQUIRED)
+find_package(LibElf REQUIRED)
+find_package(LLVM REQUIRED)
+find_package(Clang REQUIRED)
+
 add_executable(not
   not.cpp
   )
@@ -49,8 +54,15 @@ add_executable(axe
   Chanend.cpp
   ClockBlock.h
   ClockBlock.cpp
+  CRC.h
+  InstructionBitcode.h
+  InstructionBitcode.cpp
+  JIT.h
+  JIT.cpp
   Lock.cpp
   Lock.h
+  LLVMExtra.h
+  LLVMExtra.cpp
   Signal.h
   Synchroniser.cpp
   Synchroniser.h
@@ -73,6 +85,9 @@ add_executable(axe
   ring_buffer.h
   Instruction.h
   Instruction.cpp
+  InstructionDefinitions.h
+  InstructionProperties.h
+  InstructionProperties.cpp
   TerminalColours.h
   TerminalColours.cpp
   Node.h
@@ -100,6 +115,7 @@ add_executable(axe
   ConfigSchema.rng
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc
+  ${AXE_BINARY_DIR}/InstructionBitcode.inc
   )
 
 include_directories(${AXE_SOURCE_DIR}/thirdparty/boost)
@@ -114,6 +130,28 @@ add_custom_command(
  COMMAND ${INSTGEN_EXE} ${AXE_BINARY_DIR} > ${AXE_BINARY_DIR}/InstructionGenOutput.inc
  DEPENDS instgen
  )
+# add the custom command that compiles InstructionDefinitions.h to LLVM
+# bitcode
+get_directory_property(INCLUDES_DIRS INCLUDE_DIRECTORIES)
+set(CLANG_INCLUDE_FLAGS "")
+foreach(dir ${INCLUDES_DIRS})
+  set(CLANG_INCLUDE_FLAGS ${CLANG_INCLUDE_FLAGS} "-I${dir}")
+endforeach()
+add_custom_command(
+  OUTPUT ${AXE_BINARY_DIR}/InstructionBitcode.bc
+  COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CMAKE_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
+  -c -emit-llvm -xc++ ${AXE_SOURCE_DIR}/InstructionDefinitions.h
+  -o ${AXE_BINARY_DIR}/InstructionBitcode.bc
+  DEPENDS ${AXE_BINARY_DIR}/InstructionGenOutput.inc
+  IMPLICIT_DEPENDS CXX $(AXE_SOURCE_DIR)/InstructionDefinitions.h
+  )
+# add the custom command that turns the LLVM bitcode into hex
+add_custom_command(
+  OUTPUT ${AXE_BINARY_DIR}/InstructionBitcode.inc
+  COMMAND ${GENHEX_EXE} ${AXE_BINARY_DIR}/InstructionBitcode.bc ${AXE_BINARY_DIR}/InstructionBitcode.inc
+  DEPENDS genHex ${AXE_BINARY_DIR}/InstructionBitcode.bc
+  )
+
 # add the custom command that turns the schema into hex
 add_custom_command(
  OUTPUT ${AXE_BINARY_DIR}/ConfigSchema.inc
@@ -132,8 +170,8 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /D_CRT_SECURE_NO_WARNINGS=1")
 endif()
 
-find_package(LibXml2 REQUIRED)
-find_package(LibElf REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CFLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
 
 include_directories(
   ${LIBELF_INCLUDE_DIRS}
@@ -144,7 +182,10 @@ if (MSVC)
   include_directories(${LIBICONV_INCLUDE_DIR})
 endif()
 
-target_link_libraries(axe ${LIBELF_LIBRARIES} ${LIBXML2_LIBRARIES})
+target_link_libraries(
+  axe ${LIBELF_LIBRARIES} ${LIBXML2_LIBRARIES} ${LLVM_LIBRARIES})
+
+set_target_properties(axe PROPERTIES LINK_FLAGS ${LLVM_LDFLAGS})
 
 install(TARGETS axe DESTINATION bin)
 if (MSVC)

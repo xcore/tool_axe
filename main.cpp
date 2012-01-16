@@ -37,12 +37,13 @@
 #include "UartRx.h"
 #include "Property.h"
 #include "PortArg.h"
+#include "JIT.h"
 
 #define XCORE_ELF_MACHINE 0xB49E
 
-const char configSchema[] =
+const char configSchema[] = {
 #include "ConfigSchema.inc"
-;
+};
 
 static void printUsage(const char *ProgName) {
   std::cout << "Usage: " << ProgName << " [options] filename\n";
@@ -210,35 +211,6 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
   
   elf_end(e);
 }
-
-enum ProcessorState {
-  PS_RAM_BASE = 0x00b,
-  PS_VECTOR_BASE = 0x10b
-};
-
-enum {
-  SETC_INUSE_OFF = 0x0,
-  SETC_INUSE_ON = 0x8,
-  SETC_COND_FULL = 0x1,
-  SETC_COND_AFTER = 0x9,
-  SETC_COND_EQ = 0x11,
-  SETC_COND_NEQ = 0x19,
-  SETC_IE_MODE_EVENT = 0x2,
-  SETC_IE_MODE_INTERRUPT = 0xa,
-  SETC_RUN_STOPR = 0x7,
-  SETC_RUN_STARTR = 0xf,
-  SETC_RUN_CLRBUF = 0x17,
-  SETC_MS_MASTER = 0x1007,
-  SETC_MS_SLAVE = 0x100f,
-  SETC_BUF_NOBUFFERS = 0x2007,
-  SETC_BUF_BUFFERS = 0x200f,
-  SETC_RDY_NOREADY = 0x3007,
-  SETC_RDY_STROBED = 0x300f,
-  SETC_RDY_HANDSHAKE = 0x3017,
-  SETC_PORT_DATAPORT = 0x5007,
-  SETC_PORT_CLOCKPORT = 0x500f,
-  SETC_PORT_READYPORT = 0x5017
-};
 
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
@@ -545,6 +517,8 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
     }
   }
   SyscallHandler::setCoreCount(coresWithImage.size());
+
+  JIT::init();
   
   // Initialise tracing
   Tracer::get().setSymbolInfo(SI);

@@ -53,4 +53,20 @@ inline uint32_t makeMask(uint32_t x)
   return (1 << x) - 1;
 }
 
+inline uint32_t signExtend(uint32_t value, uint32_t amount)
+{
+  if (amount == 0 || amount > 31) {
+    return value;
+  }
+  return (uint32_t)(((int32_t)(value << (32 - amount))) >> (32 - amount));
+}
+
+inline uint32_t zeroExtend(uint32_t value, uint32_t amount)
+{
+  if (amount == 0 || amount > 31) {
+    return value;
+  }
+  return (value << (32 - amount)) >> (32 - amount);
+}
+
 #endif // _BitManip_h_

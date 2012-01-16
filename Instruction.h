@@ -1,10 +1,12 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #ifndef _Instruction_h_
 #define _Instruction_h_
+
+class Thread;
 
 #include "Config.h"
 #include <cstddef>
@@ -44,6 +46,7 @@ struct Operands {
   union {
     uint32_t ops[3];
     uint8_t lops[6];
+    void (*func)(Thread &);
   };
 };
 

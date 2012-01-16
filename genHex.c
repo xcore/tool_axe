@@ -26,7 +26,6 @@ int main(int argc, char **argv)
     fprintf(stderr, "failed to open %s: %s", argv[2], strerror(errno));
     return 1;
   }
-  fprintf(out, "{ ");
   needComma = 0;
   while ((c = getc(in)) != EOF) {
     if (needComma) {
@@ -35,6 +34,5 @@ int main(int argc, char **argv)
     fprintf(out, "0x%02x", (unsigned)(unsigned char)c);
     needComma = 1;
   }
-  fprintf(out, " }");
   return 0;
 }

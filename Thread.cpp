@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-12, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -11,8 +11,9 @@
 #include "Exceptions.h"
 #include "BitManip.h"
 #include "SyscallHandler.h"
+#include "JIT.h"
+#include "CRC.h"
 #include <iostream>
-#include <climits>
 
 const char *registerNames[] = {
   "r0",
@@ -83,11 +84,6 @@ bool Thread::isExecuting() const
   return this == parent->getParent()->getParent()->getExecutingRunnable();
 }
 
-enum ProcessorState {
-  PS_RAM_BASE = 0x00b,
-  PS_VECTOR_BASE = 0x10b
-};
-
 enum {
   SETC_INUSE_OFF = 0x0,
   SETC_INUSE_ON = 0x8,
@@ -147,46 +143,6 @@ static void internalError(const Thread &thread, const char *file, int line) {
   << "Register state:\n";
   thread.dump();
   std::abort();
-}
-
-static inline uint32_t signExtend(uint32_t value, uint32_t amount)
-{
-  if (amount == 0 || amount > 31) {
-    return value;
-  }
-  return (uint32_t)(((int32_t)(value << (32 - amount))) >> (32 - amount));
-}
-
-static inline uint32_t zeroExtend(uint32_t value, uint32_t amount)
-{
-  if (amount == 0 || amount > 31) {
-    return value;
-  }
-  return (value << (32 - amount)) >> (32 - amount);
-}
-
-template <typename T> uint32_t crc(uint32_t checksum, T data, uint32_t poly)
-{
-  for (unsigned i = 0; i < sizeof(T) * CHAR_BIT; i++) {
-    int xorBit = (checksum & 1);
-    
-    checksum  = (checksum >> 1) | ((data & 1) << 31);
-    data = data >> 1;
-    
-    if (xorBit)
-      checksum = checksum ^ poly;
-  }
-  return checksum;
-}
-
-static uint32_t crc32(uint32_t checksum, uint32_t data, uint32_t poly)
-{
-  return crc<uint32_t>(checksum, data, poly);
-}
-
-static uint32_t crc8(uint32_t checksum, uint8_t data, uint32_t poly)
-{
-  return crc<uint8_t>(checksum, data, poly);
 }
 
 static inline uint32_t maskSize(uint32_t x)
@@ -508,6 +464,8 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
   return res->setReady(*this, ready, time);
 }
 
+#include "InstructionDefinitions.h"
+
 #ifdef DIRECT_THREADED
 #define INST(s) s ## _label
 #define ENDINST goto *(opcode[PC] + (char*)&&INST(INITIALIZE))
@@ -558,7 +516,9 @@ do { \
 } while(0)
 #define REG(Num) this->regs[Num]
 #define IMM(Num) (Num)
-#define PC pc
+#define THREAD (*this)
+#define CORE (*core)
+#define PC this->pc
 #define TIME this->time
 #define TO_PC(addr) (core->physicalAddress(addr) >> 1)
 #define FROM_PC(addr) core->virtualAddress((addr) << 1)
@@ -651,7 +611,6 @@ void Thread::run(ticks_t time)
 template <bool tracing>
 void Thread::runAux(ticks_t time) {
   SystemState &sys = *getParent().getParent()->getParent();
-  uint32_t pc = this->pc;
   Core *core = &this->getParent();
   OPCODE_TYPE *opcode = core->opcode;
   Operands *operands = core->operands;
@@ -766,188 +725,195 @@ void Thread::runAux(ticks_t time) {
     ENDINST;
   INST(DECODE):
     {
-      uint16_t low = core->loadShort(PC << 1);
-      uint16_t high = 0;
-      bool highValid;
-      if (CHECK_ADDR((PC + 1) << 1)) {
-        high = core->loadShort((PC + 1) << 1);
-        highValid = true;
-      } else {
-        highValid = false;
-      }
       InstructionOpcode opc;
-      instructionDecode(low, high, highValid, opc, operands[PC]);
-      switch (opc) {
-      default:
-        break;
-      case ADD_2rus:
-        if (OP(2) == 0) {
-          opc = ADD_mov_2rus;
+      // Try and JIT the instruction stream.
+      if (!tracing && JIT::compile(CORE, PC << 1, operands[PC].func)) {
+        opc = JIT_INSTRUCTION;
+      } else {
+        // Otherwise fall back to the interpreter.
+        // TODO avoid decoding the instruction twice if JIT fails.
+        uint16_t low = core->loadShort(PC << 1);
+        uint16_t high = 0;
+        bool highValid;
+        if (CHECK_ADDR((PC + 1) << 1)) {
+          high = core->loadShort((PC + 1) << 1);
+          highValid = true;
+        } else {
+          highValid = false;
         }
-        break;
-      case STW_2rus:
-      case LDW_2rus:
-      case LDAWF_l2rus:
-      case LDAWB_l2rus:
-        OP(2) = OP(2) << 2;
-        break;
-      case STWDP_ru6:
-      case STWSP_ru6:
-      case LDWDP_ru6:
-      case LDWSP_ru6:
-      case LDAWDP_ru6:
-      case LDAWSP_ru6:
-      case LDWCP_ru6:
-      case STWDP_lru6:
-      case STWSP_lru6:
-      case LDWDP_lru6:
-      case LDWSP_lru6:
-      case LDAWDP_lru6:
-      case LDAWSP_lru6:
-      case LDWCP_lru6:
-        OP(1) = OP(1) << 2;
-        break;
-      case EXTDP_u6:
-      case ENTSP_u6:
-      case EXTSP_u6:
-      case RETSP_u6:
-      case KENTSP_u6:
-      case KRESTSP_u6:
-      case LDAWCP_u6:
-      case LDWCPL_u10:
-      case EXTDP_lu6:
-      case ENTSP_lu6:
-      case EXTSP_lu6:
-      case RETSP_lu6:
-      case KENTSP_lu6:
-      case KRESTSP_lu6:
-      case LDAWCP_lu6:
-      case LDWCPL_lu10:
-        OP(0) = OP(0) << 2;
-        break;
-      case LDAPB_u10:
-      case LDAPF_u10:
-      case LDAPB_lu10:
-      case LDAPF_lu10:
-        OP(0) = OP(0) << 1;
-        break;
-      case SHL_2rus:
-        if (OP(2) == 32) {
-          opc = SHL_32_2rus;
+        instructionDecode(low, high, highValid, opc, operands[PC]);
+        switch (opc) {
+        default:
+          break;
+        case ADD_2rus:
+          if (OP(2) == 0) {
+            opc = ADD_mov_2rus;
+          }
+          break;
+        case STW_2rus:
+        case LDW_2rus:
+        case LDAWF_l2rus:
+        case LDAWB_l2rus:
+          OP(2) = OP(2) << 2;
+          break;
+        case STWDP_ru6:
+        case STWSP_ru6:
+        case LDWDP_ru6:
+        case LDWSP_ru6:
+        case LDAWDP_ru6:
+        case LDAWSP_ru6:
+        case LDWCP_ru6:
+        case STWDP_lru6:
+        case STWSP_lru6:
+        case LDWDP_lru6:
+        case LDWSP_lru6:
+        case LDAWDP_lru6:
+        case LDAWSP_lru6:
+        case LDWCP_lru6:
+          OP(1) = OP(1) << 2;
+          break;
+        case EXTDP_u6:
+        case ENTSP_u6:
+        case EXTSP_u6:
+        case RETSP_u6:
+        case KENTSP_u6:
+        case KRESTSP_u6:
+        case LDAWCP_u6:
+        case LDWCPL_u10:
+        case EXTDP_lu6:
+        case ENTSP_lu6:
+        case EXTSP_lu6:
+        case RETSP_lu6:
+        case KENTSP_lu6:
+        case KRESTSP_lu6:
+        case LDAWCP_lu6:
+        case LDWCPL_lu10:
+          OP(0) = OP(0) << 2;
+          break;
+        case LDAPB_u10:
+        case LDAPF_u10:
+        case LDAPB_lu10:
+        case LDAPF_lu10:
+          OP(0) = OP(0) << 1;
+          break;
+        case SHL_2rus:
+          if (OP(2) == 32) {
+            opc = SHL_32_2rus;
+          }
+          break;
+        case SHR_2rus:
+          if (OP(2) == 32) {
+            opc = SHR_32_2rus;
+          }
+          break;
+        case ASHR_l2rus:
+          if (OP(2) == 32) {
+            opc = ASHR_32_l2rus;
+          }
+          break;
+        case BRFT_ru6:
+          OP(1) = PC + 1 + OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRFT_illegal_ru6;
+          }
+          break;
+        case BRBT_ru6:
+          OP(1) = PC + 1 - OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRBT_illegal_ru6;
+          }
+          break;
+        case BRFU_u6:
+          OP(0) = PC + 1 + OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BRFU_illegal_u6;
+          }
+          break;
+        case BRBU_u6:
+          OP(0) = PC + 1 - OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BRBU_illegal_u6;
+          }
+          break;
+        case BRFF_ru6:
+          OP(1) = PC + 1 + OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRFF_illegal_ru6;
+          }
+          break;
+        case BRBF_ru6:
+          OP(1) = PC + 1 - OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRBF_illegal_ru6;
+          }
+          break;
+        case BLRB_u10:
+          OP(0) = PC + 1 - OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BLRB_illegal_u10;
+          }
+          break;
+        case BLRF_u10:
+          OP(0) = PC + 1 + OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BLRF_illegal_u10;
+          }
+          break;
+        case BRFT_lru6:
+          OP(1) = PC + 2 + OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRFT_illegal_lru6;
+          }
+          break;
+        case BRBT_lru6:
+          OP(1) = PC + 2 - OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRBT_illegal_lru6;
+          }
+          break;
+        case BRFU_lu6:
+          OP(0) = PC + 2 + OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BRFU_illegal_lu6;
+          }
+          break;
+        case BRBU_lu6:
+          OP(0) = PC + 2 - OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BRBU_illegal_lu6;
+          }
+          break;
+        case BRFF_lru6:
+          OP(1) = PC + 2 + OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRFF_illegal_lru6;
+          }
+          break;
+        case BRBF_lru6:
+          OP(1) = PC + 2 - OP(1);
+          if (!CHECK_PC(OP(1))) {
+            opc = BRBF_illegal_lru6;
+          }
+          break;
+        case BLRB_lu10:
+          OP(0) = PC + 2 - OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BLRB_illegal_lu10;
+          }
+          break;
+        case BLRF_lu10:
+          OP(0) = PC + 2 + OP(0);
+          if (!CHECK_PC(OP(0))) {
+            opc = BLRF_illegal_lu10;
+          }
+          break;
+        case MKMSK_rus:
+          OP(1) = makeMask(OP(1));
+          if (!tracing) {
+            opc = LDC_ru6;
+          }
+          break;
         }
-        break;
-      case SHR_2rus:
-        if (OP(2) == 32) {
-          opc = SHR_32_2rus;
-        }
-        break;
-      case ASHR_l2rus:
-        if (OP(2) == 32) {
-          opc = ASHR_32_l2rus;
-        }
-        break;
-      case BRFT_ru6:
-        OP(1) = PC + 1 + OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRFT_illegal_ru6;
-        }
-        break;
-      case BRBT_ru6:
-        OP(1) = PC + 1 - OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRBT_illegal_ru6;
-        }
-        break;
-      case BRFU_u6:
-        OP(0) = PC + 1 + OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BRFU_illegal_u6;
-        }
-        break;
-      case BRBU_u6:
-        OP(0) = PC + 1 - OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BRBU_illegal_u6;
-        }
-        break;
-      case BRFF_ru6:
-        OP(1) = PC + 1 + OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRFF_illegal_ru6;
-        }
-        break;
-      case BRBF_ru6:
-        OP(1) = PC + 1 - OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRBF_illegal_ru6;
-        }
-        break;
-      case BLRB_u10:
-        OP(0) = PC + 1 - OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BLRB_illegal_u10;
-        }
-        break;
-      case BLRF_u10:
-        OP(0) = PC + 1 + OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BLRF_illegal_u10;
-        }
-        break;
-      case BRFT_lru6:
-        OP(1) = PC + 2 + OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRFT_illegal_lru6;
-        }
-        break;
-      case BRBT_lru6:
-        OP(1) = PC + 2 - OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRBT_illegal_lru6;
-        }
-        break;
-      case BRFU_lu6:
-        OP(0) = PC + 2 + OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BRFU_illegal_lu6;
-        }
-        break;
-      case BRBU_lu6:
-        OP(0) = PC + 2 - OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BRBU_illegal_lu6;
-        }
-        break;
-      case BRFF_lru6:
-        OP(1) = PC + 2 + OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRFF_illegal_lru6;
-        }
-        break;
-      case BRBF_lru6:
-        OP(1) = PC + 2 - OP(1);
-        if (!CHECK_PC(OP(1))) {
-          opc = BRBF_illegal_lru6;
-        }
-        break;
-      case BLRB_lu10:
-        OP(0) = PC + 2 - OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BLRB_illegal_lu10;
-        }
-        break;
-      case BLRF_lu10:
-        OP(0) = PC + 2 + OP(0);
-        if (!CHECK_PC(OP(0))) {
-          opc = BLRF_illegal_lu10;
-        }
-        break;
-      case MKMSK_rus:
-        OP(1) = makeMask(OP(1));
-        if (!tracing) {
-          opc = LDC_ru6;
-        }
-        break;
       }
 #ifdef DIRECT_THREADED
       static OPCODE_TYPE opcodeMap[] = {
@@ -964,6 +930,9 @@ void Thread::runAux(ticks_t time) {
       // Reexecute current instruction.
       ENDINST;
     }
+  INST(JIT_INSTRUCTION):
+    operands[PC].func(THREAD);
+    ENDINST;
   END_DISPATCH_LOOP
 }
 
