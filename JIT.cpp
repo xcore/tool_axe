@@ -82,6 +82,7 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
   LLVMValueRef threadParam = LLVMGetParam(f, 0);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
+  std::vector<LLVMValueRef> calls;
   do {
     // Lookup function to call.
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
@@ -101,7 +102,8 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
                                               operands.lops[i - 1];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
-    LLVMBuildCall(builder, callee, args, numArgs, "");
+    LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
+    calls.push_back(call);
     // Increment address.
     address += properties->size;
     // See if we can JIT the next instruction.
@@ -112,7 +114,11 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
   } while (properties->function);
   // Build return.
   LLVMBuildRetVoid(builder);
-  // TODO optimize.
+  // Optimize.
+  for (std::vector<LLVMValueRef>::iterator it = calls.begin(), e = calls.end();
+       it != e; ++it) {
+    LLVMExtraInlineFunction(*it);
+  }
   // Compile.
   out = reinterpret_cast<void (*)(Thread &)>(
           LLVMGetPointerToGlobal(executionEngine, f));

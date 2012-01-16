@@ -4,7 +4,9 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "LLVMExtra.h"
+#include "llvm/Support/CallSite.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 
 using namespace llvm;
 
@@ -12,4 +14,10 @@ LLVMMemoryBufferRef
 LLVMExtraCreateMemoryBufferWithPtr(const char *ptr, size_t length)
 {
   return wrap(MemoryBuffer::getMemBuffer(StringRef(ptr, length)));
+}
+
+LLVMBool LLVMExtraInlineFunction(LLVMValueRef call)
+{
+  InlineFunctionInfo IFI;
+  return InlineFunction(CallSite(unwrap(call)), IFI);
 }

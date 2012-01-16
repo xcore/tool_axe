@@ -13,6 +13,8 @@ extern "C" {
 #endif
 LLVMMemoryBufferRef
 LLVMExtraCreateMemoryBufferWithPtr(const char *ptr, size_t length);
+
+LLVMBool LLVMExtraInlineFunction(LLVMValueRef call);
 #ifdef __cplusplus
 } // extern "C"
 #endif
