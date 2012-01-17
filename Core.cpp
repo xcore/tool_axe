@@ -52,7 +52,7 @@ const Port *Core::getPortByID(ResourceID ID) const
   if (width > 32)
     return 0;
   unsigned num = ID.num();
-  if (num > portNum[width])
+  if (num >= portNum[width])
     return 0;
   return &port[width][num];
 }
