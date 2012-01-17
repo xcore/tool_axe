@@ -51,8 +51,10 @@ void JIT::init()
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
+  LLVMAddBasicAliasAnalysisPass(FPM);
+  LLVMAddGVNPass(FPM);
+  LLVMAddDeadStoreEliminationPass(FPM);
   LLVMAddInstructionCombiningPass(FPM);
-  LLVMAddConstantPropagationPass(FPM);
   LLVMExtraAddDeadCodeEliminationPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
 }
