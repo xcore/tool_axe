@@ -18,6 +18,7 @@
 #define ERROR() std::abort();
 #define OP(n) (field ## n)
 #define LOP(n) OP(n)
+#define FROM_PC(addr) CORE.virtualAddress((addr) << 1)
 #define EMIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
 #undef EMIT_INSTRUCTION_FUNCTIONS
@@ -26,5 +27,6 @@
 #undef ERROR
 #undef OP
 #undef LOP
+#undef FROM_PC
 
 #endif // _InstructionDefinitions_h_

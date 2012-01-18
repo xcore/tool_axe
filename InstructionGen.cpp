@@ -154,11 +154,12 @@ private:
   std::string transformStr;
   std::string reverseTransformStr;
   unsigned cycles;
-  bool sync;
-  bool canEvent;
-  bool unimplemented;
-  bool custom;
-  bool canJit;
+  bool sync:1;
+  bool canEvent:1;
+  bool unimplemented:1;
+  bool custom:1;
+  bool canJit:1;
+  bool mayBranch:1;
 public:
   Instruction(const std::string &n,
               unsigned s,
@@ -176,7 +177,8 @@ public:
     canEvent(false),
     unimplemented(false),
     custom(false),
-    canJit(false)
+    canJit(false),
+    mayBranch(false)
   {
   }
   const std::string &getName() const { return name; }
@@ -196,6 +198,7 @@ public:
   bool getUnimplemented() const { return unimplemented; }
   bool getCustom() const { return custom; }
   bool getCanJit() const { return canJit; }
+  bool getMayBranch() const { return mayBranch; }
   Instruction &addImplicitOp(Register reg, OpType type) {
     assert(type != imm);
     implicitOps.push_back(reg);
@@ -229,6 +232,10 @@ public:
   }
   Instruction &setCanJit() {
     canJit = true;
+    return *this;
+  }
+  Instruction &setMayBranch() {
+    mayBranch = true;
     return *this;
   }
 };
@@ -1010,7 +1017,7 @@ static void emitInstFunction(Instruction &inst)
   if (!inst.getCanJit())
     return;
   std::cout << "extern \"C\" void " << getInstFunctionName(inst) << '(';
-  std::cout << "Thread &thread";
+  std::cout << "Thread &thread, uint32_t nextPc";
   for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
     std::cout << ", uint32_t field" << i;
   }
@@ -1050,7 +1057,7 @@ static void emitInstFunction(Instruction &inst)
       break;
     }
   }
-  std::cout << "THREAD.pc += " << inst.getSize() / 2 << ";\n";
+  std::cout << "THREAD.pc = nextPc;\n";
   std::cout << "}\n";
 }
 
@@ -1080,8 +1087,13 @@ static void emitInstList()
 }
 
 static void analyzeInst(Instruction &inst) {
-  if (inst.getCanEvent() || inst.getCustom() || inst.getSync() ||
-      inst.getUnimplemented())
+  if (inst.getCustom() || inst.getUnimplemented())
+    return;
+  CodePropertyExtractor propertyExtractor;
+  propertyExtractor.emit(inst, inst.getCode());
+  if (propertyExtractor.getUsesPc())
+    inst.setMayBranch();
+  if (inst.getCanEvent() || inst.getSync())
     return;
   const std::vector<OpType> &operands = inst.getOperands();
   for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {
@@ -1089,10 +1101,7 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  CodePropertyExtractor propertyExtractor;
-  propertyExtractor.emit(inst, inst.getCode());
-  if (propertyExtractor.getUsesPc() ||
-      propertyExtractor.getHasException() ||
+  if (propertyExtractor.getHasException() ||
       propertyExtractor.getHasKCall() ||
       propertyExtractor.getHasPauseOn() ||
       propertyExtractor.getHasNext() ||
@@ -1110,6 +1119,24 @@ static void analyze()
   }
 }
 
+static void emitInstFlag(const char *name, bool &emittedFlag)
+{
+  if (emittedFlag)
+    std::cout << " | ";
+  std::cout << "InstructionProperties::" << name;
+  emittedFlag = true;
+}
+
+static void emitInstFlags(Instruction &inst)
+{
+  bool emittedFlag = false;
+  if (inst.getMayBranch()) {
+    emitInstFlag("MAY_BRANCH", emittedFlag);
+  }
+  if (!emittedFlag)
+    std::cout << 0;
+}
+
 static void emitInstProperties(Instruction &inst)
 {
   std::cout << "{ ";
@@ -1119,6 +1146,8 @@ static void emitInstProperties(Instruction &inst)
     std::cout << '0';
   std::cout << ", " << inst.getSize();
   std::cout << ", " << inst.getNumExplicitOperands();
+  std::cout << ", ";
+  emitInstFlags(inst);
   std::cout << " }";
 }
 

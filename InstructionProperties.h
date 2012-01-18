@@ -7,9 +7,14 @@
 #define _InstructionProperties_h_
 
 struct InstructionProperties {
+  enum Flags {
+    MAY_BRANCH = 1 << 0
+  };
   const char *function;
   unsigned char size;
   unsigned char numExplicitOperands;
+  unsigned char flags;
+  bool mayBranch() const { return flags & MAY_BRANCH; }
 };
 
 extern InstructionProperties instructionProperties[];

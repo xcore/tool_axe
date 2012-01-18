@@ -84,10 +84,13 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
     return false;
   Operands operands;
   instructionDecode(low, high, highValid, opc, operands);
-  instructionTransform(opc, operands, core, address);
+  instructionTransform(opc, operands, core, address >> 1);
   InstructionProperties *properties = &instructionProperties[opc];
   // Check if we can JIT the instruction.
   if (!properties->function)
+    return false;
+  // There isn't much point JITing a single instruction.
+  if (properties->mayBranch())
     return false;
   // Create function to contain the code we are about to add.
   LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
@@ -100,29 +103,33 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
     assert(callee && "Function for instruction not found in module");
     LLVMTypeRef calleeType = LLVMGetElementType(LLVMTypeOf(callee));
-    unsigned numArgs = properties->numExplicitOperands + 1;
+    unsigned numArgs = properties->numExplicitOperands + 2;
+    unsigned nextAddress = address + properties->size;
     assert(LLVMCountParamTypes(calleeType) == numArgs);
-    LLVMTypeRef paramTypes[7];
-    assert(numArgs <= 7);
+    LLVMTypeRef paramTypes[8];
+    assert(numArgs <= 8);
     LLVMGetParamTypes(calleeType, paramTypes);
     // Build call.
-    LLVMValueRef args[7];
+    LLVMValueRef args[8];
     args[0] = threadParam;
-    for (unsigned i = 1; i < numArgs; i++) {
+    args[1] = LLVMConstInt(paramTypes[1], nextAddress >> 1, false);
+    for (unsigned i = 2; i < numArgs; i++) {
       uint32_t value =
-        properties->numExplicitOperands <= 3 ? operands.ops[i - 1] :
-                                              operands.lops[i - 1];
+        properties->numExplicitOperands <= 3 ? operands.ops[i - 2] :
+                                              operands.lops[i - 2];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
     calls.push_back(call);
+    // See if we can JIT the next instruction.
+    if (properties->mayBranch())
+      break;
     // Increment address.
     address += properties->size;
-    // See if we can JIT the next instruction.
     if (!readInstMem(core, address, low, high, highValid))
       break;
     instructionDecode(low, high, highValid, opc, operands);
-    instructionTransform(opc, operands, core, address);
+    instructionTransform(opc, operands, core, address >> 1);
     properties = &instructionProperties[opc];
   } while (properties->function);
   // Build return.
