@@ -1081,7 +1081,7 @@ static void emitInstList()
 
 static void analyzeInst(Instruction &inst) {
   if (inst.getCanEvent() || inst.getCustom() || inst.getSync() ||
-      inst.getUnimplemented() || !inst.getTransform().empty())
+      inst.getUnimplemented())
     return;
   const std::vector<OpType> &operands = inst.getOperands();
   for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {

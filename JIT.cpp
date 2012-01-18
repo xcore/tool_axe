@@ -84,6 +84,7 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
     return false;
   Operands operands;
   instructionDecode(low, high, highValid, opc, operands);
+  instructionTransform(opc, operands, core, address);
   InstructionProperties *properties = &instructionProperties[opc];
   // Check if we can JIT the instruction.
   if (!properties->function)
@@ -121,6 +122,7 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
     if (!readInstMem(core, address, low, high, highValid))
       break;
     instructionDecode(low, high, highValid, opc, operands);
+    instructionTransform(opc, operands, core, address);
     properties = &instructionProperties[opc];
   } while (properties->function);
   // Build return.

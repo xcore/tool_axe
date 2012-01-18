@@ -11,6 +11,8 @@ class Thread;
 #include "Config.h"
 #include <cstddef>
 
+class Core;
+
 /// Below are all the instructions supported by the interpreter.
 /// The instructions match those of the XCore except where noted below.
 ///
@@ -53,5 +55,9 @@ struct Operands {
 void
 instructionDecode(uint16_t low, uint16_t high, bool highValid,
                   InstructionOpcode &opcode, Operands &operands);
+
+void
+instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,
+                     uint32_t pc);
 
 #endif //_Instruction_h_
