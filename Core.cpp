@@ -114,6 +114,7 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
     opcode[syscallAddress] = syscall;
   if (exceptionAddress < ramSizeShorts)
     opcode[exceptionAddress] = exception;
+  decodeOpcode = decode;
 }
 
 bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)
@@ -179,4 +180,24 @@ std::string Core::getCoreName() const
   std::ostringstream buf;
   buf << 'c' << getCoreID();
   return buf.str();
+}
+
+void Core::invalidateWordSlowPath(uint32_t shiftedAddress)
+{
+  if (invalidationInfo[shiftedAddress + 1] == INVALIDATE_NONE) {
+    invalidateSlowPath(shiftedAddress);
+    return;
+  }
+  invalidationInfo[shiftedAddress + 1] = INVALIDATE_CURRENT_AND_PREVIOUS;
+  invalidateSlowPath(shiftedAddress + 1);
+}
+
+void Core::invalidateSlowPath(uint32_t shiftedAddress)
+{
+  unsigned char info;
+  do {
+    info = invalidationInfo[shiftedAddress];
+    opcode[shiftedAddress] = decodeOpcode;
+    invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
+  } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
 }

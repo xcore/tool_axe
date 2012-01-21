@@ -451,17 +451,6 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
 #define END_DISPATCH_LOOP } }
 #endif
 
-#define INVALIDATE_WORD(addr) \
-do { \
-  opcode[(addr) >> 1] = OPCODE(DECODE); \
-  opcode[1 + ((addr) >> 1)] = OPCODE(DECODE); \
-} while(0)
-#define INVALIDATE_SHORT(addr) \
-do { \
-  opcode[(addr) >> 1] = OPCODE(DECODE); \
-} while(0)
-#define INVALIDATE_BYTE(addr) INVALIDATE_SHORT(addr)
-
 #define STORE_WORD(value, addr) \
 do { \
   INVALIDATE_WORD(addr); \
@@ -702,6 +691,14 @@ void Thread::runAux(ticks_t time) {
         }
         instructionDecode(low, high, highValid, opc, operands[PC]);
         instructionTransform(opc, operands[PC], CORE, PC);
+      }
+      // TODO handle word size instructions properly.
+      if (CORE.invalidationInfo[PC] == Core::INVALIDATE_NONE) {
+        CORE.invalidationInfo[PC] = Core::INVALIDATE_CURRENT;
+      }
+      // TODO check if the instruction was word size before this.
+      if (CHECK_ADDR((PC + 1) << 1)) {
+        CORE.invalidationInfo[PC + 1] = Core::INVALIDATE_CURRENT_AND_PREVIOUS;
       }
 #ifdef DIRECT_THREADED
       static OPCODE_TYPE opcodeMap[] = {

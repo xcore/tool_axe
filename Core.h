@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <iterator>
 #include <cstring>
+#include <cstdlib>
 #include "BitManip.h"
 #include "Config.h"
 #include "Resource.h"
@@ -40,6 +41,11 @@ public:
   enum {
     ILLEGAL_PC_THREAD_ADDR_OFFSET = 2,
   };
+  enum {
+    INVALIDATE_NONE,
+    INVALIDATE_CURRENT,
+    INVALIDATE_CURRENT_AND_PREVIOUS
+  };
 private:
   Thread * const thread;
   Synchroniser * const sync;
@@ -56,8 +62,11 @@ private:
   unsigned coreNumber;
   Node *parent;
   std::string codeReference;
+  OPCODE_TYPE decodeOpcode;
 
   bool hasMatchingNodeID(ResourceID ID);
+  void invalidateWordSlowPath(uint32_t address);
+  void invalidateSlowPath(uint32_t shiftedAddress);
 public:
   // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
   // pseudo instruction just past the end of memory. This saves
@@ -66,6 +75,8 @@ public:
   // are use for communicating illegal states.
   OPCODE_TYPE *opcode;
   Operands *operands;
+  // TODO merge these arrays.
+  unsigned char *invalidationInfo;
 
   const uint32_t ram_size;
   const uint32_t ram_base;
@@ -90,6 +101,7 @@ public:
     parent(0),
     opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
     operands(new Operands[RamSize >> 1]),
+    invalidationInfo(new unsigned char[RamSize >> 1]),
     ram_size(RamSize),
     ram_base(RamBase),
     syscallAddress(~0),
@@ -172,6 +184,9 @@ public:
       opcode[i] = INITIALIZE;
 #endif
     }
+    for (unsigned i = 0; i != (RamSize >> 1); ++i) {
+      invalidationInfo[i] = INVALIDATE_NONE;
+    }
   }
 
   bool setSyscallAddress(uint32_t value);
@@ -184,6 +199,7 @@ public:
   ~Core() {
     delete[] opcode;
     delete[] operands;
+    delete[] invalidationInfo;
     //delete[] thread;
     //delete[] sync;
     //delete[] lock;
@@ -265,7 +281,29 @@ public:
   {
     mem()[address] = value;
   }
-  
+
+  bool invalidateWord(uint32_t address) {
+    if (invalidationInfo[address >> 1] == INVALIDATE_NONE &&
+        invalidationInfo[(address >> 1) + 1] == INVALIDATE_NONE)
+      return false;
+    invalidateWordSlowPath(address);
+    return true;
+  }
+
+  bool invalidateShort(uint32_t address) {
+    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
+  bool invalidateByte(uint32_t address) {
+    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
   Resource *allocResource(Thread &current, ResourceType type)
   {
     if (type > LAST_STD_RES_TYPE || !allocatable[type])
