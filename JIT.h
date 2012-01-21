@@ -15,6 +15,7 @@ class Core;
 namespace JIT {
   void init();
   bool compile(Core &c, uint32_t address, JITInstructionFunction_t &f);
+  void markUnreachable(const JITInstructionFunction_t f);
 };
 
 #endif // _JIT_h_

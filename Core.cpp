@@ -6,6 +6,7 @@
 #include "Core.h"
 #include "SystemState.h"
 #include "Node.h"
+#include "JIT.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -101,7 +102,7 @@ bool Core::setExceptionAddress(uint32_t value)
 void Core::
 initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
           OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-          OPCODE_TYPE exception)
+          OPCODE_TYPE exception, OPCODE_TYPE jitFunction)
 {
   const uint32_t ramSizeShorts = ram_size >> 1;
   // Initialise instruction cache.
@@ -115,6 +116,7 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   if (exceptionAddress < ramSizeShorts)
     opcode[exceptionAddress] = exception;
   decodeOpcode = decode;
+  jitFunctionOpcode = jitFunction;
 }
 
 bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)
@@ -197,6 +199,9 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
   unsigned char info;
   do {
     info = invalidationInfo[shiftedAddress];
+    if (opcode[shiftedAddress] == jitFunctionOpcode) {
+      JIT::markUnreachable(operands[shiftedAddress].func);
+    }
     opcode[shiftedAddress] = decodeOpcode;
     invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);

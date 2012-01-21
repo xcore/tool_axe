@@ -570,7 +570,7 @@ void Thread::runAux(ticks_t time) {
   INST(INITIALIZE):
     getParent().initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
                           OPCODE(ILLEGAL_PC_THREAD), OPCODE(SYSCALL),
-                          OPCODE(EXCEPTION));
+                          OPCODE(EXCEPTION), OPCODE(JIT_INSTRUCTION));
     ENDINST;
 #define EMIT_INSTRUCTION_DISPATCH
 #include "InstructionGenOutput.inc"

@@ -19,12 +19,15 @@
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
+#include <map>
 
 static LLVMModuleRef module;
 static LLVMBuilderRef builder;
 static LLVMExecutionEngineRef executionEngine;
 static LLVMTypeRef jitFunctionType;
 static LLVMPassManagerRef FPM;
+static std::vector<JITInstructionFunction_t> unreachableFunctions;
+static std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
 
 void JIT::init()
 {
@@ -74,11 +77,27 @@ readInstMem(Core &core, uint32_t address, uint16_t &low, uint16_t &high,
   return true;
 }
 
+static void reclaimUnreachableFunctions()
+{
+  for (std::vector<JITInstructionFunction_t>::iterator it = unreachableFunctions.begin(),
+       e = unreachableFunctions.end(); it != e; ++it) {
+    std::map<JITInstructionFunction_t,LLVMValueRef>::iterator entry =
+      functionPtrMap.find(*it);
+    assert(entry != functionPtrMap.end());
+    LLVMFreeMachineCodeForFunction(executionEngine, entry->second);
+    LLVMDeleteFunction(entry->second);
+    functionPtrMap.erase(entry);
+  }
+  unreachableFunctions.clear();
+}
+
 bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
   InstructionOpcode opc;
   uint16_t low, high;
   bool highValid;
+  if (!unreachableFunctions.empty())
+    reclaimUnreachableFunctions();
   if (!readInstMem(core, address, low, high, highValid))
     return false;
   Operands operands;
@@ -131,6 +150,20 @@ bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
     LLVMBuildRet(builder,
                  LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false));
     LLVMPositionBuilderAtEnd(builder, afterBB);
+    // Update invalidation info.
+    if (calls.size() == 1) {
+      if (core.invalidationInfo[address >> 1] == Core::INVALIDATE_NONE) {
+        core.invalidationInfo[address >> 1] = Core::INVALIDATE_CURRENT;
+      }
+    } else {
+      core.invalidationInfo[address >> 1] =
+        Core::INVALIDATE_CURRENT_AND_PREVIOUS;
+    }
+    if (properties->size != 2) {
+      assert(properties->size == 4 && "Unexpected instruction size");
+      core.invalidationInfo[(address >> 1) + 1] =
+        Core::INVALIDATE_CURRENT_AND_PREVIOUS;
+    }
     // See if we can JIT the next instruction.
     if (properties->mayBranch())
       break;
@@ -154,5 +187,11 @@ bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
   // Compile.
   out = reinterpret_cast<JITInstructionFunction_t>(
           LLVMGetPointerToGlobal(executionEngine, f));
+  functionPtrMap.insert(std::make_pair(out, f));
   return true;
+}
+
+void JIT::markUnreachable(const JITInstructionFunction_t f)
+{
+  unreachableFunctions.push_back(f);
 }

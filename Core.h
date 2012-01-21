@@ -63,6 +63,7 @@ private:
   Node *parent;
   std::string codeReference;
   OPCODE_TYPE decodeOpcode;
+  OPCODE_TYPE jitFunctionOpcode;
 
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
@@ -194,7 +195,7 @@ public:
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-                 OPCODE_TYPE exception);
+                 OPCODE_TYPE exception, OPCODE_TYPE jitFunction);
 
   ~Core() {
     delete[] opcode;
