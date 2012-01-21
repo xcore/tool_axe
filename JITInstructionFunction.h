@@ -3,18 +3,11 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#ifndef _JIT_h_
-#define _JIT_h_
-
-#include <stdint.h>
-#include "JITInstructionFunction.h"
+#ifndef _JITInstructionFunction_h_
+#define _JITInstructionFunction_h_
 
 class Thread;
-class Core;
 
-namespace JIT {
-  void init();
-  bool compile(Core &c, uint32_t address, JITInstructionFunction_t &f);
-};
+typedef bool (*JITInstructionFunction_t)(Thread &);
 
-#endif // _JIT_h_
+#endif // _JITInstructionFunction_h_

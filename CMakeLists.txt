@@ -59,6 +59,7 @@ add_executable(axe
   InstructionBitcode.cpp
   JIT.h
   JIT.cpp
+  JITInstructionFunction.h
   Lock.cpp
   Lock.h
   LLVMExtra.h
@@ -86,6 +87,9 @@ add_executable(axe
   Instruction.h
   Instruction.cpp
   InstructionDefinitions.h
+  InstructionHelpers.h
+  InstructionHelpers.cpp
+  InstructionMacrosCommon.h
   InstructionProperties.h
   InstructionProperties.cpp
   TerminalColours.h

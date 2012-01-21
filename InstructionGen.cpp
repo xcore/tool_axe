@@ -685,6 +685,9 @@ void InlineCodeEmitter::emitDeschedule()
 }
 
 class FunctionCodeEmitter : public CodeEmitter {
+public:
+  void emitCycles();
+  void emitRegWriteback();
 protected:
   virtual void emitBegin();
   virtual void emitRaw(const std::string &s);
@@ -696,6 +699,29 @@ protected:
   virtual void emitNext();
   virtual void emitDeschedule();
 };
+
+void FunctionCodeEmitter::emitCycles()
+{
+  std::cout << "THREAD.time += " << getInstruction().getCycles() << ";\n";
+}
+
+void FunctionCodeEmitter::emitRegWriteback()
+{
+  const std::vector<OpType> &operands = getInstruction().getOperands();
+  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
+    switch (operands[i]) {
+    default:
+      break;
+    case out:
+    case inout:
+      std::cout << "THREAD.regs[" << getOperandName(getInstruction(), i);
+      std::cout << "] = ";
+      std::cout << "op" << i << ";\n";
+      break;
+    }
+  }
+  std::cout << "THREAD.pc = nextPc;\n";
+}
 
 void FunctionCodeEmitter::emitBegin()
 {
@@ -718,7 +744,8 @@ void FunctionCodeEmitter::emitNextPc()
 
 void FunctionCodeEmitter::emitException(const std::string &args)
 {
-  assert(0);
+  std::cout << "THREAD.pc = exception(THREAD, THREAD.pc, " << args << ");\n";
+  emitCycles();
 }
 
 void FunctionCodeEmitter::emitKCall(const std::string &args)
@@ -733,7 +760,9 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
 
 void FunctionCodeEmitter::emitNext()
 {
-  assert(0);
+  emitRegWriteback();
+  emitCycles();
+  std::cout << "return true;\n";
 }
 
 void FunctionCodeEmitter::emitDeschedule()
@@ -1006,17 +1035,11 @@ static void emitInstDispatch()
   std::cout << "#endif //EMIT_INSTRUCTION_DISPATCH\n";
 }
 
-static void emitFunctionCode(Instruction &inst, const std::string &code)
-{
-  FunctionCodeEmitter emitter;
-  emitter.emit(inst, code);
-}
-
 static void emitInstFunction(Instruction &inst)
 {
   if (!inst.getCanJit())
     return;
-  std::cout << "extern \"C\" void " << getInstFunctionName(inst) << '(';
+  std::cout << "extern \"C\" bool " << getInstFunctionName(inst) << '(';
   std::cout << "Thread &thread, uint32_t nextPc";
   for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
     std::cout << ", uint32_t field" << i;
@@ -1042,22 +1065,13 @@ static void emitInstFunction(Instruction &inst)
     }
     std::cout << ";\n";
   }
-  emitFunctionCode(inst, inst.getCode());
+  FunctionCodeEmitter emitter;
+  emitter.emit(inst, inst.getCode());
   std::cout << '\n';
   // Write operands.
-  std::cout << "THREAD.time += " << inst.getCycles() << ";\n";
-  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
-    switch (operands[i]) {
-    default:
-      break;
-    case out:
-    case inout:
-      std::cout << "THREAD.regs[" << getOperandName(inst, i) << "] = ";
-      std::cout << "op" << i << ";\n";
-      break;
-    }
-  }
-  std::cout << "THREAD.pc = nextPc;\n";
+  emitter.emitRegWriteback();
+  emitter.emitCycles();
+  std::cout << "return false;\n";
   std::cout << "}\n";
 }
 
@@ -1104,7 +1118,6 @@ static void analyzeInst(Instruction &inst) {
   if (propertyExtractor.getHasException() ||
       propertyExtractor.getHasKCall() ||
       propertyExtractor.getHasPauseOn() ||
-      propertyExtractor.getHasNext() ||
       propertyExtractor.getHasDeschedule())
     return;
   inst.setCanJit();

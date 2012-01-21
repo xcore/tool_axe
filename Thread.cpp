@@ -13,6 +13,7 @@
 #include "SyscallHandler.h"
 #include "JIT.h"
 #include "CRC.h"
+#include "InstructionHelpers.h"
 #include <iostream>
 
 const char *registerNames[] = {
@@ -107,36 +108,6 @@ enum {
   SETC_PORT_CLOCKPORT = 0x500f,
   SETC_PORT_READYPORT = 0x5017
 };
-
-uint32_t Thread::
-exception(Core &state, uint32_t pc, int et, uint32_t ed)
-{
-  uint32_t sed = regs[ED];
-  uint32_t spc = state.targetPc(pc);
-  uint32_t ssr = sr.to_ulong();
-  
-  if (Tracer::get().getTracingEnabled()) {
-    Tracer::get().exception(*this, et, ed, sed, ssr, spc);
-  }
-  
-  regs[SSR] = sed;
-  regs[SPC] = spc;
-  regs[SED] = sed;
-  ink() = true;
-  eeble() = false;
-  ieble() = false;
-  regs[ET] = et;
-  regs[ED] = ed;
-  
-  uint32_t newPc = state.physicalAddress(regs[KEP]);
-  if (et == ET_KCALL)
-    newPc += 64;
-  if ((newPc & 1) || !state.isValidAddress(newPc)) {
-    std::cout << "Error: unable to handle exception (invalid kep)\n";
-    std::abort();
-  }
-  return newPc >> 1;
-}
 
 static void internalError(const Thread &thread, const char *file, int line) {
   std::cout << "Internal error in " << file << ":" << line << "\n"
@@ -464,7 +435,7 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
   return res->setReady(*this, ready, time);
 }
 
-#include "InstructionDefinitions.h"
+#include "InstructionMacrosCommon.h"
 
 #ifdef DIRECT_THREADED
 #define INST(s) s ## _label
@@ -480,9 +451,6 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
 #define END_DISPATCH_LOOP } }
 #endif
 
-#define LOAD_WORD(addr) core->loadWord(addr)
-#define LOAD_SHORT(addr) core->loadShort(addr)
-#define LOAD_BYTE(addr) core->loadByte(addr)
 #define INVALIDATE_WORD(addr) \
 do { \
   opcode[(addr) >> 1] = OPCODE(DECODE); \
@@ -520,20 +488,11 @@ do { \
 #define CORE (*core)
 #define PC this->pc
 #define TIME this->time
-#define TO_PC(addr) (core->physicalAddress(addr) >> 1)
-#define FROM_PC(addr) core->virtualAddress((addr) << 1)
-#define CHECK_PC(addr) ((addr) < (core->ram_size << 1))
 #define OP(n) (operands[PC].ops[(n)])
 #define LOP(n) (operands[PC].lops[(n)])
-#define ADDR(addr) core->physicalAddress(addr)
-#define PHYSICAL_ADDR(addr) core->physicalAddress(addr)
-#define VIRTUAL_ADDR(addr) core->virtualAddress(addr)
-#define CHECK_ADDR(addr) core->isValidAddress(addr)
-#define CHECK_ADDR_SHORT(addr) (!((addr) & 1) && CHECK_ADDR(addr))
-#define CHECK_ADDR_WORD(addr) (!((addr) & 3) && CHECK_ADDR(addr))
 #define EXCEPTION(et, ed) \
 do { \
-  PC = exception(*core, PC, et, ed); \
+  PC = exception(THREAD, PC, et, ed); \
   NEXT_THREAD(PC); \
 } while(0);
 #define ERROR() \
@@ -760,7 +719,8 @@ void Thread::runAux(ticks_t time) {
       ENDINST;
     }
   INST(JIT_INSTRUCTION):
-    operands[PC].func(THREAD);
+    if (operands[PC].func(THREAD))
+      NEXT_THREAD(PC);
     ENDINST;
   END_DISPATCH_LOOP
 }

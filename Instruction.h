@@ -38,6 +38,8 @@ enum InstructionOpcode {
 #undef DO_INSTRUCTION
 };
 
+#include "JITInstructionFunction.h"
+
 #ifdef DIRECT_THREADED
 typedef ptrdiff_t OPCODE_TYPE;
 #else
@@ -48,7 +50,7 @@ struct Operands {
   union {
     uint32_t ops[3];
     uint8_t lops[6];
-    void (*func)(Thread &);
+    JITInstructionFunction_t func;
   };
 };
 

@@ -317,7 +317,6 @@ public:
 private:
   template <bool tracing> void runAux(ticks_t time);
   bool setSRSlowPath(sr_t old);
-  uint32_t exception(Core &state, uint32_t pc, int et, uint32_t ed);
   bool setC(ticks_t time, ResourceID resID, uint32_t val);
   bool setClock(ResourceID resID, uint32_t val, ticks_t time);
   bool threadSetReady(ResourceID resID, uint32_t val, ticks_t time);

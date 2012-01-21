@@ -11,6 +11,14 @@
 #include "Core.h"
 #include "BitManip.h"
 #include "CRC.h"
+#include "InstructionHelpers.h"
+#include "InstructionMacrosCommon.h"
+#include "Exceptions.h"
+
+/// Use to get the required LLVM type for instruction functions.
+extern "C" bool jitInstructionTemplate(Thread &t, uint32_t pc) {
+  return false;
+}
 
 #define THREAD thread
 #define CORE THREAD.getParent()
@@ -18,7 +26,6 @@
 #define ERROR() std::abort();
 #define OP(n) (field ## n)
 #define LOP(n) OP(n)
-#define FROM_PC(addr) CORE.virtualAddress((addr) << 1)
 #define EMIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
 #undef EMIT_INSTRUCTION_FUNCTIONS

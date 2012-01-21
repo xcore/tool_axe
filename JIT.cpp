@@ -45,9 +45,8 @@ void JIT::init()
     std::abort();
   }
   builder = LLVMCreateBuilder();
-  InstructionProperties &properties = instructionProperties[GETID_0r];
-  LLVMValueRef callee = LLVMGetNamedFunction(module, properties.function);
-  assert(callee && "Function for GETID_0r not found in module");
+  LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
+  assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
@@ -75,7 +74,7 @@ readInstMem(Core &core, uint32_t address, uint16_t &low, uint16_t &high,
   return true;
 }
 
-bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
+bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
   InstructionOpcode opc;
   uint16_t low, high;
@@ -121,6 +120,17 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
     calls.push_back(call);
+    // TODO avoid generating this if possible
+    LLVMValueRef cmp =
+      LLVMBuildICmp(builder, LLVMIntNE, call,
+                    LLVMConstInt(LLVMTypeOf(call), 0, false), "");
+    LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
+    LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
+    LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
+    LLVMPositionBuilderAtEnd(builder, returnBB);
+    LLVMBuildRet(builder,
+                 LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false));
+    LLVMPositionBuilderAtEnd(builder, afterBB);
     // See if we can JIT the next instruction.
     if (properties->mayBranch())
       break;
@@ -133,7 +143,8 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
     properties = &instructionProperties[opc];
   } while (properties->function);
   // Build return.
-  LLVMBuildRetVoid(builder);
+  LLVMBuildRet(builder,
+               LLVMConstInt(LLVMGetReturnType(jitFunctionType), 0, false));
   // Optimize.
   for (std::vector<LLVMValueRef>::iterator it = calls.begin(), e = calls.end();
        it != e; ++it) {
@@ -141,7 +152,7 @@ bool JIT::compile(Core &core, uint32_t address, void (*&out)(Thread &))
   }
   LLVMRunFunctionPassManager(FPM, f);
   // Compile.
-  out = reinterpret_cast<void (*)(Thread &)>(
+  out = reinterpret_cast<JITInstructionFunction_t>(
           LLVMGetPointerToGlobal(executionEngine, f));
   return true;
 }
