@@ -86,7 +86,7 @@ add_executable(axe
   ring_buffer.h
   Instruction.h
   Instruction.cpp
-  InstructionDefinitions.h
+  InstructionDefinitions.cpp
   InstructionHelpers.h
   InstructionHelpers.cpp
   InstructionMacrosCommon.h
@@ -134,7 +134,7 @@ add_custom_command(
  COMMAND ${INSTGEN_EXE} ${AXE_BINARY_DIR} > ${AXE_BINARY_DIR}/InstructionGenOutput.inc
  DEPENDS instgen
  )
-# add the custom command that compiles InstructionDefinitions.h to LLVM
+# add the custom command that compiles InstructionDefinitions.cpp to LLVM
 # bitcode
 get_directory_property(INCLUDES_DIRS INCLUDE_DIRECTORIES)
 set(CLANG_INCLUDE_FLAGS "")
@@ -144,10 +144,10 @@ endforeach()
 add_custom_command(
   OUTPUT ${AXE_BINARY_DIR}/InstructionBitcode.bc
   COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CMAKE_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
-  -c -emit-llvm -xc++ ${AXE_SOURCE_DIR}/InstructionDefinitions.h
+  -c -emit-llvm ${AXE_SOURCE_DIR}/InstructionDefinitions.cpp
   -o ${AXE_BINARY_DIR}/InstructionBitcode.bc
   DEPENDS ${AXE_BINARY_DIR}/InstructionGenOutput.inc
-  IMPLICIT_DEPENDS CXX $(AXE_SOURCE_DIR)/InstructionDefinitions.h
+  IMPLICIT_DEPENDS CXX $(AXE_SOURCE_DIR)/InstructionDefinitions.cpp
   )
 # add the custom command that turns the LLVM bitcode into hex
 add_custom_command(

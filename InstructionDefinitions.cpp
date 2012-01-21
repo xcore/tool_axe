@@ -3,9 +3,6 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#ifndef _InstructionDefinitions_h_
-#define _InstructionDefinitions_h_
-
 #include <cstdlib>
 #include "Thread.h"
 #include "Core.h"
@@ -35,5 +32,3 @@ extern "C" bool jitInstructionTemplate(Thread &t, uint32_t pc) {
 #undef OP
 #undef LOP
 #undef FROM_PC
-
-#endif // _InstructionDefinitions_h_
