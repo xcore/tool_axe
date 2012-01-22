@@ -9,7 +9,27 @@
 #include <stdint.h>
 
 class Thread;
+class Core;
+class ResourceID;
+class Resource;
+class Synchroniser;
+class Thread;
+class Chanend;
+class Port;
+class EventableResource;
 
 uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed);
+
+Resource *checkResource(Core &state, ResourceID id);
+
+Synchroniser *checkSync(Core &state, ResourceID id);
+
+Thread *checkThread(Core &state, ResourceID id);
+
+Chanend *checkChanend(Core &state, ResourceID id);
+
+Port *checkPort(Core &state, ResourceID id);
+
+EventableResource *checkEventableResource(Core &state, ResourceID id);
 
 #endif // _InstructionHelpers_h_

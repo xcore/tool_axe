@@ -208,7 +208,6 @@ public:
     pausedOn = 0;
   }
 
-private:
   void setSync(Synchroniser &s)
   {
     assert(!sync && "Synchroniser set twice");
@@ -220,19 +219,16 @@ private:
     return ssync;
   }
 
-public:
   void setSSync(bool value)
   {
     ssync = value;
   }
   
-private:
   Synchroniser *getSync()
   {
     return sync;
   }
 
-public:
   uint32_t &reg(unsigned RegNum)
   {
     return regs[RegNum];

@@ -36,3 +36,61 @@ uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   }
   return newPc >> 1;
 }
+
+Resource *checkResource(Core &state, ResourceID id)
+{
+  Resource *res = state.getResourceByID(id);
+  if (!res || !res->isInUse())
+    return 0;
+  return res;
+}
+
+Synchroniser *checkSync(Core &state, ResourceID id)
+{
+  Resource *res = checkResource(state, id);
+  if (!res)
+    return 0;
+  if (res->getType() != RES_TYPE_SYNC)
+    return 0;
+  return static_cast<Synchroniser *>(res);
+}
+
+Thread *checkThread(Core &state, ResourceID id)
+{
+  Resource *res = checkResource(state, id);
+  if (!res)
+    return 0;
+  if (res->getType() != RES_TYPE_THREAD)
+    return 0;
+  return static_cast<Thread *>(res);
+}
+
+Chanend *checkChanend(Core &state, ResourceID id)
+{
+  Resource *res = checkResource(state, id);
+  if (!res)
+    return 0;
+  if (res->getType() != RES_TYPE_CHANEND)
+    return 0;
+  return static_cast<Chanend *>(res);
+}
+
+Port *checkPort(Core &state, ResourceID id)
+{
+  Resource *res = checkResource(state, id);
+  if (!res)
+    return 0;
+  if (res->getType() != RES_TYPE_PORT)
+    return 0;
+  return static_cast<Port *>(res);
+}
+
+EventableResource *checkEventableResource(Core &state, ResourceID id)
+{
+  Resource *res = checkResource(state, id);
+  if (!res)
+    return 0;
+  if (!res->isEventable())
+    return 0;
+  return static_cast<EventableResource *>(res);
+}

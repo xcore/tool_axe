@@ -26,9 +26,3 @@ extern "C" bool jitInstructionTemplate(Thread &t, uint32_t pc) {
 #define EMIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
 #undef EMIT_INSTRUCTION_FUNCTIONS
-#undef THREAD
-#undef CORE
-#undef ERROR
-#undef OP
-#undef LOP
-#undef FROM_PC
