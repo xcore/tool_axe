@@ -888,17 +888,23 @@ void FunctionCodeEmitter::emitStoreByte(const std::string &args)
 
 void FunctionCodeEmitter::emitLoadWord(const std::string &args)
 {
-  assert(0);
+  std::cout << "LOAD_WORD(";
+  emitNested(args);
+  std::cout << ")";
 }
 
 void FunctionCodeEmitter::emitLoadShort(const std::string &args)
 {
-  assert(0);
+  std::cout << "LOAD_SHORT(";
+  emitNested(args);
+  std::cout << ")";
 }
 
 void FunctionCodeEmitter::emitLoadByte(const std::string &args)
 {
-  assert(0);
+  std::cout << "LOAD_BYTE(";
+  emitNested(args);
+  std::cout << ")";
 }
 
 class CodePropertyExtractor : public CodeEmitter {
@@ -952,7 +958,7 @@ protected:
     emitNested(args);
   }
   virtual void emitStoreByte(const std::string &args) {
-    hasLoad = true;
+    hasStore = true;
     emitNested(args);
   }
   virtual void emitLoadWord(const std::string &args) {
@@ -1276,8 +1282,7 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  if (propertyExtractor.getHasLoad() ||
-      propertyExtractor.getHasStore() ||
+  if (propertyExtractor.getHasStore() ||
       propertyExtractor.getHasKCall() ||
       propertyExtractor.getHasPauseOn() ||
       propertyExtractor.getHasDeschedule())
