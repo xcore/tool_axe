@@ -360,25 +360,27 @@ quote(std::ostream &os, const std::string &s)
 static const char *
 scanClosingBracket(const char *s)
 {
+  const char *p = s;
   unsigned indentLevel = 1;
-  while (*s != '\0') {
-  switch (*s) {
+  while (*p != '\0') {
+  switch (*p) {
     case '(':
       indentLevel++;
       break;
     case ')':
       indentLevel--;
       if (indentLevel == 0)
-        return s;
+        return p;
       break;
     case '\'':
     case '"':
       std::cerr << "error: ' and \" are not yet handled\n";
       std::exit(1);
     }
-    ++s;
+    ++p;
   }
-  std::cerr << "error: no closing bracket found\n";
+  std::cerr << "error: no closing bracket found in string:\n";
+  std::cerr << s << '\n';
   std::exit(1);
 }
 
@@ -525,6 +527,12 @@ protected:
   virtual void emitPauseOn(const std::string &args) = 0;
   virtual void emitNext() = 0;
   virtual void emitDeschedule() = 0;
+  virtual void emitStoreWord(const std::string &args) = 0;
+  virtual void emitStoreShort(const std::string &args) = 0;
+  virtual void emitStoreByte(const std::string &args) = 0;
+  virtual void emitLoadWord(const std::string &args) = 0;
+  virtual void emitLoadShort(const std::string &args) = 0;
+  virtual void emitLoadByte(const std::string &args) = 0;
 };
 
 void CodeEmitter::emit(const Instruction &instruction, const std::string &code)
@@ -583,6 +591,42 @@ void CodeEmitter::emitNested(const std::string &code)
       } else if (std::strncmp(&s[i], "deschedule", 10) == 0) {
         i += 10;
         emitDeschedule();
+      } else if (std::strncmp(&s[i], "store_word(", 11) == 0) {
+        i += 11;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitStoreWord(content);
+        i = (close - s);
+      } else if (std::strncmp(&s[i], "store_short(", 12) == 0) {
+        i += 12;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitStoreShort(content);
+        i = (close - s);
+      } else if (std::strncmp(&s[i], "store_byte(", 11) == 0) {
+        i += 11;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitStoreByte(content);
+        i = (close - s);
+      } else if (std::strncmp(&s[i], "load_word(", 10) == 0) {
+        i += 10;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitLoadWord(content);
+        i = (close - s);
+      } else if (std::strncmp(&s[i], "load_short(", 11) == 0) {
+        i += 11;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitLoadShort(content);
+        i = (close - s);
+      } else if (std::strncmp(&s[i], "load_byte(", 10) == 0) {
+        i += 10;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitLoadByte(content);
+        i = (close - s);
       } else {
         std::cerr << "error: stray % in code string\n";
         std::exit(1);
@@ -608,6 +652,12 @@ protected:
   virtual void emitPauseOn(const std::string &args);
   virtual void emitNext();
   virtual void emitDeschedule();
+  virtual void emitStoreWord(const std::string &args);
+  virtual void emitStoreShort(const std::string &args);
+  virtual void emitStoreByte(const std::string &args);
+  virtual void emitLoadWord(const std::string &args);
+  virtual void emitLoadShort(const std::string &args);
+  virtual void emitLoadByte(const std::string &args);
 };
 
 void InlineCodeEmitter::emitBegin()
@@ -684,6 +734,48 @@ void InlineCodeEmitter::emitDeschedule()
   emitEndLabel = true;
 }
 
+void InlineCodeEmitter::emitStoreWord(const std::string &args)
+{
+  std::cout << "STORE_WORD(";
+  emitNested(args);
+  std::cout << ")";
+}
+
+void InlineCodeEmitter::emitStoreShort(const std::string &args)
+{
+  std::cout << "STORE_SHORT(";
+  emitNested(args);
+  std::cout << ")";
+}
+
+void InlineCodeEmitter::emitStoreByte(const std::string &args)
+{
+  std::cout << "STORE_BYTE(";
+  emitNested(args);
+  std::cout << ")";
+}
+
+void InlineCodeEmitter::emitLoadWord(const std::string &args)
+{
+  std::cout << "LOAD_WORD(";
+  emitNested(args);
+  std::cout << ")";
+}
+
+void InlineCodeEmitter::emitLoadShort(const std::string &args)
+{
+  std::cout << "LOAD_SHORT(";
+  emitNested(args);
+  std::cout << ")";
+}
+
+void InlineCodeEmitter::emitLoadByte(const std::string &args)
+{
+  std::cout << "LOAD_BYTE(";
+  emitNested(args);
+  std::cout << ")";
+}
+
 class FunctionCodeEmitter : public CodeEmitter {
 public:
   void emitCycles();
@@ -698,6 +790,12 @@ protected:
   virtual void emitPauseOn(const std::string &args);
   virtual void emitNext();
   virtual void emitDeschedule();
+  virtual void emitStoreWord(const std::string &args);
+  virtual void emitStoreShort(const std::string &args);
+  virtual void emitStoreByte(const std::string &args);
+  virtual void emitLoadWord(const std::string &args);
+  virtual void emitLoadShort(const std::string &args);
+  virtual void emitLoadByte(const std::string &args);
 };
 
 void FunctionCodeEmitter::emitCycles()
@@ -770,6 +868,36 @@ void FunctionCodeEmitter::emitDeschedule()
   assert(0);
 }
 
+void FunctionCodeEmitter::emitStoreWord(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitStoreShort(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitStoreByte(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitLoadWord(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitLoadShort(const std::string &args)
+{
+  assert(0);
+}
+
+void FunctionCodeEmitter::emitLoadByte(const std::string &args)
+{
+  assert(0);
+}
+
 class CodePropertyExtractor : public CodeEmitter {
   bool usesPc;
   bool hasException;
@@ -777,6 +905,8 @@ class CodePropertyExtractor : public CodeEmitter {
   bool hasPauseOn;
   bool hasNext;
   bool hasDeschedule;
+  bool hasStore;
+  bool hasLoad;
   void reset() {
     usesPc = false;
     hasException = false;
@@ -784,6 +914,8 @@ class CodePropertyExtractor : public CodeEmitter {
     hasPauseOn = false;
     hasNext = false;
     hasDeschedule = false;
+    hasStore = false;
+    hasLoad = false;
   }
 protected:
   virtual void emitBegin() {
@@ -808,6 +940,30 @@ protected:
   }
   virtual void emitNext() { hasNext = true; }
   virtual void emitDeschedule() { hasDeschedule = true; }
+  virtual void emitStoreWord(const std::string &args) {
+    hasStore = true;
+    emitNested(args);
+  }
+  virtual void emitStoreShort(const std::string &args) {
+    hasStore = true;
+    emitNested(args);
+  }
+  virtual void emitStoreByte(const std::string &args) {
+    hasLoad = true;
+    emitNested(args);
+  }
+  virtual void emitLoadWord(const std::string &args) {
+    hasLoad = true;
+    emitNested(args);
+  }
+  virtual void emitLoadShort(const std::string &args) {
+    hasLoad = true;
+    emitNested(args);
+  }
+  virtual void emitLoadByte(const std::string &args) {
+    hasLoad = true;
+    emitNested(args);
+  }
 public:
   CodePropertyExtractor() { reset(); }
   bool getUsesPc() const { return usesPc; }
@@ -816,6 +972,8 @@ public:
   bool getHasPauseOn() const { return hasPauseOn; }
   bool getHasNext() const { return hasNext; }
   bool getHasDeschedule() const { return hasDeschedule; }
+  bool getHasStore() const { return hasStore; }
+  bool getHasLoad() const { return hasLoad; }
 };
 
 static void
@@ -1116,6 +1274,8 @@ static void analyzeInst(Instruction &inst) {
     }
   }
   if (propertyExtractor.getHasException() ||
+      propertyExtractor.getHasLoad() ||
+      propertyExtractor.getHasStore() ||
       propertyExtractor.getHasKCall() ||
       propertyExtractor.getHasPauseOn() ||
       propertyExtractor.getHasDeschedule())
@@ -1506,7 +1666,7 @@ void add()
            "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
            "  %exception(ET_LOAD_STORE, Addr)"
            "}\n"
-           "STORE_WORD(%0, PhyAddr);\n")
+           "%store_word(%0, PhyAddr);\n")
     .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
   // TSETR needs special handling as one operands is not a register on the
   // current thread.
@@ -1532,21 +1692,21 @@ void add()
           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
           "  %exception(ET_LOAD_STORE, Addr)"
           "}\n"
-          "STORE_WORD(%0, PhyAddr);\n");
+          "%store_word(%0, PhyAddr);\n");
   fl3r_in("ST16", "st16 %0, %1[%2]",
           "uint32_t Addr = %1 + (%2 << 1);\n"
           "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
           "if (!CHECK_ADDR_SHORT(PhyAddr)) {\n"
           "  %exception(ET_LOAD_STORE, Addr)"
           "}\n"
-          "STORE_SHORT(%0, PhyAddr);\n");
+          "%store_short(%0, PhyAddr);\n");
   fl3r_in("ST8", "st8 %0, %1[%2]",
           "uint32_t Addr = %1 + %2;\n"
           "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
           "if (!CHECK_ADDR(PhyAddr)) {\n"
           "  %exception(ET_LOAD_STORE, Addr)"
           "}\n"
-          "STORE_BYTE(%0, PhyAddr);\n");
+          "%store_byte(%0, PhyAddr);\n");
   fl3r("MUL", "mul %0, %1, %2", "%0 = %1 * %2;");
   fl3r("DIVS", "divs %0, %1, %2",
        "if (%2 == 0 ||\n"
@@ -1701,7 +1861,7 @@ void add()
           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
           "  %exception(ET_LOAD_STORE, Addr)\n"
           "}\n"
-          "STORE_WORD(%0, PhyAddr);\n")
+          "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(DP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_in("STWSP", "stw %0, sp[%1]",
@@ -1710,7 +1870,7 @@ void add()
           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
           "  %exception(ET_LOAD_STORE, Addr)\n"
           "}\n"
-          "STORE_WORD(%0, PhyAddr);\n")
+          "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDAWSP", "ldaw %0, sp[%1]",
@@ -1778,7 +1938,7 @@ void add()
       "  if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "    %exception(ET_LOAD_STORE, Addr)\n"
       "  }\n"
-      "  STORE_WORD(%2, PhyAddr);\n"
+      "  %store_word(%2, PhyAddr);\n"
       "  %1 = %1 - %0;\n"
       "}\n")
     .addImplicitOp(SP, inout)
@@ -1824,7 +1984,7 @@ void add()
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "  %exception(ET_LOAD_STORE, %2)\n"
       "}\n"
-      "STORE_WORD(%1, PhyAddr);\n"
+      "%store_word(%1, PhyAddr);\n"
       "%1 = %2 - OP(0);")
     .addImplicitOp(SP, inout)
     .addImplicitOp(KSP, in)
@@ -2581,7 +2741,7 @@ void add()
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
-      "STORE_WORD(%0, PhyAddr);\n")
+      "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SPC, in)
     .addImplicitOp(SP, in);
   f0r("STSSR", "stw %0, sp[2]", 
@@ -2590,7 +2750,7 @@ void add()
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
-      "STORE_WORD(%0, PhyAddr);\n")
+      "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SSR, in)
     .addImplicitOp(SP, in);
   f0r("STSED", "stw %0, sp[3]", 
@@ -2599,7 +2759,7 @@ void add()
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
-      "STORE_WORD(%0, PhyAddr);\n")
+      "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SED, in)
     .addImplicitOp(SP, in);
   f0r("STET", "stw %0, sp[4]", 
@@ -2608,7 +2768,7 @@ void add()
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
       "  %exception(ET_LOAD_STORE, Addr)\n"
       "}\n"
-      "STORE_WORD(%0, PhyAddr);\n")
+      "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(ET, in)
     .addImplicitOp(SP, in);
   f0r("FREET", "freet", "").setCustom();
