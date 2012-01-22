@@ -317,22 +317,6 @@ threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
 #define END_DISPATCH_LOOP } }
 #endif
 
-#define STORE_WORD(value, addr) \
-do { \
-  INVALIDATE_WORD(addr); \
-  core->storeWord(value, addr); \
-} while(0)
-#define STORE_SHORT(value, addr) \
-do { \
-  INVALIDATE_SHORT(addr); \
-  core->storeShort(value, addr); \
-} while(0)
-#define STORE_BYTE(value, addr) \
-do { \
-  INVALIDATE_BYTE(addr); \
-  core->storeByte(value, addr); \
-} while(0)
-
 #define SAVE_CACHED() \
 do { \
   this->pc = PC;\

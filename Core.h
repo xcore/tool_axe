@@ -68,6 +68,28 @@ private:
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
   void invalidateSlowPath(uint32_t shiftedAddress);
+
+  bool invalidateWord(uint32_t address) {
+    if (invalidationInfo[address >> 1] == INVALIDATE_NONE &&
+        invalidationInfo[(address >> 1) + 1] == INVALIDATE_NONE)
+      return false;
+    invalidateWordSlowPath(address);
+    return true;
+  }
+
+  bool invalidateShort(uint32_t address) {
+    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
+  bool invalidateByte(uint32_t address) {
+    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
 public:
   // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
   // pseudo instruction just past the end of memory. This saves
@@ -263,46 +285,27 @@ public:
     return mem()[address];
   }
 
-  void storeWord(uint32_t value, uint32_t address)
+  bool storeWord(uint32_t value, uint32_t address)
   {
     if (HOST_LITTLE_ENDIAN) {
       *reinterpret_cast<uint32_t*>((mem() + address)) = value;
     } else {
       *reinterpret_cast<uint32_t*>((mem() + address)) = bswap32(value);
     }
+    return invalidateWord(address);
   }
 
-  void storeShort(int16_t value, uint32_t address)
+  bool storeShort(int16_t value, uint32_t address)
   {
-    storeByte((uint8_t)value, address);
-    storeByte((uint8_t)(value >> 8), address + 1);
+    mem()[address] = static_cast<uint8_t>(value);
+    mem()[address + 1] = static_cast<uint8_t>(value >> 8);
+    return invalidateShort(address);
   }
 
-  void storeByte(uint8_t value, uint32_t address)
+  bool storeByte(uint8_t value, uint32_t address)
   {
     mem()[address] = value;
-  }
-
-  bool invalidateWord(uint32_t address) {
-    if (invalidationInfo[address >> 1] == INVALIDATE_NONE &&
-        invalidationInfo[(address >> 1) + 1] == INVALIDATE_NONE)
-      return false;
-    invalidateWordSlowPath(address);
-    return true;
-  }
-
-  bool invalidateShort(uint32_t address) {
-    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
-      return false;
-    invalidateSlowPath(address >> 1);
-    return true;
-  }
-
-  bool invalidateByte(uint32_t address) {
-    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
-      return false;
-    invalidateSlowPath(address >> 1);
-    return true;
+    return invalidateByte(address);
   }
 
   Resource *allocResource(Thread &current, ResourceType type)
