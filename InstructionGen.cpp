@@ -579,7 +579,7 @@ protected:
   virtual void emitException(const std::string &args) = 0;
   virtual void emitKCall(const std::string &args) = 0;
   virtual void emitPauseOn(const std::string &args) = 0;
-  virtual void emitNext() = 0;
+  virtual void emitYield() = 0;
   virtual void emitDeschedule() = 0;
   virtual void emitStoreWord(const std::string &args) = 0;
   virtual void emitStoreShort(const std::string &args) = 0;
@@ -637,9 +637,9 @@ void CodeEmitter::emitNested(const std::string &code)
         std::string content(&s[i], close);
         emitPauseOn(content);
         i = (close - s);
-      } else if (std::strncmp(&s[i], "next", 4) == 0) {
-        i += 3;
-        emitNext();
+      } else if (std::strncmp(&s[i], "yield", 5) == 0) {
+        i += 4;
+        emitYield();
       } else if (std::strncmp(&s[i], "deschedule", 10) == 0) {
         i += 10;
         emitDeschedule();
@@ -704,7 +704,7 @@ protected:
   virtual void emitException(const std::string &args);
   virtual void emitKCall(const std::string &args);
   virtual void emitPauseOn(const std::string &args);
-  virtual void emitNext();
+  virtual void emitYield();
   virtual void emitDeschedule();
   virtual void emitStoreWord(const std::string &args);
   virtual void emitStoreShort(const std::string &args);
@@ -772,13 +772,13 @@ void InlineCodeEmitter::emitPauseOn(const std::string &args)
   emitEndLabel = true;
 }
 
-void InlineCodeEmitter::emitNext()
+void InlineCodeEmitter::emitYield()
 {
   emitCycles(*inst);
   emitRegWriteBack(*inst);
   emitCheckEvents(*inst);
   emitTraceEnd();
-  std::cout << "NEXT_THREAD(PC);\n";
+  std::cout << "YIELD(PC);\n";
   std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
@@ -848,7 +848,7 @@ protected:
   virtual void emitException(const std::string &args);
   virtual void emitKCall(const std::string &args);
   virtual void emitPauseOn(const std::string &args);
-  virtual void emitNext();
+  virtual void emitYield();
   virtual void emitDeschedule();
   virtual void emitStoreWord(const std::string &args);
   virtual void emitStoreShort(const std::string &args);
@@ -923,7 +923,7 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
   assert(0);
 }
 
-void FunctionCodeEmitter::emitNext()
+void FunctionCodeEmitter::emitYield()
 {
   emitRegWriteback();
   emitCycles();
@@ -992,7 +992,7 @@ protected:
     inst->setMayPauseOn();
     emitNested(args);
   }
-  virtual void emitNext() { inst->setMayYield(); }
+  virtual void emitYield() { inst->setMayYield(); }
   virtual void emitDeschedule() { inst->setMayDeschedule(); }
   virtual void emitStoreWord(const std::string &args) {
     inst->setMayStore();
@@ -1180,7 +1180,7 @@ emitInstDispatch(Instruction &instruction)
   if (instruction.getSync()) {
     std::cout << "\n"
                  "if (sys.hasTimeSliceExpired(TIME)) {\n"
-                 "  NEXT_THREAD(PC);\n"
+                 "  YIELD(PC);\n"
                  "} else";
   }
   std::cout << " {\n";
@@ -1937,7 +1937,7 @@ void add()
   fru6_in("BRBT", "bt %0, -%1",
           "if (%0) {\n"
           "  %pc = %1;\n"
-          "  %next"
+          "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
   fru6_in("BRBT_illegal", "bt %0, -%1",
@@ -1958,7 +1958,7 @@ void add()
   fru6_in("BRBF", "bt %0, -%1",
           "if (!%0) {\n"
           "  %pc = %1;\n"
-          "  %next"
+          "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
   fru6_in("BRBF_illegal", "bt %0, -%1",
@@ -2007,7 +2007,7 @@ void add()
       "  %exception(ET_ILLEGAL_PC, %2)\n"
       "}\n"
       "%pc = target;\n"
-      "%next"
+      "%yield"
       )
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, inout)
@@ -2039,7 +2039,7 @@ void add()
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
   fu6("BRFU_illegal", "bu %0", "%exception(ET_ILLEGAL_PC, %0)")
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
-  fu6("BRBU", "bu -%0", "%pc = %0;\n %next")
+  fu6("BRBU", "bu -%0", "%pc = %0;\n %yield")
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
   fu6("BRBU_illegal", "bu -%0", "%exception(ET_ILLEGAL_PC, %0)")
     .transform("%0 = %pc - %0;", "%0 = %0 - %pc;");  
@@ -2071,7 +2071,7 @@ void add()
       "}\n"
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
-      "%next")
+      "%yield")
     .addImplicitOp(LR, out)
     .addImplicitOp(R11, in)
     // BLAT always causes an fnop.
@@ -2107,7 +2107,7 @@ void add()
   fu10("BLRB", "bl -%0",
        "%1 = FROM_PC(%pc);\n"
        "%pc = %0;\n"
-       "%next")
+       "%yield")
     .addImplicitOp(LR, out)
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
   fu10("BLRB_illegal", "bl -%0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
@@ -2130,7 +2130,7 @@ void add()
       "}\n"
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
-      "%next\n")
+      "%yield\n")
     .addImplicitOp(LR, out)
     .addImplicitOp(CP, in)
     // BLACP always causes an fnop.
@@ -2584,7 +2584,7 @@ void add()
       "  %exception(ET_ILLEGAL_PC, %0)\n"
       "}\n"
       "%pc = target;\n"
-      "%next\n");
+      "%yield\n");
   f1r("BLA", "bla %0",
       "uint32_t target;\n"
       "if (%0 & 1) {\n"
@@ -2596,7 +2596,7 @@ void add()
       "}\n"
       "%1 = FROM_PC(%pc);\n"
       "%pc = target;\n"
-      "%next\n")
+      "%yield\n")
     .addImplicitOp(LR, out);
   f1r("BRU", "bru %0",
       "uint32_t target = %pc + %0;\n"
@@ -2604,7 +2604,7 @@ void add()
       "  %exception(ET_ILLEGAL_PC, FROM_PC(target))\n"
       "}\n"
       "%pc = target;\n"
-      "%next\n");
+      "%yield\n");
   f1r("TSTART", "start t[%0]",
       "ResourceID resID(%0);\n"
       "Thread *t = checkThread(CORE, resID);\n"

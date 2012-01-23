@@ -332,7 +332,7 @@ do { \
 #define EXCEPTION(et, ed) \
 do { \
   PC = exception(THREAD, PC, et, ed); \
-  NEXT_THREAD(PC); \
+  YIELD(PC); \
 } while(0);
 #define ERROR() \
 do { \
@@ -371,7 +371,7 @@ do { \
   this->pausedOn = resource; \
   return; \
 } while(0)
-#define NEXT_THREAD(pc) \
+#define YIELD(pc) \
 do { \
   if (sys.hasTimeSliceExpired(TIME)) { \
     SAVE_CACHED(); \
@@ -413,8 +413,8 @@ void Thread::runAux(ticks_t time) {
   OPCODE_TYPE *opcode = core->opcode;
   Operands *operands = core->operands;
 
-    // The main dispatch loop. On backward branches and indirect jumps we call
-  // NEXT_THREAD() to ensure one thread which never pauses cannot starve the
+  // The main dispatch loop. On backward branches and indirect jumps we call
+  // YIELD() to ensure one thread which never pauses cannot starve the
   // other threads.
   START_DISPATCH_LOOP
   INST(INITIALIZE):
@@ -500,7 +500,7 @@ void Thread::runAux(ticks_t time) {
       uint32_t target = TO_PC(REG(LR));
       if (CHECK_PC(target)) {
         PC = target;
-        NEXT_THREAD(PC);
+        YIELD(PC);
       } else {
         EXCEPTION(ET_ILLEGAL_PC, REG(LR));
       }
@@ -567,7 +567,7 @@ void Thread::runAux(ticks_t time) {
     }
   INST(JIT_INSTRUCTION):
     if (operands[PC].func(THREAD))
-      NEXT_THREAD(PC);
+      YIELD(PC);
     ENDINST;
   END_DISPATCH_LOOP
 }
