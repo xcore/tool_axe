@@ -57,6 +57,7 @@ void JIT::init()
   LLVMAddGVNPass(FPM);
   LLVMAddDeadStoreEliminationPass(FPM);
   LLVMAddInstructionCombiningPass(FPM);
+  LLVMAddCFGSimplificationPass(FPM);
   LLVMExtraAddDeadCodeEliminationPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
 }
