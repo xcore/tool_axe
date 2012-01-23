@@ -8,13 +8,15 @@
 
 struct InstructionProperties {
   enum Flags {
-    MAY_BRANCH = 1 << 0
+    MAY_BRANCH = 1 << 0,
+    MAY_YIELD = 1 << 1
   };
   const char *function;
   unsigned char size;
   unsigned char numExplicitOperands;
   unsigned char flags;
   bool mayBranch() const { return flags & MAY_BRANCH; }
+  bool mayYield() const { return flags & MAY_YIELD; }
 };
 
 extern InstructionProperties instructionProperties[];

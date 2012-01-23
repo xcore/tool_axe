@@ -1352,6 +1352,9 @@ static void emitInstFlags(Instruction &inst)
   if (inst.getMayBranch()) {
     emitInstFlag("MAY_BRANCH", emittedFlag);
   }
+  if (inst.getMayYield() || inst.getMayExcept()) {
+    emitInstFlag("MAY_YIELD", emittedFlag);
+  }
   if (!emittedFlag)
     std::cout << 0;
 }

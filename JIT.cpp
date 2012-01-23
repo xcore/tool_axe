@@ -139,17 +139,18 @@ bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
     calls.push_back(call);
-    // TODO avoid generating this if possible
-    LLVMValueRef cmp =
-      LLVMBuildICmp(builder, LLVMIntNE, call,
-                    LLVMConstInt(LLVMTypeOf(call), 0, false), "");
-    LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
-    LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
-    LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
-    LLVMPositionBuilderAtEnd(builder, returnBB);
-    LLVMBuildRet(builder,
-                 LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false));
-    LLVMPositionBuilderAtEnd(builder, afterBB);
+    if (properties->mayYield()) {
+      LLVMValueRef cmp =
+        LLVMBuildICmp(builder, LLVMIntNE, call,
+                      LLVMConstInt(LLVMTypeOf(call), 0, false), "");
+      LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
+      LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
+      LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
+      LLVMPositionBuilderAtEnd(builder, returnBB);
+      LLVMBuildRet(builder,
+                   LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false));
+      LLVMPositionBuilderAtEnd(builder, afterBB);
+    }
     // Update invalidation info.
     if (calls.size() == 1) {
       if (core.invalidationInfo[address >> 1] == Core::INVALIDATE_NONE) {
