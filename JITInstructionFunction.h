@@ -8,6 +8,15 @@
 
 class Thread;
 
+enum JITReturn {
+  /// Continue the current trace.
+  JIT_RETURN_CONTINUE,
+  /// End the current trace.
+  JIT_RETURN_END_TRACE,
+  /// End the current trace and yield to allow other threads to run.
+  JIT_RETURN_YIELD,
+};
+
 typedef bool (*JITInstructionFunction_t)(Thread &);
 
 #endif // _JITInstructionFunction_h_

@@ -91,6 +91,39 @@ static void reclaimUnreachableFunctions()
   unreachableFunctions.clear();
 }
 
+static void
+checkReturnValue(LLVMValueRef call, LLVMValueRef f,
+                 InstructionProperties &properties)
+{
+  if (!properties.mayYield() && !properties.mayEndTrace())
+    return;
+  LLVMValueRef cmp =
+    LLVMBuildICmp(builder, LLVMIntNE, call,
+                  LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_CONTINUE), "");
+  LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
+  LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
+  LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
+  LLVMPositionBuilderAtEnd(builder, returnBB);
+  LLVMValueRef retval;
+  if (properties.mayYield() && properties.mayEndTrace()) {
+    LLVMValueRef isYield =
+      LLVMBuildICmp(builder, LLVMIntEQ, call,
+                    LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_YIELD), "");
+    LLVMValueRef yieldRetval =
+      LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false);
+    LLVMValueRef endTraceRetval =
+      LLVMConstInt(LLVMGetReturnType(jitFunctionType), 0, false);
+    retval = LLVMBuildSelect(builder, isYield, yieldRetval, endTraceRetval, "");
+  } else if (properties.mayYield()) {
+    retval = LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false);
+  } else {
+    retval = LLVMConstInt(LLVMGetReturnType(jitFunctionType), 0, false);
+    assert(properties.mayEndTrace());
+  }
+  LLVMBuildRet(builder, retval);
+  LLVMPositionBuilderAtEnd(builder, afterBB);
+}
+
 bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
   InstructionOpcode opc;
@@ -139,18 +172,7 @@ bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
     calls.push_back(call);
-    if (properties->mayYield()) {
-      LLVMValueRef cmp =
-        LLVMBuildICmp(builder, LLVMIntNE, call,
-                      LLVMConstInt(LLVMTypeOf(call), 0, false), "");
-      LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
-      LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
-      LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
-      LLVMPositionBuilderAtEnd(builder, returnBB);
-      LLVMBuildRet(builder,
-                   LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false));
-      LLVMPositionBuilderAtEnd(builder, afterBB);
-    }
+    checkReturnValue(call, f, *properties);
     // Update invalidation info.
     if (calls.size() == 1) {
       if (core.invalidationInfo[address >> 1] == Core::INVALIDATE_NONE) {

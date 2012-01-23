@@ -910,7 +910,7 @@ void FunctionCodeEmitter::emitException(const std::string &args)
   emitNested(args);
   std::cout << ");\n";
   emitCycles();
-  std::cout << "return true;\n";
+  std::cout << "return JIT_RETURN_YIELD;\n";
 }
 
 void FunctionCodeEmitter::emitKCall(const std::string &args)
@@ -927,7 +927,7 @@ void FunctionCodeEmitter::emitYield()
 {
   emitRegWriteback();
   emitCycles();
-  std::cout << "return true;\n";
+  std::cout << "return JIT_RETURN_YIELD;\n";
 }
 
 void FunctionCodeEmitter::emitDeschedule()
@@ -937,17 +937,29 @@ void FunctionCodeEmitter::emitDeschedule()
 
 void FunctionCodeEmitter::emitStoreWord(const std::string &args)
 {
-  assert(0);
+  std::cout << "if (STORE_WORD(";
+  emitNested(args);
+  std::cout << ")) {\n";
+  std::cout << "retval = JIT_RETURN_END_TRACE;\n";
+  std::cout << "}\n";
 }
 
 void FunctionCodeEmitter::emitStoreShort(const std::string &args)
 {
-  assert(0);
+  std::cout << "if (STORE_SHORT(";
+  emitNested(args);
+  std::cout << ")) {\n";
+  std::cout << "retval = JIT_RETURN_END_TRACE;\n";
+  std::cout << "}\n";
 }
 
 void FunctionCodeEmitter::emitStoreByte(const std::string &args)
 {
-  assert(0);
+  std::cout << "if (STORE_BYTE(";
+  emitNested(args);
+  std::cout << ")) {\n";
+  std::cout << "retval = JIT_RETURN_END_TRACE;\n";
+  std::cout << "}\n";
 }
 
 void FunctionCodeEmitter::emitLoadWord(const std::string &args)
@@ -1245,7 +1257,7 @@ static void emitInstFunction(Instruction &inst)
 {
   if (!inst.getCanJit())
     return;
-  std::cout << "extern \"C\" bool " << getInstFunctionName(inst) << '(';
+  std::cout << "extern \"C\" JITReturn " << getInstFunctionName(inst) << '(';
   std::cout << "Thread &thread, uint32_t nextPc";
   for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
     std::cout << ", uint32_t field" << i;
@@ -1271,6 +1283,9 @@ static void emitInstFunction(Instruction &inst)
     }
     std::cout << ";\n";
   }
+  if (inst.getMayStore()) {
+    std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
+  }
   FunctionCodeEmitter emitter;
   emitter.setInstruction(inst);
   emitter.emit(inst.getCode());
@@ -1278,7 +1293,11 @@ static void emitInstFunction(Instruction &inst)
   // Write operands.
   emitter.emitRegWriteback();
   emitter.emitCycles();
-  std::cout << "return false;\n";
+  if (inst.getMayStore()) {
+    std::cout << "return retval;\n";
+  } else {
+    std::cout << "return JIT_RETURN_CONTINUE;\n";
+  }
   std::cout << "}\n";
 }
 
@@ -1321,8 +1340,7 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  if (inst.getMayStore() ||
-      inst.getMayKCall() ||
+  if (inst.getMayKCall() ||
       inst.getMayPauseOn() ||
       inst.getMayDeschedule())
     return;
@@ -1355,6 +1373,8 @@ static void emitInstFlags(Instruction &inst)
   if (inst.getMayYield() || inst.getMayExcept()) {
     emitInstFlag("MAY_YIELD", emittedFlag);
   }
+  if (inst.getMayStore())
+    emitInstFlag("MAY_END_TRACE", emittedFlag);
   if (!emittedFlag)
     std::cout << 0;
 }
