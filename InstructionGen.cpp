@@ -160,6 +160,14 @@ private:
   bool custom:1;
   bool canJit:1;
   bool mayBranch:1;
+  bool mayLoad:1;
+  bool mayStore:1;
+  bool usesPc:1;
+  bool mayExcept:1;
+  bool mayKCall:1;
+  bool mayPauseOn:1;
+  bool mayYield:1;
+  bool mayDeschedule:1;
 public:
   Instruction(const std::string &n,
               unsigned s,
@@ -178,7 +186,15 @@ public:
     unimplemented(false),
     custom(false),
     canJit(false),
-    mayBranch(false)
+    mayBranch(false),
+    mayLoad(false),
+    mayStore(false),
+    usesPc(false),
+    mayExcept(false),
+    mayKCall(false),
+    mayPauseOn(false),
+    mayYield(false),
+    mayDeschedule(false)
   {
   }
   const std::string &getName() const { return name; }
@@ -198,7 +214,19 @@ public:
   bool getUnimplemented() const { return unimplemented; }
   bool getCustom() const { return custom; }
   bool getCanJit() const { return canJit; }
-  bool getMayBranch() const { return mayBranch; }
+  bool getMayBranch() const {
+    // In future we might want to exclude instructions which use the PC without
+    // writing it.
+    return usesPc;
+  }
+  bool getMayStore() const { return mayStore; }
+  bool getMayLoad() const { return mayLoad; }
+  bool getUsesPc() const { return usesPc; }
+  bool getMayExcept() const { return mayExcept; }
+  bool getMayKCall() const { return mayKCall; }
+  bool getMayPauseOn() const { return mayPauseOn; }
+  bool getMayYield() const { return mayYield; }
+  bool getMayDeschedule() const { return mayDeschedule; }
   Instruction &addImplicitOp(Register reg, OpType type) {
     assert(type != imm);
     implicitOps.push_back(reg);
@@ -234,8 +262,36 @@ public:
     canJit = true;
     return *this;
   }
-  Instruction &setMayBranch() {
-    mayBranch = true;
+  Instruction &setMayLoad() {
+    mayLoad = true;
+    return *this;
+  }
+  Instruction &setMayStore() {
+    mayStore = true;
+    return *this;
+  }
+  Instruction &setUsesPc() {
+    usesPc = true;
+    return *this;
+  }
+  Instruction &setMayExcept() {
+    mayExcept = true;
+    return *this;
+  }
+  Instruction &setMayKCall() {
+    mayKCall = true;
+    return *this;
+  }
+  Instruction &setMayPauseOn() {
+    mayPauseOn = true;
+    return *this;
+  }
+  Instruction &setMayYield() {
+    mayYield = true;
+    return *this;
+  }
+  Instruction &setMayDeschedule() {
+    mayDeschedule = true;
     return *this;
   }
 };
@@ -511,12 +567,10 @@ emitCode(const Instruction &instruction,
 }
 
 class CodeEmitter {
-  const Instruction *inst;
 public:
-  void emit(const Instruction &instruction, const std::string &code);
+  void emit(const std::string &code);
 protected:
   void emitNested(const std::string &code);
-  const Instruction &getInstruction() const { return *inst; }
   virtual void emitBegin() = 0;
   virtual void emitRaw(const std::string &s) = 0;
   void emitRaw(char c) { emitRaw(std::string(1, c)); }
@@ -535,16 +589,14 @@ protected:
   virtual void emitLoadByte(const std::string &args) = 0;
 };
 
-void CodeEmitter::emit(const Instruction &instruction, const std::string &code)
+void CodeEmitter::emit(const std::string &code)
 {
   emitBegin();
-  inst = &instruction;
   emitNested(code);
 }
 
 void CodeEmitter::emitNested(const std::string &code)
 {
-  const std::vector<OpType> operands = inst->getOperands();
   const char *s = code.c_str();
   for (unsigned i = 0, e = code.size(); i != e; i++) {
     if (s[i] == '%') {
@@ -559,7 +611,7 @@ void CodeEmitter::emitNested(const std::string &code)
         char *endp;
         long value = std::strtol(&s[i], &endp, 10);
         i = (endp - s) - 1;
-        if (value < 0 || (unsigned)value >= operands.size()) {
+        if (value < 0) {
           std::cerr << "error: operand out of range in code string\n";
           std::exit(1);
         }
@@ -639,8 +691,10 @@ void CodeEmitter::emitNested(const std::string &code)
 
 class InlineCodeEmitter : public CodeEmitter {
   bool emitEndLabel;
+  const Instruction *inst;
 public:
   InlineCodeEmitter() : emitEndLabel(false) {}
+  void setInstruction(const Instruction &i) { inst = &i; }
   bool getEmitEndLabel() const { return emitEndLabel; }
 protected:
   virtual void emitBegin();
@@ -672,6 +726,10 @@ void InlineCodeEmitter::emitRaw(const std::string &s)
 
 void InlineCodeEmitter::emitOp(unsigned num)
 {
+  if (num >= inst->getOperands().size()) {
+    std::cerr << "error: operand out of range in code string\n";
+    std::exit(1);
+  }
   std::cout << "op" << num;
 }
 
@@ -682,55 +740,55 @@ void InlineCodeEmitter::emitNextPc()
 
 void InlineCodeEmitter::emitException(const std::string &args)
 {
-  emitCycles(getInstruction());
+  emitCycles(*inst);
   emitTraceEnd();
   std::cout << "EXCEPTION(";
   emitNested(args);
   std::cout << ");\n";
-  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
 
 void InlineCodeEmitter::emitKCall(const std::string &args)
 {
-  emitCycles(getInstruction());
-  emitRegWriteBack(getInstruction());
+  emitCycles(*inst);
+  emitRegWriteBack(*inst);
   emitTraceEnd();
   std::cout << "EXCEPTION(ET_KCALL, ";
   emitNested(args);
   std::cout << ");\n";
-  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
 
 void InlineCodeEmitter::emitPauseOn(const std::string &args)
 {
-  emitCycles(getInstruction());
+  emitCycles(*inst);
   emitTraceEnd();
   std::cout << "PAUSE_ON(PC, ";
   emitNested(args);
   std::cout << ");\n";
-  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
 
 void InlineCodeEmitter::emitNext()
 {
-  emitCycles(getInstruction());
-  emitRegWriteBack(getInstruction());
-  emitCheckEvents(getInstruction());
+  emitCycles(*inst);
+  emitRegWriteBack(*inst);
+  emitCheckEvents(*inst);
   emitTraceEnd();
   std::cout << "NEXT_THREAD(PC);\n";
-  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
 
 void InlineCodeEmitter::emitDeschedule()
 {
-  emitCycles(getInstruction());
-  emitCheckEventsOrDeschedule(getInstruction());
+  emitCycles(*inst);
+  emitCheckEventsOrDeschedule(*inst);
   emitTraceEnd();
-  std::cout << "goto " << getEndLabel(getInstruction()) << ";\n";
+  std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
 
@@ -778,8 +836,10 @@ void InlineCodeEmitter::emitLoadByte(const std::string &args)
 
 class FunctionCodeEmitter : public CodeEmitter {
 public:
+  const Instruction *inst;
   void emitCycles();
   void emitRegWriteback();
+  void setInstruction(const Instruction &i) { inst = &i; }
 protected:
   virtual void emitBegin();
   virtual void emitRaw(const std::string &s);
@@ -800,19 +860,19 @@ protected:
 
 void FunctionCodeEmitter::emitCycles()
 {
-  std::cout << "THREAD.time += " << getInstruction().getCycles() << ";\n";
+  std::cout << "THREAD.time += " << inst->getCycles() << ";\n";
 }
 
 void FunctionCodeEmitter::emitRegWriteback()
 {
-  const std::vector<OpType> &operands = getInstruction().getOperands();
+  const std::vector<OpType> &operands = inst->getOperands();
   for (unsigned i = 0, e = operands.size(); i != e; ++i) {
     switch (operands[i]) {
     default:
       break;
     case out:
     case inout:
-      std::cout << "THREAD.regs[" << getOperandName(getInstruction(), i);
+      std::cout << "THREAD.regs[" << getOperandName(*inst, i);
       std::cout << "] = ";
       std::cout << "op" << i << ";\n";
       break;
@@ -832,6 +892,10 @@ void FunctionCodeEmitter::emitRaw(const std::string &s)
 
 void FunctionCodeEmitter::emitOp(unsigned num)
 {
+  if (num >= inst->getOperands().size()) {
+    std::cerr << "error: operand out of range in code string\n";
+    std::exit(1);
+  }
   std::cout << "op" << num;
 }
 
@@ -908,81 +972,55 @@ void FunctionCodeEmitter::emitLoadByte(const std::string &args)
 }
 
 class CodePropertyExtractor : public CodeEmitter {
-  bool usesPc;
-  bool hasException;
-  bool hasKCall;
-  bool hasPauseOn;
-  bool hasNext;
-  bool hasDeschedule;
-  bool hasStore;
-  bool hasLoad;
-  void reset() {
-    usesPc = false;
-    hasException = false;
-    hasKCall = false;
-    hasPauseOn = false;
-    hasNext = false;
-    hasDeschedule = false;
-    hasStore = false;
-    hasLoad = false;
-  }
+  Instruction *inst;
 protected:
-  virtual void emitBegin() {
-    reset();
-  }
+  virtual void emitBegin() {}
   virtual void emitRaw(const std::string &s) {}
   virtual void emitOp(unsigned) {}
   virtual void emitNextPc() {
-    usesPc = true;
+    inst->setUsesPc();
   }
   virtual void emitException(const std::string &args) {
-    hasException = true;
+    inst->setMayExcept();
     emitNested(args);
   }
   virtual void emitKCall(const std::string &args) {
-    hasKCall = true;
+    inst->setMayKCall();
     emitNested(args);
   }
   virtual void emitPauseOn(const std::string &args) {
-    hasPauseOn = true;
+    inst->setMayPauseOn();
     emitNested(args);
   }
-  virtual void emitNext() { hasNext = true; }
-  virtual void emitDeschedule() { hasDeschedule = true; }
+  virtual void emitNext() { inst->setMayYield(); }
+  virtual void emitDeschedule() { inst->setMayDeschedule(); }
   virtual void emitStoreWord(const std::string &args) {
-    hasStore = true;
+    inst->setMayStore();
     emitNested(args);
   }
   virtual void emitStoreShort(const std::string &args) {
-    hasStore = true;
+    inst->setMayStore();
     emitNested(args);
   }
   virtual void emitStoreByte(const std::string &args) {
-    hasStore = true;
+    inst->setMayStore();
     emitNested(args);
   }
   virtual void emitLoadWord(const std::string &args) {
-    hasLoad = true;
+    inst->setMayLoad();
     emitNested(args);
   }
   virtual void emitLoadShort(const std::string &args) {
-    hasLoad = true;
+    inst->setMayLoad();
     emitNested(args);
   }
   virtual void emitLoadByte(const std::string &args) {
-    hasLoad = true;
+    inst->setMayLoad();
     emitNested(args);
   }
 public:
-  CodePropertyExtractor() { reset(); }
-  bool getUsesPc() const { return usesPc; }
-  bool getHasException() const { return hasException; }
-  bool getHasKCall() const { return hasKCall; }
-  bool getHasPauseOn() const { return hasPauseOn; }
-  bool getHasNext() const { return hasNext; }
-  bool getHasDeschedule() const { return hasDeschedule; }
-  bool getHasStore() const { return hasStore; }
-  bool getHasLoad() const { return hasLoad; }
+  void setInstruction(Instruction &i) { inst = &i; }
+  CodePropertyExtractor() : inst(0) {}
 };
 
 static void
@@ -991,7 +1029,8 @@ emitCode(const Instruction &instruction,
          bool &emitEndLabel)
 {
   InlineCodeEmitter emitter;
-  emitter.emit(instruction, code);
+  emitter.setInstruction(instruction);
+  emitter.emit(code);
   emitEndLabel = emitter.getEmitEndLabel();
 }
 
@@ -1233,7 +1272,8 @@ static void emitInstFunction(Instruction &inst)
     std::cout << ";\n";
   }
   FunctionCodeEmitter emitter;
-  emitter.emit(inst, inst.getCode());
+  emitter.setInstruction(inst);
+  emitter.emit(inst.getCode());
   std::cout << '\n';
   // Write operands.
   emitter.emitRegWriteback();
@@ -1271,9 +1311,8 @@ static void analyzeInst(Instruction &inst) {
   if (inst.getCustom() || inst.getUnimplemented())
     return;
   CodePropertyExtractor propertyExtractor;
-  propertyExtractor.emit(inst, inst.getCode());
-  if (propertyExtractor.getUsesPc())
-    inst.setMayBranch();
+  propertyExtractor.setInstruction(inst);
+  propertyExtractor.emit(inst.getCode());
   if (inst.getCanEvent() || inst.getSync())
     return;
   const std::vector<OpType> &operands = inst.getOperands();
@@ -1282,10 +1321,10 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  if (propertyExtractor.getHasStore() ||
-      propertyExtractor.getHasKCall() ||
-      propertyExtractor.getHasPauseOn() ||
-      propertyExtractor.getHasDeschedule())
+  if (inst.getMayStore() ||
+      inst.getMayKCall() ||
+      inst.getMayPauseOn() ||
+      inst.getMayDeschedule())
     return;
   inst.setCanJit();
 }
