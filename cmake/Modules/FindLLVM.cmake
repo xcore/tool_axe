@@ -5,8 +5,10 @@
 #  LLVM_CFLAGS - C preprocessor flags for files that include LLVM headers
 #  LLVM_LDFLAGS - Linker flags needed to link against LLVM
 
-find_program(
-  LLVM_CONFIG_EXECUTABLE NAMES llvm-config
+find_program(LLVM_CONFIG_EXECUTABLE
+  NAMES llvm-config
+  llvm-config-3.0
+  llvm-config-2.9
   DOC "llvm-config executable")
 
 include(FindPackageHandleStandardArgs)
