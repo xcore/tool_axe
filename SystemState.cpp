@@ -6,6 +6,7 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
+#include "Trace.h"
 
 SystemState::~SystemState()
 {

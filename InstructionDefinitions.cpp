@@ -9,8 +9,9 @@
 #include "BitManip.h"
 #include "CRC.h"
 #include "InstructionHelpers.h"
-#include "InstructionMacrosCommon.h"
 #include "Exceptions.h"
+#include "Synchroniser.h"
+#include "InstructionMacrosCommon.h"
 
 /// Use to get the required LLVM type for instruction functions.
 extern "C" bool jitInstructionTemplate(Thread &t, uint32_t pc) {

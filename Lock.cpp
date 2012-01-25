@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include "Resource.h"
-#include "Core.h"
+#include "Lock.h"
+#include "Thread.h"
 
 Resource::ResOpResult Lock::
 out(Thread &thread, uint32_t value, ticks_t time)

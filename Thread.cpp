@@ -14,6 +14,8 @@
 #include "JIT.h"
 #include "CRC.h"
 #include "InstructionHelpers.h"
+#include "Synchroniser.h"
+#include "Chanend.h"
 #include <iostream>
 
 const char *registerNames[] = {

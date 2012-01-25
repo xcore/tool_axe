@@ -7,6 +7,7 @@
 #define _Lock_h_
 
 #include <queue>
+#include "Resource.h"
 
 class Lock : public Resource {
 private:

@@ -7,9 +7,133 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "JIT.h"
+#include "Timer.h"
+#include "Synchroniser.h"
+#include "Lock.h"
+#include "Chanend.h"
+#include "ClockBlock.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+
+
+Core::Core(uint32_t RamSize, uint32_t RamBase) :
+  thread(new Thread[NUM_THREADS]),
+  sync(new Synchroniser[NUM_SYNCS]),
+  lock(new Lock[NUM_LOCKS]),
+  chanend(new Chanend[NUM_CHANENDS]),
+  timer(new Timer[NUM_TIMERS]),
+  clkBlk(new ClockBlock[NUM_CLKBLKS]),
+  port(new Port*[33]),
+  portNum(new unsigned[33]),
+  resource(new Resource**[LAST_STD_RES_TYPE + 1]),
+  resourceNum(new unsigned[LAST_STD_RES_TYPE + 1]),
+  memory(new uint32_t[RamSize >> 2]),
+  coreNumber(0),
+  parent(0),
+  opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
+  operands(new Operands[RamSize >> 1]),
+  invalidationInfo(new unsigned char[RamSize >> 1]),
+  ram_size(RamSize),
+  ram_base(RamBase),
+  syscallAddress(~0),
+  exceptionAddress(~0)
+{
+  resource[RES_TYPE_PORT] = 0;
+  resourceNum[RES_TYPE_PORT] = 0;
+  
+  resource[RES_TYPE_TIMER] = new Resource*[NUM_TIMERS];
+  for (unsigned i = 0; i < NUM_TIMERS; i++) {
+    resource[RES_TYPE_TIMER][i] = &timer[i];
+  }
+  resourceNum[RES_TYPE_TIMER] = NUM_TIMERS;
+  
+  resource[RES_TYPE_CHANEND] = new Resource*[NUM_CHANENDS];
+  for (unsigned i = 0; i < NUM_CHANENDS; i++) {
+    resource[RES_TYPE_CHANEND][i] = &chanend[i];
+  }
+  resourceNum[RES_TYPE_CHANEND] = NUM_CHANENDS;
+  
+  resource[RES_TYPE_SYNC] = new Resource*[NUM_SYNCS];
+  for (unsigned i = 0; i < NUM_SYNCS; i++) {
+    resource[RES_TYPE_SYNC][i] = &sync[i];
+  }
+  resourceNum[RES_TYPE_SYNC] = NUM_SYNCS;
+  
+  resource[RES_TYPE_THREAD] = new Resource*[NUM_THREADS];
+  for (unsigned i = 0; i < NUM_THREADS; i++) {
+    thread[i].setParent(*this);
+    resource[RES_TYPE_THREAD][i] = &thread[i];
+  }
+  resourceNum[RES_TYPE_THREAD] = NUM_THREADS;
+  
+  resource[RES_TYPE_LOCK] = new Resource*[NUM_LOCKS];
+  for (unsigned i = 0; i < NUM_LOCKS; i++) {
+    resource[RES_TYPE_LOCK][i] = &lock[i];
+  }
+  resourceNum[RES_TYPE_LOCK] = NUM_LOCKS;
+  
+  resource[RES_TYPE_CLKBLK] = new Resource*[NUM_CLKBLKS];
+  for (unsigned i = 0; i < RES_TYPE_CLKBLK; i++) {
+    resource[RES_TYPE_CLKBLK][i] = &clkBlk[i];
+  }
+  resourceNum[RES_TYPE_CLKBLK] = NUM_CLKBLKS;
+  
+  for (int i = RES_TYPE_TIMER; i <= LAST_STD_RES_TYPE; i++) {
+    for (unsigned j = 0; j < resourceNum[i]; j++) {
+      resource[i][j]->setNum(j);
+    }
+  }
+  
+  std::memset(port, 0, sizeof(port[0]) * 33);
+  std::memset(portNum, 0, sizeof(portNum[0]) * 33);
+  const unsigned portSpec[][2] = {
+    {1, NUM_1BIT_PORTS},
+    {4, NUM_4BIT_PORTS},
+    {8, NUM_8BIT_PORTS},
+    {16, NUM_16BIT_PORTS},
+    {32, NUM_32BIT_PORTS},
+  };
+  for (unsigned i = 0; i < ARRAY_SIZE(portSpec); i++) {
+    unsigned width = portSpec[i][0];
+    unsigned num = portSpec[i][1];
+    port[width] = new Port[num];
+    for (unsigned j = 0; j < num; j++) {
+      port[width][j].setNum(j);
+      port[width][j].setWidth(width);
+      port[width][j].setClkInitial(&clkBlk[0]);
+    }
+    portNum[width] = num;
+  }
+  thread[0].alloc(0);
+  
+  // Initialise instruction cache.
+  for (unsigned i = 0; i < (RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
+       ++i) {
+#ifdef DIRECT_THREADED
+    opcode[i] = 0;
+#else
+    opcode[i] = INITIALIZE;
+#endif
+  }
+  for (unsigned i = 0; i != (RamSize >> 1); ++i) {
+    invalidationInfo[i] = INVALIDATE_NONE;
+  }
+}
+
+Core::~Core() {
+  delete[] opcode;
+  delete[] operands;
+  delete[] invalidationInfo;
+  delete[] thread;
+  delete[] sync;
+  delete[] lock;
+  delete[] chanend;
+  delete[] timer;
+  delete[] resource;
+  delete[] resourceNum;
+  delete[] memory;
+}
 
 bool Core::allocatable[LAST_STD_RES_TYPE + 1] = {
   false, // RES_TYPE_PORT

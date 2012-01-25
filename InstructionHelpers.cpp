@@ -7,6 +7,9 @@
 #include "Thread.h"
 #include "Core.h"
 #include "Exceptions.h"
+#include "Trace.h"
+#include "Synchroniser.h"
+#include "Chanend.h"
 
 uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
 {
