@@ -518,8 +518,6 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
   }
   SyscallHandler::setCoreCount(coresWithImage.size());
 
-  JIT::init();
-  
   // Initialise tracing
   Tracer::get().setSymbolInfo(SI);
   if (tracing) {

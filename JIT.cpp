@@ -22,6 +22,7 @@
 #include <map>
 
 class JITImpl {
+  bool initialized;
   LLVMModuleRef module;
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
@@ -29,12 +30,13 @@ class JITImpl {
   LLVMPassManagerRef FPM;
   std::vector<JITInstructionFunction_t> unreachableFunctions;
   std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
+  void init();
   void reclaimUnreachableFunctions();
   void checkReturnValue(LLVMValueRef call, LLVMValueRef f,
                         InstructionProperties &properties);
 public:
+  JITImpl() : initialized(false) {}
   static JITImpl instance;
-  void init();
   void markUnreachable(const JITInstructionFunction_t f);
   bool compile(Core &core, uint32_t address, JITInstructionFunction_t &out);
 };
@@ -43,6 +45,8 @@ JITImpl JITImpl::instance;
 
 void JITImpl::init()
 {
+  if (initialized)
+    return;
   LLVMLinkInJIT();
   LLVMInitializeNativeTarget();
   LLVMMemoryBufferRef memBuffer =
@@ -72,6 +76,7 @@ void JITImpl::init()
   LLVMAddCFGSimplificationPass(FPM);
   LLVMExtraAddDeadCodeEliminationPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
+  initialized = true;
 }
 
 static bool
@@ -140,6 +145,7 @@ JITImpl::checkReturnValue(LLVMValueRef call, LLVMValueRef f,
 bool JITImpl::
 compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
+  init();
   InstructionOpcode opc;
   uint16_t low, high;
   bool highValid;
@@ -253,13 +259,9 @@ findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
   }
 }
 
-void JIT::init()
-{
-  JITImpl::instance.init();
-}
-
 void JITImpl::markUnreachable(const JITInstructionFunction_t f)
 {
+  assert(initialized);
   unreachableFunctions.push_back(f);
 }
 
