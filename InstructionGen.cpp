@@ -689,6 +689,15 @@ void CodeEmitter::emitNested(const std::string &code)
   }
 }
 
+static void emitUpdateExecutionFrequency(const Instruction &inst)
+{
+  if (inst.getMayBranch()) {
+    std::cout << "if (!tracing) {\n";
+    std::cout << "  CORE.updateExecutionFrequency(PC);\n";
+    std::cout << "}\n";
+  }
+}
+
 class InlineCodeEmitter : public CodeEmitter {
   bool emitEndLabel;
   const Instruction *inst;
@@ -778,6 +787,7 @@ void InlineCodeEmitter::emitYield()
   emitRegWriteBack(*inst);
   emitCheckEvents(*inst);
   emitTraceEnd();
+  emitUpdateExecutionFrequency(*inst);
   std::cout << "YIELD(PC);\n";
   std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
@@ -1236,12 +1246,7 @@ emitInstDispatch(Instruction &instruction)
     emitRegWriteBack(instruction);
     emitCheckEvents(instruction);
     emitTraceEnd();
-
-    if (instruction.getMayBranch()) {
-      std::cout << "if (!tracing) {\n";
-      std::cout << "  CORE.updateExecutionFrequency(PC);\n";
-      std::cout << "}\n";
-    }
+    emitUpdateExecutionFrequency(instruction);
   }
   std::cout << "}\n";
   if (emitEndLabel)
