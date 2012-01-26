@@ -16,6 +16,7 @@
 #include "InstructionHelpers.h"
 #include "Synchroniser.h"
 #include "Chanend.h"
+#include "InstructionProperties.h"
 #include <iostream>
 
 const char *registerNames[] = {
@@ -537,13 +538,13 @@ void Thread::runAux(ticks_t time) {
       }
       instructionDecode(low, high, highValid, opc, operands[PC]);
       instructionTransform(opc, operands[PC], CORE, PC);
-      // TODO handle word size instructions properly.
       if (CORE.invalidationInfo[PC] == Core::INVALIDATE_NONE) {
         CORE.invalidationInfo[PC] = Core::INVALIDATE_CURRENT;
       }
-      // TODO check if the instruction was word size before this.
-      if (CHECK_ADDR((PC + 1) << 1)) {
+      if (instructionProperties[opc].size == 4) {
         CORE.invalidationInfo[PC + 1] = Core::INVALIDATE_CURRENT_AND_PREVIOUS;
+      } else {
+        assert(instructionProperties[opc].size == 2);
       }
 #ifdef DIRECT_THREADED
       static OPCODE_TYPE opcodeMap[] = {
