@@ -21,15 +21,27 @@
 #include <cassert>
 #include <map>
 
-static LLVMModuleRef module;
-static LLVMBuilderRef builder;
-static LLVMExecutionEngineRef executionEngine;
-static LLVMTypeRef jitFunctionType;
-static LLVMPassManagerRef FPM;
-static std::vector<JITInstructionFunction_t> unreachableFunctions;
-static std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
+class JITImpl {
+  LLVMModuleRef module;
+  LLVMBuilderRef builder;
+  LLVMExecutionEngineRef executionEngine;
+  LLVMTypeRef jitFunctionType;
+  LLVMPassManagerRef FPM;
+  std::vector<JITInstructionFunction_t> unreachableFunctions;
+  std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
+  void reclaimUnreachableFunctions();
+  void checkReturnValue(LLVMValueRef call, LLVMValueRef f,
+                        InstructionProperties &properties);
+public:
+  static JITImpl instance;
+  void init();
+  void markUnreachable(const JITInstructionFunction_t f);
+  bool compile(Core &core, uint32_t address, JITInstructionFunction_t &out);
+};
 
-void JIT::init()
+JITImpl JITImpl::instance;
+
+void JITImpl::init()
 {
   LLVMLinkInJIT();
   LLVMInitializeNativeTarget();
@@ -78,7 +90,7 @@ readInstMem(Core &core, uint32_t address, uint16_t &low, uint16_t &high,
   return true;
 }
 
-static void reclaimUnreachableFunctions()
+void JITImpl::reclaimUnreachableFunctions()
 {
   for (std::vector<JITInstructionFunction_t>::iterator it = unreachableFunctions.begin(),
        e = unreachableFunctions.end(); it != e; ++it) {
@@ -92,9 +104,9 @@ static void reclaimUnreachableFunctions()
   unreachableFunctions.clear();
 }
 
-static void
-checkReturnValue(LLVMValueRef call, LLVMValueRef f,
-                 InstructionProperties &properties)
+void
+JITImpl::checkReturnValue(LLVMValueRef call, LLVMValueRef f,
+                          InstructionProperties &properties)
 {
   if (!properties.mayYield() && !properties.mayEndTrace())
     return;
@@ -125,32 +137,8 @@ checkReturnValue(LLVMValueRef call, LLVMValueRef f,
   LLVMPositionBuilderAtEnd(builder, afterBB);
 }
 
-bool JIT::
-findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
-                                      uint32_t &firstAddress)
-{
-  InstructionOpcode opc;
-  uint16_t low, high;
-  bool highValid;
-  while (1) {
-    if (!readInstMem(core, address, low, high, highValid))
-      return false;
-    Operands operands;
-    instructionDecode(low, high, highValid, opc, operands);
-    instructionTransform(opc, operands, core, address >> 1);
-    InstructionProperties *properties = &instructionProperties[opc];
-    // We've reached the end of the block. Even if we could compile this
-    // there isn't much point JITing a single instruction.
-    if (properties->mayBranch())
-      return false;
-    // Check if we can JIT the instruction.
-    if (properties->function)
-      return true;
-    address += properties->size;
-  }
-}
-
-bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
+bool JITImpl::
+compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
   InstructionOpcode opc;
   uint16_t low, high;
@@ -240,7 +228,47 @@ bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
   return true;
 }
 
-void JIT::markUnreachable(const JITInstructionFunction_t f)
+bool JIT::
+findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
+                                      uint32_t &firstAddress)
+{
+  InstructionOpcode opc;
+  uint16_t low, high;
+  bool highValid;
+  while (1) {
+    if (!readInstMem(core, address, low, high, highValid))
+      return false;
+    Operands operands;
+    instructionDecode(low, high, highValid, opc, operands);
+    instructionTransform(opc, operands, core, address >> 1);
+    InstructionProperties *properties = &instructionProperties[opc];
+    // We've reached the end of the block. Even if we could compile this
+    // there isn't much point JITing a single instruction.
+    if (properties->mayBranch())
+      return false;
+    // Check if we can JIT the instruction.
+    if (properties->function)
+      return true;
+    address += properties->size;
+  }
+}
+
+void JIT::init()
+{
+  JITImpl::instance.init();
+}
+
+void JITImpl::markUnreachable(const JITInstructionFunction_t f)
 {
   unreachableFunctions.push_back(f);
+}
+
+bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
+{
+  return JITImpl::instance.compile(core, address, out);
+}
+
+void JIT::markUnreachable(const JITInstructionFunction_t f)
+{
+  JITImpl::instance.markUnreachable(f);
 }
