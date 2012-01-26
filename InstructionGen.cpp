@@ -1236,6 +1236,12 @@ emitInstDispatch(Instruction &instruction)
     emitRegWriteBack(instruction);
     emitCheckEvents(instruction);
     emitTraceEnd();
+
+    if (instruction.getMayBranch()) {
+      std::cout << "if (!tracing) {\n";
+      std::cout << "  CORE.updateExecutionFrequency(PC);\n";
+      std::cout << "}\n";
+    }
   }
   std::cout << "}\n";
   if (emitEndLabel)

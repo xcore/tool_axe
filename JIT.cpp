@@ -125,6 +125,31 @@ checkReturnValue(LLVMValueRef call, LLVMValueRef f,
   LLVMPositionBuilderAtEnd(builder, afterBB);
 }
 
+bool JIT::
+findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
+                                      uint32_t &firstAddress)
+{
+  InstructionOpcode opc;
+  uint16_t low, high;
+  bool highValid;
+  while (1) {
+    if (!readInstMem(core, address, low, high, highValid))
+      return false;
+    Operands operands;
+    instructionDecode(low, high, highValid, opc, operands);
+    instructionTransform(opc, operands, core, address >> 1);
+    InstructionProperties *properties = &instructionProperties[opc];
+    // We've reached the end of the block. Even if we could compile this
+    // there isn't much point JITing a single instruction.
+    if (properties->mayBranch())
+      return false;
+    // Check if we can JIT the instruction.
+    if (properties->function)
+      return true;
+    address += properties->size;
+  }
+}
+
 bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
   InstructionOpcode opc;

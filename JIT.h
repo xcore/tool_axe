@@ -14,6 +14,8 @@ class Core;
 
 namespace JIT {
   void init();
+  bool findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
+                                             uint32_t &firstAddress);
   bool compile(Core &c, uint32_t address, JITInstructionFunction_t &f);
   void markUnreachable(const JITInstructionFunction_t f);
 };

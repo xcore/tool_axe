@@ -34,6 +34,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
   operands(new Operands[RamSize >> 1]),
   invalidationInfo(new unsigned char[RamSize >> 1]),
+  executionFrequency(new executionFrequency_t[RamSize >> 1]),
   ram_size(RamSize),
   ram_base(RamBase),
   syscallAddress(~0),
@@ -119,6 +120,8 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   for (unsigned i = 0; i != (RamSize >> 1); ++i) {
     invalidationInfo[i] = INVALIDATE_NONE;
   }
+  std::memset(executionFrequency, 0,
+              sizeof(executionFrequency[0]) * (RamSize >> 1));
 }
 
 Core::~Core() {
@@ -329,4 +332,21 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
     opcode[shiftedAddress] = decodeOpcode;
     invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
+}
+
+void Core::runJIT(uint32_t shiftedAddress)
+{
+  if (opcode[shiftedAddress] == jitFunctionOpcode) {
+    executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
+    return;
+  }
+  uint32_t firstCompilableAddress;
+  if (JIT::findFirstCompilableInstructionInBlock(*this, shiftedAddress << 1,
+                                                 firstCompilableAddress)) {
+    if (JIT::compile(*this, shiftedAddress << 1,
+                     operands[shiftedAddress].func)) {
+      opcode[shiftedAddress] = jitFunctionOpcode;
+      executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
+    }
+  }
 }

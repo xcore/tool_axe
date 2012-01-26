@@ -19,6 +19,7 @@
 #include "Port.h"
 #include "Instruction.h"
 #include <string>
+#include <climits>
 
 class Lock;
 class Synchroniser;
@@ -48,6 +49,9 @@ public:
     INVALIDATE_CURRENT_AND_PREVIOUS
   };
 private:
+  typedef int executionFrequency_t;
+  static const executionFrequency_t MIN_EXECUTION_FREQUENCY = INT_MIN;
+
   Thread * const thread;
   Synchroniser * const sync;
   Lock * const lock;
@@ -91,6 +95,8 @@ private:
     invalidateSlowPath(address >> 1);
     return true;
   }
+
+  void runJIT(uint32_t shiftedAddress);
 public:
   // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
   // pseudo instruction just past the end of memory. This saves
@@ -101,6 +107,7 @@ public:
   Operands *operands;
   // TODO merge these arrays.
   unsigned char *invalidationInfo;
+  executionFrequency_t *executionFrequency;
 
   const uint32_t ram_size;
   const uint32_t ram_base;
@@ -118,7 +125,14 @@ public:
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
                  OPCODE_TYPE exception, OPCODE_TYPE jitFunction);
-  
+
+  void updateExecutionFrequency(uint32_t shiftedAddress) {
+    const executionFrequency_t threshold = 20;
+    if (++executionFrequency[shiftedAddress] > threshold) {
+      runJIT(shiftedAddress);
+    }
+  }
+
   uint32_t targetPc(unsigned pc) const
   {
     return ram_base + (pc << 1);

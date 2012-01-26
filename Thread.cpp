@@ -526,24 +526,17 @@ void Thread::runAux(ticks_t time) {
   INST(DECODE):
     {
       InstructionOpcode opc;
-      // Try and JIT the instruction stream.
-      if (!tracing && JIT::compile(CORE, PC << 1, operands[PC].func)) {
-        opc = JIT_INSTRUCTION;
+      uint16_t low = core->loadShort(PC << 1);
+      uint16_t high = 0;
+      bool highValid;
+      if (CHECK_ADDR((PC + 1) << 1)) {
+        high = core->loadShort((PC + 1) << 1);
+        highValid = true;
       } else {
-        // Otherwise fall back to the interpreter.
-        // TODO avoid decoding the instruction twice if JIT fails.
-        uint16_t low = core->loadShort(PC << 1);
-        uint16_t high = 0;
-        bool highValid;
-        if (CHECK_ADDR((PC + 1) << 1)) {
-          high = core->loadShort((PC + 1) << 1);
-          highValid = true;
-        } else {
-          highValid = false;
-        }
-        instructionDecode(low, high, highValid, opc, operands[PC]);
-        instructionTransform(opc, operands[PC], CORE, PC);
+        highValid = false;
       }
+      instructionDecode(low, high, highValid, opc, operands[PC]);
+      instructionTransform(opc, operands[PC], CORE, PC);
       // TODO handle word size instructions properly.
       if (CORE.invalidationInfo[PC] == Core::INVALIDATE_NONE) {
         CORE.invalidationInfo[PC] = Core::INVALIDATE_CURRENT;
