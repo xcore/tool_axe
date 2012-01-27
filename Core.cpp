@@ -228,7 +228,7 @@ bool Core::setExceptionAddress(uint32_t value)
 
 void Core::
 initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-          OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
+          OPCODE_TYPE illegalPCThread, OPCODE_TYPE yield, OPCODE_TYPE syscall,
           OPCODE_TYPE exception, OPCODE_TYPE jitFunction)
 {
   const uint32_t ramSizeShorts = ram_size >> 1;
@@ -238,6 +238,7 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   }
   opcode[ramSizeShorts] = illegalPC;
   opcode[getIllegalPCThreadAddr()] = illegalPCThread;
+  opcode[getYieldAddr()] = yield;
   if (syscallAddress < ramSizeShorts)
     opcode[syscallAddress] = syscall;
   if (exceptionAddress < ramSizeShorts)
@@ -336,6 +337,8 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
 
 void Core::runJIT(uint32_t shiftedAddress)
 {
+  if (shiftedAddress >= (ram_size >> 1))
+    return;
   if (opcode[shiftedAddress] == jitFunctionOpcode) {
     executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
     return;

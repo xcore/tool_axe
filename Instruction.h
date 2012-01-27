@@ -54,6 +54,9 @@ struct Operands {
   };
 };
 
+void instructionDecode(Core &core, uint32_t shiftedAddress,
+                       InstructionOpcode &opcode, Operands &operands);
+
 void
 instructionDecode(uint16_t low, uint16_t high, bool highValid,
                   InstructionOpcode &opcode, Operands &operands);

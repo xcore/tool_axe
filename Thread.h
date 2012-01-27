@@ -142,7 +142,9 @@ public:
   /// clock.
   ticks_t time;
   sr_t sr;
-  uint32_t illegal_pc;
+  /// When executing some pseduo instructions placed at the end this holds the
+  /// real pc.
+  uint32_t pendingPc;
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
 

@@ -17,6 +17,6 @@ enum JITReturn {
   JIT_RETURN_YIELD,
 };
 
-typedef bool (*JITInstructionFunction_t)(Thread &);
+typedef void (*JITInstructionFunction_t)(Thread &);
 
 #endif // _JITInstructionFunction_h_

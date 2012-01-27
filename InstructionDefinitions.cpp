@@ -12,10 +12,15 @@
 #include "Exceptions.h"
 #include "Synchroniser.h"
 #include "InstructionMacrosCommon.h"
+#include <cstdio>
 
 /// Use to get the required LLVM type for instruction functions.
-extern "C" bool jitInstructionTemplate(Thread &t, uint32_t pc) {
-  return false;
+extern "C" void jitInstructionTemplate(Thread &t, uint32_t pc) {
+}
+
+extern "C" void jitYieldFunction(Thread &t) {
+  t.pendingPc = t.pc;
+  t.pc = t.getParent().getYieldAddr();
 }
 
 #define THREAD thread

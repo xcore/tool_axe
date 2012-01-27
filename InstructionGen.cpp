@@ -2336,7 +2336,7 @@ void add()
          "    threadState.pc = newPc - 1;\n"
          "  } else {\n"
          "    threadState.pc = CORE.getIllegalPCThreadAddr();\n"
-         "    threadState.illegal_pc = newPc;\n"
+         "    threadState.pendingPc = newPc;\n"
          "  }\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
@@ -2864,6 +2864,7 @@ void add()
   pseudoInst("ILLEGAL_PC", "", "").setCustom();
   pseudoInst("ILLEGAL_PC_THREAD", "", "").setCustom();
   pseudoInst("ILLEGAL_INSTRUCTION", "", "").setCustom();
+  pseudoInst("YIELD", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
   pseudoInst("SYSCALL", "", "").setCustom();
   pseudoInst("EXCEPTION", "", "").setCustom();

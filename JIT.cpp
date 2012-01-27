@@ -5,12 +5,17 @@
 
 // TODO call LLVMDisposeBuilder(), other cleanup.
 
+#define DEBUG_JIT false
+
 #include "JIT.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Target.h"
 #include "llvm-c/Transforms/Scalar.h"
+#ifdef DEBUG_JIT
+#include "llvm-c/Analysis.h"
+#endif
 #include "Instruction.h"
 #include "Core.h"
 #include "InstructionBitcode.h"
@@ -27,13 +32,22 @@ class JITImpl {
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
+  LLVMValueRef jitYieldFunction;
   LLVMPassManagerRef FPM;
   std::vector<JITInstructionFunction_t> unreachableFunctions;
   std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
+
+  LLVMValueRef threadParam;
+  LLVMBasicBlockRef yieldBB;
+  LLVMBasicBlockRef endTraceBB;
+
   void init();
+  void resetPerFunctionState();
   void reclaimUnreachableFunctions();
   void checkReturnValue(LLVMValueRef call, LLVMValueRef f,
                         InstructionProperties &properties);
+  LLVMBasicBlockRef getOrCreateYieldBB();
+  LLVMBasicBlockRef getOrCreateEndTraceBB();
 public:
   JITImpl() : initialized(false) {}
   static JITImpl instance;
@@ -64,6 +78,8 @@ void JITImpl::init()
     std::abort();
   }
   builder = LLVMCreateBuilder();
+  jitYieldFunction = LLVMGetNamedFunction(module, "jitYieldFunction");
+  assert(jitYieldFunction && "jitYieldFunction() not found in module");
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
@@ -79,19 +95,20 @@ void JITImpl::init()
   initialized = true;
 }
 
+void JITImpl::resetPerFunctionState()
+{
+  threadParam = 0;
+  yieldBB = 0;
+  endTraceBB = 0;
+}
+
 static bool
-readInstMem(Core &core, uint32_t address, uint16_t &low, uint16_t &high,
-        bool &highValid)
+getInstruction(Core &core, uint32_t address, InstructionOpcode &opc, 
+               Operands &operands)
 {
   if (!core.isValidAddress(address))
     return false;
-  low = core.loadShort(address);
-  if (core.isValidAddress(address + 2)) {
-    high = core.loadShort(address + 2);
-    highValid = true;
-  } else {
-    highValid = false;
-  }
+  instructionDecode(core, address >> 1, opc, operands);
   return true;
 }
 
@@ -118,43 +135,77 @@ JITImpl::checkReturnValue(LLVMValueRef call, LLVMValueRef f,
   LLVMValueRef cmp =
     LLVMBuildICmp(builder, LLVMIntNE, call,
                   LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_CONTINUE), "");
-  LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
   LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
-  LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
-  LLVMPositionBuilderAtEnd(builder, returnBB);
-  LLVMValueRef retval;
   if (properties.mayYield() && properties.mayEndTrace()) {
+    LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
+    LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
+    LLVMPositionBuilderAtEnd(builder, returnBB);
     LLVMValueRef isYield =
       LLVMBuildICmp(builder, LLVMIntEQ, call,
                     LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_YIELD), "");
-    LLVMValueRef yieldRetval =
-      LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false);
-    LLVMValueRef endTraceRetval =
-      LLVMConstInt(LLVMGetReturnType(jitFunctionType), 0, false);
-    retval = LLVMBuildSelect(builder, isYield, yieldRetval, endTraceRetval, "");
-  } else if (properties.mayYield()) {
-    retval = LLVMConstInt(LLVMGetReturnType(jitFunctionType), 1, false);
+    LLVMBuildCondBr(builder, isYield, getOrCreateYieldBB(),
+                    getOrCreateEndTraceBB());    
   } else {
-    retval = LLVMConstInt(LLVMGetReturnType(jitFunctionType), 0, false);
-    assert(properties.mayEndTrace());
+    LLVMBasicBlockRef returnBB;
+    if (properties.mayYield()) {
+      returnBB = getOrCreateYieldBB();
+    } else {
+      returnBB = getOrCreateEndTraceBB();
+      assert(properties.mayEndTrace());
+    }
+    LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
   }
-  LLVMBuildRet(builder, retval);
   LLVMPositionBuilderAtEnd(builder, afterBB);
+}
+
+LLVMBasicBlockRef JITImpl::getOrCreateYieldBB()
+{
+  if (yieldBB)
+    return yieldBB;
+  // Save off current insert point.
+  LLVMBasicBlockRef savedBB = LLVMGetInsertBlock(builder);
+  LLVMValueRef f = LLVMGetBasicBlockParent(savedBB);
+  yieldBB = LLVMAppendBasicBlock(f, "yield");
+  LLVMPositionBuilderAtEnd(builder, yieldBB);
+  // Call jitYieldFunction.
+  LLVMValueRef args[] = {
+    threadParam
+  };
+  LLVMBuildCall(builder, jitYieldFunction, args, 1, "");
+  // Return
+  LLVMBuildRetVoid(builder);
+  // Restore insert point.
+  LLVMPositionBuilderAtEnd(builder, savedBB);
+  return yieldBB;
+}
+
+LLVMBasicBlockRef JITImpl::getOrCreateEndTraceBB()
+{
+  if (endTraceBB)
+    return endTraceBB;
+  // Save off current insert point.
+  LLVMBasicBlockRef savedBB = LLVMGetInsertBlock(builder);
+  LLVMValueRef f = LLVMGetBasicBlockParent(savedBB);
+  endTraceBB = LLVMAppendBasicBlock(f, "endtrace");
+  LLVMPositionBuilderAtEnd(builder, endTraceBB);
+  // Return
+  LLVMBuildRetVoid(builder);
+  // Restore insert point.
+  LLVMPositionBuilderAtEnd(builder, savedBB);
+  return endTraceBB;
 }
 
 bool JITImpl::
 compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
 {
   init();
-  InstructionOpcode opc;
-  uint16_t low, high;
-  bool highValid;
+  resetPerFunctionState();
   if (!unreachableFunctions.empty())
     reclaimUnreachableFunctions();
-  if (!readInstMem(core, address, low, high, highValid))
-    return false;
+  InstructionOpcode opc;
   Operands operands;
-  instructionDecode(low, high, highValid, opc, operands);
+  if (!getInstruction(core, address, opc, operands))
+    return false;
   instructionTransform(opc, operands, core, address >> 1);
   InstructionProperties *properties = &instructionProperties[opc];
   // Check if we can JIT the instruction.
@@ -165,7 +216,7 @@ compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
     return false;
   // Create function to contain the code we are about to add.
   LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
-  LLVMValueRef threadParam = LLVMGetParam(f, 0);
+  threadParam = LLVMGetParam(f, 0);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   std::vector<LLVMValueRef> calls;
@@ -212,15 +263,17 @@ compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
       break;
     // Increment address.
     address += properties->size;
-    if (!readInstMem(core, address, low, high, highValid))
-      break;
-    instructionDecode(low, high, highValid, opc, operands);
+    if (!getInstruction(core, address, opc, operands))
+      return false;
     instructionTransform(opc, operands, core, address >> 1);
     properties = &instructionProperties[opc];
   } while (properties->function);
   // Build return.
-  LLVMBuildRet(builder,
-               LLVMConstInt(LLVMGetReturnType(jitFunctionType), 0, false));
+  LLVMBuildRetVoid(builder);
+  if (DEBUG_JIT) {
+    LLVMDumpValue(f);
+    LLVMVerifyFunction(f, LLVMAbortProcessAction);
+  }
   // Optimize.
   for (std::vector<LLVMValueRef>::iterator it = calls.begin(), e = calls.end();
        it != e; ++it) {
@@ -238,16 +291,17 @@ bool JIT::
 findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
                                       uint32_t &firstAddress)
 {
-  InstructionOpcode opc;
-  uint16_t low, high;
-  bool highValid;
+  // TODO this ignores the fact that custom functions migt branch.
   while (1) {
-    if (!readInstMem(core, address, low, high, highValid))
-      return false;
+    InstructionOpcode opc;
     Operands operands;
-    instructionDecode(low, high, highValid, opc, operands);
+    if (!getInstruction(core, address, opc, operands))
+      return false;
     instructionTransform(opc, operands, core, address >> 1);
     InstructionProperties *properties = &instructionProperties[opc];
+    // Hack to avoid infinite loop.
+    if (properties->size == 0)
+      return false;
     // We've reached the end of the block. Even if we could compile this
     // there isn't much point JITing a single instruction.
     if (properties->mayBranch())

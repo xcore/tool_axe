@@ -422,8 +422,9 @@ void Thread::runAux(ticks_t time) {
   START_DISPATCH_LOOP
   INST(INITIALIZE):
     getParent().initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
-                          OPCODE(ILLEGAL_PC_THREAD), OPCODE(SYSCALL),
-                          OPCODE(EXCEPTION), OPCODE(JIT_INSTRUCTION));
+                          OPCODE(ILLEGAL_PC_THREAD), OPCODE(YIELD),
+                          OPCODE(SYSCALL), OPCODE(EXCEPTION),
+                          OPCODE(JIT_INSTRUCTION));
     ENDINST;
 #define EMIT_INSTRUCTION_DISPATCH
 #include "InstructionGenOutput.inc"
@@ -519,7 +520,11 @@ void Thread::runAux(ticks_t time) {
     EXCEPTION(ET_ILLEGAL_PC, FROM_PC(PC));
     ENDINST;
   INST(ILLEGAL_PC_THREAD):
-    EXCEPTION(ET_ILLEGAL_PC, this->illegal_pc);
+    EXCEPTION(ET_ILLEGAL_PC, this->pendingPc);
+    ENDINST;
+  INST(YIELD):
+    PC = THREAD.pendingPc;
+    YIELD(PC);
     ENDINST;
   INST(ILLEGAL_INSTRUCTION):
     EXCEPTION(ET_ILLEGAL_INSTRUCTION, 0);
@@ -527,16 +532,7 @@ void Thread::runAux(ticks_t time) {
   INST(DECODE):
     {
       InstructionOpcode opc;
-      uint16_t low = core->loadShort(PC << 1);
-      uint16_t high = 0;
-      bool highValid;
-      if (CHECK_ADDR((PC + 1) << 1)) {
-        high = core->loadShort((PC + 1) << 1);
-        highValid = true;
-      } else {
-        highValid = false;
-      }
-      instructionDecode(low, high, highValid, opc, operands[PC]);
+      instructionDecode(CORE, PC, opc, operands[PC]);
       instructionTransform(opc, operands[PC], CORE, PC);
       if (CORE.invalidationInfo[PC] == Core::INVALIDATE_NONE) {
         CORE.invalidationInfo[PC] = Core::INVALIDATE_CURRENT;
@@ -562,8 +558,7 @@ void Thread::runAux(ticks_t time) {
       ENDINST;
     }
   INST(JIT_INSTRUCTION):
-    if (operands[PC].func(THREAD))
-      YIELD(PC);
+    operands[PC].func(THREAD);
     ENDINST;
   END_DISPATCH_LOOP
 }

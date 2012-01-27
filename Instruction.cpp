@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-12, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -342,6 +342,30 @@ static unsigned bitpValue(unsigned Value)
     32
   };
   return bitpValues[Value];
+}
+
+void instructionDecode(Core &core, uint32_t shiftedAddress,
+                       InstructionOpcode &opcode, Operands &operands)
+{
+  assert(shiftedAddress < (core.ram_size >> 1));
+  if (shiftedAddress == core.syscallAddress) {
+    opcode = SYSCALL;
+    return;
+  }
+  if (shiftedAddress == core.exceptionAddress) {
+    opcode = SYSCALL;
+    return;
+  }
+  uint16_t low = core.loadShort(shiftedAddress << 1);
+  uint16_t high = 0;
+  bool highValid;
+  if (core.isValidAddress((shiftedAddress + 1) << 1)) {
+    high = core.loadShort((shiftedAddress + 1) << 1);
+    highValid = true;
+  } else {
+    highValid = false;
+  }
+  return instructionDecode(low, high, highValid, opcode, operands);
 }
 
 #define PFIX 0x1e /* 0b11110 */
@@ -1384,8 +1408,6 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid, InstructionOpcode
     break;
   }
 }
-
-
 
 #undef OP
 #undef LOP
