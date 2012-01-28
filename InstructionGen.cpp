@@ -553,19 +553,6 @@ emitTraceEnd()
   std::cout << "TRACE_END();\n";
 }
 
-static void
-emitCode(const Instruction &instruction,
-         const std::string &code,
-         bool &emitEndLabel);
-
-static void
-emitCode(const Instruction &instruction,
-         const std::string &code)
-{
-  bool dummy;
-  emitCode(instruction, code, dummy);
-}
-
 class CodeEmitter {
 public:
   void emit(const std::string &code);
@@ -689,20 +676,12 @@ void CodeEmitter::emitNested(const std::string &code)
   }
 }
 
-static void emitUpdateExecutionFrequency(const Instruction &inst)
-{
-  if (inst.getMayBranch()) {
-    std::cout << "if (!tracing) {\n";
-    std::cout << "  CORE.updateExecutionFrequency(PC);\n";
-    std::cout << "}\n";
-  }
-}
-
 class InlineCodeEmitter : public CodeEmitter {
   bool emitEndLabel;
   const Instruction *inst;
 public:
   InlineCodeEmitter() : emitEndLabel(false) {}
+  void emitUpdateExecutionFrequency();
   void setInstruction(const Instruction &i) { inst = &i; }
   bool getEmitEndLabel() const { return emitEndLabel; }
 protected:
@@ -722,6 +701,15 @@ protected:
   virtual void emitLoadShort(const std::string &args);
   virtual void emitLoadByte(const std::string &args);
 };
+
+void InlineCodeEmitter::emitUpdateExecutionFrequency()
+{
+  if (inst->getMayBranch()) {
+    std::cout << "if (!tracing) {\n";
+    std::cout << "  CORE.updateExecutionFrequency(PC);\n";
+    std::cout << "}\n";
+  }
+}
 
 void InlineCodeEmitter::emitBegin()
 {
@@ -787,7 +775,7 @@ void InlineCodeEmitter::emitYield()
   emitRegWriteBack(*inst);
   emitCheckEvents(*inst);
   emitTraceEnd();
-  emitUpdateExecutionFrequency(*inst);
+  emitUpdateExecutionFrequency();
   std::cout << "YIELD(PC);\n";
   std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
@@ -844,11 +832,21 @@ void InlineCodeEmitter::emitLoadByte(const std::string &args)
   std::cout << ")";
 }
 
+static void
+emitCode(const Instruction &instruction,
+         const std::string &code)
+{
+  InlineCodeEmitter emitter;
+  emitter.setInstruction(instruction);
+  emitter.emit(code);
+}
+
 class FunctionCodeEmitter : public CodeEmitter {
 public:
   const Instruction *inst;
   void emitCycles();
   void emitRegWriteback();
+  void emitUpdateExecutionFrequency();
   void setInstruction(const Instruction &i) { inst = &i; }
 protected:
   virtual void emitBegin();
@@ -889,6 +887,13 @@ void FunctionCodeEmitter::emitRegWriteback()
     }
   }
   std::cout << "THREAD.pc = nextPc;\n";
+}
+
+void FunctionCodeEmitter::emitUpdateExecutionFrequency()
+{
+  if (inst->getMayBranch()) {
+    std::cout << "CORE.updateExecutionFrequency(THREAD.pc);\n";
+  }
 }
 
 void FunctionCodeEmitter::emitBegin()
@@ -937,6 +942,7 @@ void FunctionCodeEmitter::emitYield()
 {
   emitRegWriteback();
   emitCycles();
+  emitUpdateExecutionFrequency();
   std::cout << "return JIT_RETURN_YIELD;\n";
 }
 
@@ -1044,17 +1050,6 @@ public:
   void setInstruction(Instruction &i) { inst = &i; }
   CodePropertyExtractor() : inst(0) {}
 };
-
-static void
-emitCode(const Instruction &instruction,
-         const std::string &code,
-         bool &emitEndLabel)
-{
-  InlineCodeEmitter emitter;
-  emitter.setInstruction(instruction);
-  emitter.emit(code);
-  emitEndLabel = emitter.getEmitEndLabel();
-}
 
 static std::string
 quote(const std::string &s)
@@ -1239,14 +1234,17 @@ emitInstDispatch(Instruction &instruction)
   if (instruction.getUnimplemented()) {
     std::cout << "ERROR();\n";
   } else {
-    emitCode(instruction, code, emitEndLabel);
+    InlineCodeEmitter emitter;
+    emitter.setInstruction(instruction);
+    emitter.emit(code);
+    emitEndLabel = emitter.getEmitEndLabel();
     std::cout << '\n';
     // Write operands.
     emitCycles(instruction);
     emitRegWriteBack(instruction);
     emitCheckEvents(instruction);
     emitTraceEnd();
-    emitUpdateExecutionFrequency(instruction);
+    emitter.emitUpdateExecutionFrequency();
   }
   std::cout << "}\n";
   if (emitEndLabel)
@@ -1304,6 +1302,7 @@ static void emitInstFunction(Instruction &inst)
   // Write operands.
   emitter.emitRegWriteback();
   emitter.emitCycles();
+  emitter.emitUpdateExecutionFrequency();
   if (inst.getMayStore()) {
     std::cout << "return retval;\n";
   } else {
