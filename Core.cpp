@@ -331,6 +331,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
       JIT::markUnreachable(operands[shiftedAddress].func);
     }
     opcode[shiftedAddress] = decodeOpcode;
+    executionFrequency[shiftedAddress] = 0;
     invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
 }
@@ -339,17 +340,8 @@ void Core::runJIT(uint32_t shiftedAddress)
 {
   if (shiftedAddress >= (ram_size >> 1))
     return;
-  if (opcode[shiftedAddress] == jitFunctionOpcode) {
-    executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
+  executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
+  if (opcode[shiftedAddress] == jitFunctionOpcode)
     return;
-  }
-  uint32_t firstCompilableAddress;
-  if (JIT::findFirstCompilableInstructionInBlock(*this, shiftedAddress << 1,
-                                                 firstCompilableAddress)) {
-    if (JIT::compile(*this, shiftedAddress << 1,
-                     operands[shiftedAddress].func)) {
-      opcode[shiftedAddress] = jitFunctionOpcode;
-      executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
-    }
-  }
+  JIT::compileBlock(*this, shiftedAddress << 1);
 }

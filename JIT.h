@@ -13,9 +13,7 @@ class Thread;
 class Core;
 
 namespace JIT {
-  bool findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
-                                             uint32_t &firstAddress);
-  bool compile(Core &c, uint32_t address, JITInstructionFunction_t &f);
+  void compileBlock(Core &c, uint32_t address);
   void markUnreachable(const JITInstructionFunction_t f);
 };
 

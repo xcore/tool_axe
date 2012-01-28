@@ -1675,7 +1675,7 @@ pseudoInst(const std::string &name,
            const std::string &format,
            const std::string &code)
 {
-  return inst(name, 0, ops(), format, code, 0);
+  return inst(name, 2, ops(), format, code, 0);
 }
 
 void add()

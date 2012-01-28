@@ -248,6 +248,8 @@ public:
     return ((ram_size >> 1) - 1) + YIELD_ADDR_OFFSET;
   }
 
+  OPCODE_TYPE getJitFunctionOpcode() const { return jitFunctionOpcode; }
+
   void updateIDs();
 
   /// Set the parent of the current core. updateIDs() must be called to update

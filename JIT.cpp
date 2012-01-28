@@ -48,11 +48,15 @@ class JITImpl {
                         InstructionProperties &properties);
   LLVMBasicBlockRef getOrCreateYieldBB();
   LLVMBasicBlockRef getOrCreateEndTraceBB();
+
+  bool compileOneFragment(Core &core, uint32_t address,
+                          JITInstructionFunction_t &out, bool &endOfBlock,
+                          uint32_t &nextAddress);
 public:
   JITImpl() : initialized(false) {}
   static JITImpl instance;
   void markUnreachable(const JITInstructionFunction_t f);
-  bool compile(Core &core, uint32_t address, JITInstructionFunction_t &out);
+  void compileBlock(Core &core, uint32_t address);
 };
 
 JITImpl JITImpl::instance;
@@ -195,25 +199,55 @@ LLVMBasicBlockRef JITImpl::getOrCreateEndTraceBB()
   return endTraceBB;
 }
 
-bool JITImpl::
-compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
+void JITImpl::compileBlock(Core &core, uint32_t address)
 {
   init();
-  resetPerFunctionState();
   if (!unreachableFunctions.empty())
     reclaimUnreachableFunctions();
+  bool endOfBlock;
+  uint32_t nextAddress;
+  JITInstructionFunction_t out;
+  do {
+    if (compileOneFragment(core, address, out, endOfBlock, nextAddress)) {
+      core.opcode[address >> 1] = core.getJitFunctionOpcode();
+      core.operands[address >> 1].func = out;
+    }
+    address = nextAddress;
+  } while (!endOfBlock);
+}
+
+/// Try and compile a fragment starting at the specified address. Returns
+/// true if successful setting \a nextAddress to the first instruction after
+/// the fragment. If unsuccessful returns false and sets \a nextAddress to the
+/// address after the current function. \a endOfBlock is set to true if the
+/// next address is in a new basic block.
+bool JITImpl::
+compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
+                   bool &endOfBlock, uint32_t &nextAddress)
+{
+  assert(initialized);
+  resetPerFunctionState();
+  endOfBlock = false;
+  nextAddress = address;
+
   InstructionOpcode opc;
   Operands operands;
-  if (!getInstruction(core, address, opc, operands))
+  if (!getInstruction(core, address, opc, operands)) {
+    endOfBlock = true;
     return false;
+  }
   instructionTransform(opc, operands, core, address >> 1);
   InstructionProperties *properties = &instructionProperties[opc];
-  // Check if we can JIT the instruction.
-  if (!properties->function)
-    return false;
+  nextAddress = address + properties->size;
   // There isn't much point JITing a single instruction.
-  if (properties->mayBranch())
+  if (properties->mayBranch()) {
+    endOfBlock = true;
     return false;
+  }
+  // Check if we can JIT the instruction.
+  if (!properties->function) {
+    return false;
+  }
   // Create function to contain the code we are about to add.
   LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
   threadParam = LLVMGetParam(f, 0);
@@ -237,8 +271,8 @@ compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
     args[1] = LLVMConstInt(paramTypes[1], nextAddress >> 1, false);
     for (unsigned i = 2; i < numArgs; i++) {
       uint32_t value =
-        properties->numExplicitOperands <= 3 ? operands.ops[i - 2] :
-                                              operands.lops[i - 2];
+      properties->numExplicitOperands <= 3 ? operands.ops[i - 2] :
+      operands.lops[i - 2];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
@@ -251,22 +285,27 @@ compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
       }
     } else {
       core.invalidationInfo[address >> 1] =
-        Core::INVALIDATE_CURRENT_AND_PREVIOUS;
+      Core::INVALIDATE_CURRENT_AND_PREVIOUS;
     }
     if (properties->size != 2) {
       assert(properties->size == 4 && "Unexpected instruction size");
       core.invalidationInfo[(address >> 1) + 1] =
-        Core::INVALIDATE_CURRENT_AND_PREVIOUS;
+      Core::INVALIDATE_CURRENT_AND_PREVIOUS;
     }
     // See if we can JIT the next instruction.
     if (properties->mayBranch())
       break;
     // Increment address.
-    address += properties->size;
-    if (!getInstruction(core, address, opc, operands))
-      return false;
+    address = nextAddress;
+    if (!getInstruction(core, address, opc, operands)) {
+      endOfBlock = true;
+      break;
+    }
     instructionTransform(opc, operands, core, address >> 1);
     properties = &instructionProperties[opc];
+    nextAddress = address + properties->size;
+    if (properties->mayBranch())
+      endOfBlock = true;
   } while (properties->function);
   // Build return.
   LLVMBuildRetVoid(builder);
@@ -282,35 +321,9 @@ compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
   LLVMRunFunctionPassManager(FPM, f);
   // Compile.
   out = reinterpret_cast<JITInstructionFunction_t>(
-          LLVMGetPointerToGlobal(executionEngine, f));
+                                                   LLVMGetPointerToGlobal(executionEngine, f));
   functionPtrMap.insert(std::make_pair(out, f));
   return true;
-}
-
-bool JIT::
-findFirstCompilableInstructionInBlock(Core &core, uint32_t address,
-                                      uint32_t &firstAddress)
-{
-  // TODO this ignores the fact that custom functions migt branch.
-  while (1) {
-    InstructionOpcode opc;
-    Operands operands;
-    if (!getInstruction(core, address, opc, operands))
-      return false;
-    instructionTransform(opc, operands, core, address >> 1);
-    InstructionProperties *properties = &instructionProperties[opc];
-    // Hack to avoid infinite loop.
-    if (properties->size == 0)
-      return false;
-    // We've reached the end of the block. Even if we could compile this
-    // there isn't much point JITing a single instruction.
-    if (properties->mayBranch())
-      return false;
-    // Check if we can JIT the instruction.
-    if (properties->function)
-      return true;
-    address += properties->size;
-  }
 }
 
 void JITImpl::markUnreachable(const JITInstructionFunction_t f)
@@ -319,9 +332,9 @@ void JITImpl::markUnreachable(const JITInstructionFunction_t f)
   unreachableFunctions.push_back(f);
 }
 
-bool JIT::compile(Core &core, uint32_t address, JITInstructionFunction_t &out)
+void JIT::compileBlock(Core &core, uint32_t address)
 {
-  return JITImpl::instance.compile(core, address, out);
+  return JITImpl::instance.compileBlock(core, address);
 }
 
 void JIT::markUnreachable(const JITInstructionFunction_t f)
