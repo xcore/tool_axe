@@ -1144,7 +1144,7 @@ scanFormatArgs(const char *format, Instruction &instruction,
   if (!buf.str().empty()) {
     args.push_back(quote(buf.str()));
     buf.str("");
-  }  
+  }
 }
 
 static void
@@ -1154,7 +1154,7 @@ emitTrace(Instruction &instruction)
 
   std::vector<std::string> args;
   scanFormatArgs(format.c_str(), instruction, args);
-  
+
   std::cout << "if (tracing) {\n";
   if (!instruction.getReverseTransform().empty()) {
     emitCode(instruction, instruction.getReverseTransform());
@@ -2076,7 +2076,7 @@ void add()
   fu6("BRBU", "bu -%0", "%pc = %0;\n %yield")
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
   fu6("BRBU_illegal", "bu -%0", "%exception(ET_ILLEGAL_PC, %0)")
-    .transform("%0 = %pc - %0;", "%0 = %0 - %pc;");  
+    .transform("%0 = %pc - %0;", "%0 = %0 - %pc;");
   fu6("LDAWCP", "ldaw %1, cp[%{cp}0]", "%1 = %2 + %0;")
     .addImplicitOp(R11, out)
     .addImplicitOp(CP, in)
@@ -2146,7 +2146,7 @@ void add()
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
   fu10("BLRB_illegal", "bl -%0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
-  fu10("BLACP", "bla cp[%{cp}0]", 
+  fu10("BLACP", "bla cp[%{cp}0]",
       "uint32_t Addr = %2 + (%0<<2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "uint32_t value;\n"
@@ -2237,11 +2237,11 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync();  
+    .setSync();
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
-  fl2r_in("TINITLR", "init t[%1]:lr, %0", 
+  fl2r_in("TINITLR", "init t[%1]:lr, %0",
           "ResourceID resID(%1);\n"
           "Thread *t = checkThread(CORE, resID);\n"
           "if (t && t->inSSync()) {\n"
@@ -2367,7 +2367,7 @@ void add()
          "}\n");
   // TODO wrong format?
   f2r_in("TSETMR", "", "").setCustom();
-  
+
   f2r_in("SETD", "setd res[%1], %0",
          "ResourceID resID(%1);\n"
          "Resource *res = checkResource(CORE, resID);\n"
@@ -2779,7 +2779,7 @@ void add()
     .addImplicitOp(SR, out)
     .setSync();
   f0r("DRESTSP", "drestsp", "").setUnimplemented();
-  f0r("LDSPC", "ldw %0, sp[1]", 
+  f0r("LDSPC", "ldw %0, sp[1]",
       "uint32_t Addr = %1 + (1 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2788,7 +2788,7 @@ void add()
       "%0 = LOAD_WORD(PhyAddr);\n")
     .addImplicitOp(SPC, out)
     .addImplicitOp(SP, in);
-  f0r("LDSSR", "ldw %0, sp[2]", 
+  f0r("LDSSR", "ldw %0, sp[2]",
       "uint32_t Addr = %1 + (2 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2797,7 +2797,7 @@ void add()
       "%0 = LOAD_WORD(PhyAddr);\n")
     .addImplicitOp(SSR, out)
     .addImplicitOp(SP, in);
-  f0r("LDSED", "ldw %0, sp[3]", 
+  f0r("LDSED", "ldw %0, sp[3]",
       "uint32_t Addr = %1 + (3 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2806,7 +2806,7 @@ void add()
       "%0 = LOAD_WORD(PhyAddr);\n")
     .addImplicitOp(SED, out)
     .addImplicitOp(SP, in);
-  f0r("LDET", "ldw %0, sp[4]", 
+  f0r("LDET", "ldw %0, sp[4]",
       "uint32_t Addr = %1 + (4 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2815,7 +2815,7 @@ void add()
       "%0 = LOAD_WORD(PhyAddr);\n")
     .addImplicitOp(ET, out)
     .addImplicitOp(SP, in);
-  f0r("STSPC", "stw %0, sp[1]", 
+  f0r("STSPC", "stw %0, sp[1]",
       "uint32_t Addr = %1 + (1 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2824,7 +2824,7 @@ void add()
       "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SPC, in)
     .addImplicitOp(SP, in);
-  f0r("STSSR", "stw %0, sp[2]", 
+  f0r("STSSR", "stw %0, sp[2]",
       "uint32_t Addr = %1 + (2 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2833,7 +2833,7 @@ void add()
       "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SSR, in)
     .addImplicitOp(SP, in);
-  f0r("STSED", "stw %0, sp[3]", 
+  f0r("STSED", "stw %0, sp[3]",
       "uint32_t Addr = %1 + (3 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
@@ -2842,7 +2842,7 @@ void add()
       "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(SED, in)
     .addImplicitOp(SP, in);
-  f0r("STET", "stw %0, sp[4]", 
+  f0r("STET", "stw %0, sp[4]",
       "uint32_t Addr = %1 + (4 << 2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
