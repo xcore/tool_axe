@@ -7,6 +7,7 @@
 #define _InstructionHelpers_h_
 
 #include <stdint.h>
+#include "Config.h"
 
 class Thread;
 class Core;
@@ -31,5 +32,10 @@ Chanend *checkChanend(Core &state, ResourceID id);
 Port *checkPort(Core &state, ResourceID id);
 
 EventableResource *checkEventableResource(Core &state, ResourceID id);
+
+bool setClock(Thread &t, ResourceID resID, uint32_t val, ticks_t time);
+
+bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
+                         ticks_t time);
 
 #endif // _InstructionHelpers_h_

@@ -21,5 +21,6 @@
 #define FROM_PC(addr) CORE.virtualAddress((addr) << 1)
 #define TO_PC(addr) (CORE.physicalAddress(addr) >> 1)
 #define CHECK_PC(addr) ((addr) < (CORE.ram_size << 1))
+#define TIME THREAD.time
 
 #endif //_InstructionMacrosCommon_h_

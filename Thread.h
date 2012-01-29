@@ -309,6 +309,7 @@ private:
     return setSRSlowPath(enabled);
   }
 
+public:
   void clre()
   {
     eeble() = false;
@@ -319,16 +320,12 @@ private:
       (*it)->eventDisable(*this);
     }
   }
-
-public:
   bool isExecuting() const;
   void run(ticks_t time);
 private:
   template <bool tracing> void runAux(ticks_t time);
   bool setSRSlowPath(sr_t old);
   bool setC(ticks_t time, ResourceID resID, uint32_t val);
-  bool setClock(ResourceID resID, uint32_t val, ticks_t time);
-  bool threadSetReady(ResourceID resID, uint32_t val, ticks_t time);
 };
 
 struct PendingEvent {

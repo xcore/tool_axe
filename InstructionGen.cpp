@@ -1292,6 +1292,11 @@ static void emitInstFunction(Instruction &inst)
     std::cout << ", uint32_t field" << i;
   }
   std::cout << ") {\n";
+  FunctionCodeEmitter emitter;
+  emitter.setInstruction(inst);
+  if (inst.getYieldBefore()) {
+    emitter.emitYieldIfTimeSliceExpired();
+  }
   // Read operands.
   const std::vector<OpType> &operands = inst.getOperands();
   for (unsigned i = 0, e = operands.size(); i != e; ++i) {
@@ -1315,8 +1320,6 @@ static void emitInstFunction(Instruction &inst)
   if (inst.getMayStore()) {
     std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
   }
-  FunctionCodeEmitter emitter;
-  emitter.setInstruction(inst);
   emitter.emit(inst.getCode());
   std::cout << '\n';
   // Write operands.
@@ -1358,7 +1361,7 @@ static void analyzeInst(Instruction &inst) {
   CodePropertyExtractor propertyExtractor;
   propertyExtractor.setInstruction(inst);
   propertyExtractor.emit(inst.getCode());
-  if (inst.getCanEvent() || inst.getYieldBefore())
+  if (inst.getCanEvent())
     return;
   const std::vector<OpType> &operands = inst.getOperands();
   for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {
@@ -1396,7 +1399,7 @@ static void emitInstFlags(Instruction &inst)
   if (inst.getMayBranch()) {
     emitInstFlag("MAY_BRANCH", emittedFlag);
   }
-  if (inst.getMayYield() || inst.getMayExcept()) {
+  if (inst.getMayYield() || inst.getMayExcept() || inst.getYieldBefore()) {
     emitInstFlag("MAY_YIELD", emittedFlag);
   }
   if (inst.getMayStore())
@@ -2291,7 +2294,7 @@ void add()
           "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
           "}\n").setYieldBefore().setCanEvent();
   fl2r_in("SETCLK", "setclk res[%1], %0",
-          "if (!setClock(ResourceID(%1), %0, TIME)) {\n"
+          "if (!setClock(THREAD, ResourceID(%1), %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setYieldBefore();
   fl2r_in("SETTW", "settw res[%1], %0",
@@ -2300,7 +2303,7 @@ void add()
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setYieldBefore();
   fl2r_in("SETRDY", "setrdy res[%1], %0",
-          "if (!threadSetReady(ResourceID(%1), %0, TIME)) {\n"
+          "if (!setReadyInstruction(THREAD, ResourceID(%1), %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
           "}\n").setYieldBefore();
   f2r("IN", "in %0, res[%1]",

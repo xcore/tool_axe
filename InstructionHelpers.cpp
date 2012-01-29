@@ -97,3 +97,54 @@ EventableResource *checkEventableResource(Core &state, ResourceID id)
     return 0;
   return static_cast<EventableResource *>(res);
 }
+
+const uint32_t CLK_REF = 0x1;
+
+bool setClock(Thread &t, ResourceID resID, uint32_t val, ticks_t time)
+{
+  Core &state = t.getParent();
+  Resource *res = checkResource(state, resID);
+  if (!res) {
+    return false;
+  }
+  switch (res->getType()) {
+    default: return false;
+    case RES_TYPE_CLKBLK:
+    {
+      ClockBlock *c = static_cast<ClockBlock*>(res);
+      if (val == CLK_REF) {
+        c->setSourceRefClock(t, time);
+        return true;
+      }
+      Port *p = checkPort(state, val);
+      if (!p || p->getPortWidth() != 1)
+        return false;
+      return c->setSource(t, p, time);
+    }
+    case RES_TYPE_PORT:
+    {
+      Resource *source = state.getResourceByID(val);
+      if (!source)
+        return false;
+      if (source->getType() != RES_TYPE_CLKBLK)
+        return false;
+      static_cast<Port*>(res)->setClk(t, static_cast<ClockBlock*>(source),
+                                      time);
+      return true;
+    }
+      break;
+  }
+  return true;
+}
+
+bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
+                         ticks_t time)
+{
+  Core &state = t.getParent();
+  Resource *res = checkResource(state, resID);
+  Port *ready = checkPort(state, val);
+  if (!res || !ready) {
+    return false;
+  }
+  return res->setReady(t, ready, time);
+}

@@ -257,58 +257,6 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
   return true;
 }
 
-const uint32_t CLK_REF = 0x1;
-
-bool Thread::
-setClock(ResourceID resID, uint32_t val, ticks_t time)
-{
-  Core &state = getParent();
-  Resource *res = checkResource(state, resID);
-  if (!res) {
-    return false;
-  }
-  switch (res->getType()) {
-  default: return false;
-  case RES_TYPE_CLKBLK:
-    {
-      ClockBlock *c = static_cast<ClockBlock*>(res);
-      if (val == CLK_REF) {
-        c->setSourceRefClock(*this, time);
-        return true;
-      }
-      Port *p = checkPort(state, val);
-      if (!p || p->getPortWidth() != 1)
-        return false;
-      return c->setSource(*this, p, time);
-    }
-  case RES_TYPE_PORT:
-    {
-      Resource *source = state.getResourceByID(val);
-      if (!source)
-        return false;
-      if (source->getType() != RES_TYPE_CLKBLK)
-        return false;
-      static_cast<Port*>(res)->setClk(*this, static_cast<ClockBlock*>(source),
-                                      time);
-      return true;
-    }
-    break;
-  }
-  return true;
-}
-
-bool Thread::
-threadSetReady(ResourceID resID, uint32_t val, ticks_t time)
-{
-  Core &state = getParent();
-  Resource *res = checkResource(state, resID);
-  Port *ready = checkPort(state, val);
-  if (!res || !ready) {
-    return false;
-  }
-  return res->setReady(*this, ready, time);
-}
-
 #include "InstructionMacrosCommon.h"
 
 #ifdef DIRECT_THREADED
@@ -334,7 +282,6 @@ do { \
 #define THREAD (*this)
 #define CORE (*core)
 #define PC this->pc
-#define TIME this->time
 #define OP(n) (operands[PC].ops[(n)])
 #define LOP(n) (operands[PC].lops[(n)])
 #define EXCEPTION(et, ed) \
