@@ -45,6 +45,11 @@ const char *registerNames[] = {
   "ssr"
 };
 
+void Thread::finalize()
+{
+  scheduler = &getParent().getParent()->getParent()->getScheduler();
+}
+
 void Thread::dump() const
 {
   std::cout << std::hex;

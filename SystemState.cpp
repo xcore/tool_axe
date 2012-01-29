@@ -10,9 +10,15 @@
 
 SystemState::~SystemState()
 {
-  for (std::vector<Node*>::iterator it = nodes.begin(), e = nodes.end();
-       it != e; ++it) {
+  for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
     delete *it;
+  }
+}
+
+void SystemState::finalize()
+{
+  for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
+    (*it)->finalize();
   }
 }
 

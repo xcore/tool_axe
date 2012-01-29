@@ -290,6 +290,13 @@ ChanEndpoint *Core::getChanendDest(ResourceID ID)
   return parent->getParent()->getChanendDest(ID);
 }
 
+void Core::finalize()
+{
+  for (unsigned i = 0; i < NUM_THREADS; i++) {
+    thread[i].finalize();
+  }
+}
+
 void Core::updateIDs()
 {
   unsigned coreID = getCoreID();

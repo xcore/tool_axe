@@ -30,6 +30,7 @@ public:
     pendingEvent.set = false;
   }
   ~SystemState();
+  void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
   void addNode(std::auto_ptr<Node> n);
   

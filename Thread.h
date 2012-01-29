@@ -111,6 +111,7 @@ private:
 };
 
 class Core;
+class RunnableQueue;
 
 class Thread : public Runnable, public Resource {
   bool ssync;
@@ -121,6 +122,8 @@ class Thread : public Runnable, public Resource {
   EventableResourceList interruptEnabledResources;
   /// Parent core.
   Core *parent;
+  /// The scheduler.
+  RunnableQueue *scheduler;
 public:
   enum SRBit {
     EEBLE = 0,
@@ -148,7 +151,7 @@ public:
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
 
-  Thread() : Resource(RES_TYPE_THREAD), parent(0) {
+  Thread() : Resource(RES_TYPE_THREAD), parent(0), scheduler(0) {
     time = 0;
     pc = 0;
     regs[KEP] = 0;
@@ -178,8 +181,9 @@ public:
 
   Core &getParent() { return *parent; }
   const Core &getParent() const { return *parent; }
-    
-  
+
+  void finalize();
+
   void addEventEnabledResource(EventableResource *res)
   {
     eventEnabledResources.add(res);

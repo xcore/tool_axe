@@ -250,6 +250,7 @@ public:
 
   OPCODE_TYPE getJitFunctionOpcode() const { return jitFunctionOpcode; }
 
+  void finalize();
   void updateIDs();
 
   /// Set the parent of the current core. updateIDs() must be called to update
