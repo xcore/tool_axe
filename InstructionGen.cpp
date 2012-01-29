@@ -847,6 +847,7 @@ public:
   void emitCycles();
   void emitRegWriteback();
   void emitUpdateExecutionFrequency();
+  void emitYieldIfTimeSliceExpired();
   void setInstruction(const Instruction &i) { inst = &i; }
 protected:
   virtual void emitBegin();
@@ -919,13 +920,21 @@ void FunctionCodeEmitter::emitNextPc()
   std::cout << "nextPc";
 }
 
+void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
+{
+  std::cout << "if (CORE.getParent()->getParent()->hasTimeSliceExpired(THREAD.time)) {\n";
+  std::cout << "return JIT_RETURN_YIELD;\n";
+  std::cout << "}\n";
+}
+
 void FunctionCodeEmitter::emitException(const std::string &args)
 {
   std::cout << "THREAD.pc = exception(THREAD, THREAD.pc, ";
   emitNested(args);
   std::cout << ");\n";
   emitCycles();
-  std::cout << "return JIT_RETURN_YIELD;\n";
+  emitYieldIfTimeSliceExpired();
+  std::cout << "return JIT_RETURN_END_TRACE;\n";
 }
 
 void FunctionCodeEmitter::emitKCall(const std::string &args)
@@ -943,7 +952,8 @@ void FunctionCodeEmitter::emitYield()
   emitRegWriteback();
   emitCycles();
   emitUpdateExecutionFrequency();
-  std::cout << "return JIT_RETURN_YIELD;\n";
+  emitYieldIfTimeSliceExpired();
+  std::cout << "return JIT_RETURN_CONTINUE;\n";
 }
 
 void FunctionCodeEmitter::emitDeschedule()
