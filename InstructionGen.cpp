@@ -154,7 +154,7 @@ private:
   std::string transformStr;
   std::string reverseTransformStr;
   unsigned cycles;
-  bool sync:1;
+  bool yieldBefore:1;
   bool canEvent:1;
   bool unimplemented:1;
   bool custom:1;
@@ -181,7 +181,7 @@ public:
     format(f),
     code(c),
     cycles(cy),
-    sync(false),
+    yieldBefore(false),
     canEvent(false),
     unimplemented(false),
     custom(false),
@@ -209,7 +209,7 @@ public:
   const std::string &getTransform() const { return transformStr; }
   const std::string &getReverseTransform() const { return reverseTransformStr; }
   unsigned getCycles() const { return cycles; }
-  bool getSync() const { return sync; }
+  bool getYieldBefore() const { return yieldBefore; }
   bool getCanEvent() const { return canEvent; }
   bool getUnimplemented() const { return unimplemented; }
   bool getCustom() const { return custom; }
@@ -242,8 +242,8 @@ public:
     cycles = value;
     return *this;
   }
-  Instruction &setSync() {
-    sync = true;
+  Instruction &setYieldBefore() {
+    yieldBefore = true;
     return *this;
   }
   Instruction &setCanEvent() {
@@ -303,7 +303,7 @@ public:
   InstructionRefs &addImplicitOp(Register reg, OpType type);
   InstructionRefs &transform(const std::string &t, const std::string &rt);
   InstructionRefs &setCycles(unsigned value);
-  InstructionRefs &setSync();
+  InstructionRefs &setYieldBefore();
   InstructionRefs &setCanEvent();
   InstructionRefs &setUnimplemented();
 };
@@ -339,11 +339,11 @@ setCycles(unsigned value)
 }
 
 InstructionRefs &InstructionRefs::
-setSync()
+setYieldBefore()
 {
   for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
        it != e; ++it) {
-    (*it)->setSync();
+    (*it)->setYieldBefore();
   }
   return *this;
 }
@@ -1204,7 +1204,7 @@ emitInstDispatch(Instruction &instruction)
     std::cerr << "error: unexpected instruction size " << size << "\n";
     std::exit(1);
   }
-  if (instruction.getSync()) {
+  if (instruction.getYieldBefore()) {
     std::cout << "\n"
                  "if (THREAD.hasTimeSliceExpired()) {\n"
                  "  YIELD(PC);\n"
@@ -1352,7 +1352,7 @@ static void analyzeInst(Instruction &inst) {
   CodePropertyExtractor propertyExtractor;
   propertyExtractor.setInstruction(inst);
   propertyExtractor.emit(inst.getCode());
-  if (inst.getCanEvent() || inst.getSync())
+  if (inst.getCanEvent() || inst.getYieldBefore())
     return;
   const std::vector<OpType> &operands = inst.getOperands();
   for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {
@@ -1849,7 +1849,7 @@ void add()
             "} else {\n"
             "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
             "}\n")
-    .setSync();
+    .setYieldBefore();
   fl2rus("INPW", "inpw %0, res[%1], %2",
          "ResourceID resID(%1);\n"
          "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -1867,7 +1867,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-  .setSync();
+  .setYieldBefore();
   fl3r_inout("CRC", "crc32 %0, %1, %2", "%0 = crc32(%0, %1, %2);");
   // TODO check destination registers don't overlap
   fl4r_inout_inout("MACCU", "maccu %0, %3, %1, %2",
@@ -2013,7 +2013,7 @@ void add()
        "if (!setC(TIME, ResourceID(%0), %1)) {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, %0)\n"
        "}\n")
-    .setSync().setCanEvent();
+    .setYieldBefore().setCanEvent();
   fu6("EXTSP", "extsp %0", "%1 = %1 - %0;")
     .addImplicitOp(SP, inout)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
@@ -2092,10 +2092,10 @@ void add()
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("SETSR", "setsr %0", "%1 = %1 | Thread::sr_t((int)%0);")
     .addImplicitOp(SR, inout)
-    .setSync();
+    .setYieldBefore();
   fu6("CLRSR", "clrsr %0", "%1 = %1 & ~Thread::sr_t((int)%0);")
     .addImplicitOp(SR, inout)
-    .setSync();
+    .setYieldBefore();
   fu6("BLAT", "blat %0",
       "uint32_t Addr = %2 + (%0<<2);\n"
       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
@@ -2216,7 +2216,7 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n")
-    .setSync();
+    .setYieldBefore();
   f2r("ENDIN", "endin %0, res[%1]",
       "ResourceID resID(%1);\n"
       "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -2232,7 +2232,7 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n")
-    .setSync();
+    .setYieldBefore();
   f2r_in("SETPSC", "setpsc res[%1], %0",
          "ResourceID resID(%1);\n"
          "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -2246,7 +2246,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync();
+    .setYieldBefore();
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
@@ -2283,20 +2283,20 @@ void add()
   fl2r_in("SETC", "setc res[%0], %1",
           "if (!setC(TIME, ResourceID(%0), %1)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
-          "}\n").setSync().setCanEvent();
+          "}\n").setYieldBefore().setCanEvent();
   fl2r_in("SETCLK", "setclk res[%1], %0",
           "if (!setClock(ResourceID(%1), %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
-          "}\n").setSync();
+          "}\n").setYieldBefore();
   fl2r_in("SETTW", "settw res[%1], %0",
           "Port *res = checkPort(CORE, ResourceID(%1));\n"
           "if (!res || !res->setTransferWidth(THREAD, %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
-          "}\n").setSync();
+          "}\n").setYieldBefore();
   fl2r_in("SETRDY", "setrdy res[%1], %0",
           "if (!threadSetReady(ResourceID(%1), %0, TIME)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
-          "}\n").setSync();
+          "}\n").setYieldBefore();
   f2r("IN", "in %0, res[%1]",
       "ResourceID resID(%1);\n"
       "if (Resource *res = checkResource(CORE, resID)) {\n"
@@ -2314,7 +2314,7 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n")
-    .setSync();
+    .setYieldBefore();
   f2r_in("OUT", "out %0, res[%1]",
          "ResourceID resID(%1);\n"
          "if (Resource *res = checkResource(CORE, resID)) {\n"
@@ -2330,7 +2330,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync()
+    .setYieldBefore()
     .setCanEvent();
   f2r_in("TINITPC", "init t[%1]:pc, %0",
          "ResourceID resID(%1);\n"
@@ -2382,7 +2382,7 @@ void add()
          "Resource *res = checkResource(CORE, resID);\n"
          "if (!res || !res->setData(THREAD, %0, TIME)) {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-         "};\n").setSync();
+         "};\n").setYieldBefore();
   f2r_in("OUTCT", "outct res[%0], %1",
          "ResourceID resID(%0);\n"
          "if (Chanend *chanend = checkChanend(CORE, resID)) {\n"
@@ -2396,7 +2396,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync()
+    .setYieldBefore()
     .setCanEvent();
   frus_in("OUTCT", "outct res[%0], %1",
           "ResourceID resID(%0);\n"
@@ -2411,7 +2411,7 @@ void add()
           "} else {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
           "}\n")
-    .setSync()
+    .setYieldBefore()
     .setCanEvent();
   f2r_in("OUTT", "outt res[%1], %0",
          "ResourceID resID(%1);\n"
@@ -2426,7 +2426,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync()
+    .setYieldBefore()
     .setCanEvent();
   f2r("INT", "int %0, res[%1]",
       "ResourceID resID(%1);\n"
@@ -2528,7 +2528,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync()
+    .setYieldBefore()
     .setCanEvent();
   f2r_in("EEF", "eef res[%1], %0",
          "ResourceID resID(%1);\n"
@@ -2541,7 +2541,7 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
-    .setSync()
+    .setYieldBefore()
     .setCanEvent();
   f2r_inout("INSHR", "inshr %0, res[%1]",
             "ResourceID resID(%1);\n"
@@ -2562,7 +2562,7 @@ void add()
             "} else {\n"
             "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
             "}\n")
-    .setSync();
+    .setYieldBefore();
   f2r_inout("OUTSHR", "outshr %0, res[%1]",
             "ResourceID resID(%1);\n"
             "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -2578,14 +2578,14 @@ void add()
             "} else {\n"
             "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
             "}\n")
-    .setSync();
+    .setYieldBefore();
   f2r("GETTS", "getts %0, res[%1]",
       "ResourceID resID(%1);\n"
       "if (Port *res = checkPort(CORE, resID)) {\n"
       "  %0 = res->getTimestamp(THREAD, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
-      "}\n").setSync();
+      "}\n").setYieldBefore();
   f2r_in("SETPT", "setpt res[%1], %0",
          "ResourceID resID(%1);\n"
          "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -2599,7 +2599,7 @@ void add()
          "  }\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, REG(OP(1)));\n"
-         "}\n").setSync();
+         "}\n").setYieldBefore();
 
   f1r("SETSP", "set sp, %0", "%1 = %0;")
     .addImplicitOp(SP, out);
@@ -2704,38 +2704,38 @@ void add()
       "  }\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").addImplicitOp(R11, in).setSync();
+      "}\n").addImplicitOp(R11, in).setYieldBefore();
   f1r("SETEV", "setev res[%0], %1",
       "ResourceID resID(%0);\n"
       "if (EventableResource *res = checkEventableResource(CORE, resID)) {\n"
       "  res->setEV(THREAD, %1);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").addImplicitOp(R11, in).setSync();
+      "}\n").addImplicitOp(R11, in).setYieldBefore();
   f1r("EDU", "edu res[%0]",
       "ResourceID resID(%0);\n"
       "if (EventableResource *res = checkEventableResource(CORE, resID)) {\n"
       "  res->eventDisable(THREAD);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").setSync();
+      "}\n").setYieldBefore();
   f1r("EEU", "eeu res[%0]",
       "ResourceID resID(%0);\n"
       "if (EventableResource *res = checkEventableResource(CORE, resID)) {\n"
       "  res->eventEnable(THREAD);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").setSync().setCanEvent();
+      "}\n").setYieldBefore().setCanEvent();
   f1r("WAITET", "waitet %0",
       "if (%0) {\n"
       "  THREAD.enableEvents();\n"
       "  %deschedule\n"
-      "}\n").setSync().setCanEvent();
+      "}\n").setYieldBefore().setCanEvent();
   f1r("WAITEF", "waitef %0",
       "if (!%0) {\n"
       "  THREAD.enableEvents();\n"
       "  %deschedule\n"
-      "}\n").setSync().setCanEvent();
+      "}\n").setYieldBefore().setCanEvent();
   f1r("SYNCR", "syncr res[%0]",
       "ResourceID resID(%0);\n"
       "if (Port *port = checkPort(CORE, resID)) {\n"
@@ -2748,14 +2748,14 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n"
-      ).setSync();
+      ).setYieldBefore();
   f1r("CLRPT", "clrpt res[%0]",
       "ResourceID resID(%0);\n"
       "if (Port *res = checkPort(CORE, resID)) {\n"
       "  res->clearPortTime(THREAD, TIME);\n"
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
-      "}\n").setSync();
+      "}\n").setYieldBefore();
   f0r("GETID", "get %0, id", "%0 = THREAD.getNum();")
     .addImplicitOp(R11, out);
   f0r("GETET", "get %0, %1", "%0 = %1;")
@@ -2786,7 +2786,7 @@ void add()
     .addImplicitOp(SSR, in)
     .addImplicitOp(ED, out)
     .addImplicitOp(SR, out)
-    .setSync();
+    .setYieldBefore();
   f0r("DRESTSP", "drestsp", "").setUnimplemented();
   f0r("LDSPC", "ldw %0, sp[1]",
       "uint32_t Addr = %1 + (1 << 2);\n"
@@ -2864,10 +2864,10 @@ void add()
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
   f0r("DENTSP", "dentsp", "").setUnimplemented();
-  f0r("CLRE", "clre", "THREAD.clre();\n").setSync();
+  f0r("CLRE", "clre", "THREAD.clre();\n").setYieldBefore();
   f0r("WAITEU", "waiteu",
       "THREAD.enableEvents();\n"
-      "%deschedule\n").setSync().setCanEvent();
+      "%deschedule\n").setYieldBefore().setCanEvent();
   f0r("SSYNC", "", "").setCustom();
 
   pseudoInst("ILLEGAL_PC", "", "").setCustom();
