@@ -33,12 +33,6 @@ public:
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
   void addNode(std::auto_ptr<Node> n);
-  
-  bool hasTimeSliceExpired(ticks_t time) const {
-    if (scheduler.empty())
-      return false;
-    return time > scheduler.front().wakeUpTime;
-  }
 
   Runnable *getExecutingRunnable() {
     return currentRunnable;

@@ -10,6 +10,7 @@
 #include <ostream>
 #include <bitset>
 #include "Runnable.h"
+#include "RunnableQueue.h"
 #include "Resource.h"
 
 class Synchroniser;
@@ -163,6 +164,12 @@ public:
     eeble() = false;
     ieble() = false;
     setInUse(false);
+  }
+  
+  bool hasTimeSliceExpired() const {
+    if (scheduler->empty())
+      return false;
+    return time > scheduler->front().wakeUpTime;
   }
 
   bool alloc(Thread &CurrentThread)

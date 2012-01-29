@@ -6,8 +6,6 @@
 #include <cstdlib>
 #include "Thread.h"
 #include "Core.h"
-#include "Node.h"
-#include "SystemState.h"
 #include "BitManip.h"
 #include "CRC.h"
 #include "InstructionHelpers.h"

@@ -922,7 +922,7 @@ void FunctionCodeEmitter::emitNextPc()
 
 void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
 {
-  std::cout << "if (CORE.getParent()->getParent()->hasTimeSliceExpired(THREAD.time)) {\n";
+  std::cout << "if (THREAD.hasTimeSliceExpired()) {\n";
   std::cout << "return JIT_RETURN_YIELD;\n";
   std::cout << "}\n";
 }
@@ -1206,7 +1206,7 @@ emitInstDispatch(Instruction &instruction)
   }
   if (instruction.getSync()) {
     std::cout << "\n"
-                 "if (sys.hasTimeSliceExpired(TIME)) {\n"
+                 "if (THREAD.hasTimeSliceExpired()) {\n"
                  "  YIELD(PC);\n"
                  "} else";
   }

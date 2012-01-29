@@ -375,6 +375,7 @@ createSystemFromConfig(const char *filename, const XESector *configSector)
     }
     it->second->setJtagIndex(jtagIndex++);
   }
+  systemState->finalize();
   xmlFreeDoc(doc);
   xmlCleanupParser();
   return systemState;

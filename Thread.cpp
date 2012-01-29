@@ -381,7 +381,7 @@ do { \
 } while(0)
 #define YIELD(pc) \
 do { \
-  if (sys.hasTimeSliceExpired(TIME)) { \
+  if (THREAD.hasTimeSliceExpired()) { \
     SAVE_CACHED(); \
     sys.schedule(*this); \
     return; \
