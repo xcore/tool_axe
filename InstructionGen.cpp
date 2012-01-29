@@ -848,6 +848,7 @@ public:
   void emitRegWriteback();
   void emitUpdateExecutionFrequency();
   void emitYieldIfTimeSliceExpired();
+  void emitNormalReturn();
   void setInstruction(const Instruction &i) { inst = &i; }
 protected:
   virtual void emitBegin();
@@ -894,6 +895,15 @@ void FunctionCodeEmitter::emitUpdateExecutionFrequency()
 {
   if (inst->getMayBranch()) {
     std::cout << "CORE.updateExecutionFrequency(THREAD.pc);\n";
+  }
+}
+
+void FunctionCodeEmitter::emitNormalReturn()
+{
+  if (inst->getMayStore()) {
+    std::cout << "return retval;\n";
+  } else {
+    std::cout << "return JIT_RETURN_CONTINUE;\n";
   }
 }
 
@@ -953,7 +963,7 @@ void FunctionCodeEmitter::emitYield()
   emitCycles();
   emitUpdateExecutionFrequency();
   emitYieldIfTimeSliceExpired();
-  std::cout << "return JIT_RETURN_CONTINUE;\n";
+  emitNormalReturn();
 }
 
 void FunctionCodeEmitter::emitDeschedule()
@@ -1313,11 +1323,7 @@ static void emitInstFunction(Instruction &inst)
   emitter.emitRegWriteback();
   emitter.emitCycles();
   emitter.emitUpdateExecutionFrequency();
-  if (inst.getMayStore()) {
-    std::cout << "return retval;\n";
-  } else {
-    std::cout << "return JIT_RETURN_CONTINUE;\n";
-  }
+  emitter.emitNormalReturn();
   std::cout << "}\n";
 }
 
