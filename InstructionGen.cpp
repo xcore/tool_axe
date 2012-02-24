@@ -845,7 +845,7 @@ class FunctionCodeEmitter : public CodeEmitter {
 public:
   const Instruction *inst;
   void emitCycles();
-  void emitRegWriteback();
+  void emitRegWriteBack();
   void emitUpdateExecutionFrequency();
   void emitYieldIfTimeSliceExpired();
   void emitNormalReturn();
@@ -873,7 +873,7 @@ void FunctionCodeEmitter::emitCycles()
   std::cout << "THREAD.time += " << inst->getCycles() << ";\n";
 }
 
-void FunctionCodeEmitter::emitRegWriteback()
+void FunctionCodeEmitter::emitRegWriteBack()
 {
   const std::vector<OpType> &operands = inst->getOperands();
   for (unsigned i = 0, e = operands.size(); i != e; ++i) {
@@ -949,7 +949,13 @@ void FunctionCodeEmitter::emitException(const std::string &args)
 
 void FunctionCodeEmitter::emitKCall(const std::string &args)
 {
-  assert(0);
+  emitRegWriteBack();
+  std::cout << "THREAD.pc = exception(THREAD, THREAD.pc, ET_KCALL, ";
+  emitNested(args);
+  std::cout << ");\n";
+  emitCycles();
+  emitYieldIfTimeSliceExpired();
+  std::cout << "return JIT_RETURN_END_TRACE;\n";
 }
 
 void FunctionCodeEmitter::emitPauseOn(const std::string &args)
@@ -959,7 +965,7 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
 
 void FunctionCodeEmitter::emitYield()
 {
-  emitRegWriteback();
+  emitRegWriteBack();
   emitCycles();
   emitUpdateExecutionFrequency();
   emitYieldIfTimeSliceExpired();
@@ -1323,7 +1329,7 @@ static void emitInstFunction(Instruction &inst)
   emitter.emit(inst.getCode());
   std::cout << '\n';
   // Write operands.
-  emitter.emitRegWriteback();
+  emitter.emitRegWriteBack();
   emitter.emitCycles();
   emitter.emitUpdateExecutionFrequency();
   emitter.emitNormalReturn();
@@ -1369,8 +1375,7 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  if (inst.getMayKCall() ||
-      inst.getMayPauseOn() ||
+  if (inst.getMayPauseOn() ||
       inst.getMayDeschedule())
     return;
   inst.setCanJit();
@@ -1398,8 +1403,8 @@ static void emitInstFlags(Instruction &inst)
   bool emittedFlag = false;
   if (inst.getMayBranch()) {
     emitInstFlag("MAY_BRANCH", emittedFlag);
-  }
-  if (inst.getMayYield() || inst.getMayExcept() || inst.getYieldBefore()) {
+  if (inst.getMayYield() || inst.getMayExcept() || inst.getMayKCall() ||
+      inst.getYieldBefore())
     emitInstFlag("MAY_YIELD", emittedFlag);
   }
   if (inst.getMayStore())
