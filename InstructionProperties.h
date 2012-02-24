@@ -10,7 +10,8 @@ struct InstructionProperties {
   enum Flags {
     MAY_BRANCH = 1 << 0,
     MAY_YIELD = 1 << 1,
-    MAY_END_TRACE = 1 << 2,
+    MAY_DESCHEDULE = 1 << 2,
+    MAY_END_TRACE = 1 << 3,
   };
   const char *function;
   unsigned char size;
@@ -18,6 +19,7 @@ struct InstructionProperties {
   unsigned char flags;
   bool mayBranch() const { return flags & MAY_BRANCH; }
   bool mayYield() const { return flags & MAY_YIELD; }
+  bool mayDeschedule() const { return flags & MAY_DESCHEDULE; }
   bool mayEndTrace() const { return flags & MAY_END_TRACE; }
 
 };

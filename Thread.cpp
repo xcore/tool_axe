@@ -375,8 +375,8 @@ void Thread::runAux(ticks_t time) {
   INST(INITIALIZE):
     getParent().initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
                           OPCODE(ILLEGAL_PC_THREAD), OPCODE(YIELD),
-                          OPCODE(SYSCALL), OPCODE(EXCEPTION),
-                          OPCODE(JIT_INSTRUCTION));
+                          OPCODE(DESCHEDULE), OPCODE(SYSCALL),
+                          OPCODE(EXCEPTION), OPCODE(JIT_INSTRUCTION));
     ENDINST;
 #define EMIT_INSTRUCTION_DISPATCH
 #include "InstructionGenOutput.inc"
@@ -477,6 +477,10 @@ void Thread::runAux(ticks_t time) {
   INST(YIELD):
     PC = THREAD.pendingPc;
     YIELD(PC);
+    ENDINST;
+  INST(DESCHEDULE):
+    PC = THREAD.pendingPc;
+    DESCHEDULE(PC);
     ENDINST;
   INST(ILLEGAL_INSTRUCTION):
     EXCEPTION(ET_ILLEGAL_INSTRUCTION, 0);

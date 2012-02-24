@@ -42,7 +42,8 @@ class Core {
 public:
   enum {
     YIELD_ADDR_OFFSET = 2,
-    ILLEGAL_PC_THREAD_ADDR_OFFSET = 3
+    DESCHEDULE_ADDR_OFFSET = 3,
+    ILLEGAL_PC_THREAD_ADDR_OFFSET = 4
   };
   enum {
     INVALIDATE_NONE,
@@ -124,9 +125,9 @@ public:
   bool setExceptionAddress(uint32_t value);
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE yield, 
-                 OPCODE_TYPE syscall, OPCODE_TYPE exception,
-                 OPCODE_TYPE jitFunction);
+                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE yield,
+                 OPCODE_TYPE deschedule, OPCODE_TYPE syscall,
+                 OPCODE_TYPE exception, OPCODE_TYPE jitFunction);
 
   void updateExecutionFrequency(uint32_t shiftedAddress) {
     const executionFrequency_t threshold = 20;
@@ -246,6 +247,10 @@ public:
   
   unsigned getYieldAddr() const {
     return ((ram_size >> 1) - 1) + YIELD_ADDR_OFFSET;
+  }
+
+  unsigned getDescheduleAddr() const {
+    return ((ram_size >> 1) - 1) + DESCHEDULE_ADDR_OFFSET;
   }
 
   OPCODE_TYPE getJitFunctionOpcode() const { return jitFunctionOpcode; }

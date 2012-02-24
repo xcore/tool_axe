@@ -18,9 +18,21 @@
 extern "C" void jitInstructionTemplate(Thread &t, uint32_t pc) {
 }
 
-extern "C" void jitYieldFunction(Thread &t) {
-  t.pendingPc = t.pc;
-  t.pc = t.getParent().getYieldAddr();
+extern "C" void jitEarlyReturnFunction(Thread &t, JITReturn returnCode) {
+  switch (returnCode) {
+  default:
+    break;
+  case JIT_RETURN_END_TRACE:
+    break;
+  case JIT_RETURN_YIELD:
+    t.pendingPc = t.pc;
+    t.pc = t.getParent().getYieldAddr();
+    break;
+  case JIT_RETURN_DESCHEDULE:
+    t.pendingPc = t.pc;
+    t.pc = t.getParent().getDescheduleAddr();
+    break;
+  }
 }
 
 #define THREAD thread

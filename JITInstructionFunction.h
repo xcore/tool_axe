@@ -15,6 +15,8 @@ enum JITReturn {
   JIT_RETURN_END_TRACE,
   /// End the current trace and yield to allow other threads to run.
   JIT_RETURN_YIELD,
+  /// End the current trace and deschedule the current thread.
+  JIT_RETURN_DESCHEDULE,
 };
 
 typedef void (*JITInstructionFunction_t)(Thread &);

@@ -534,20 +534,6 @@ emitCheckEvents(const Instruction &instruction)
 }
 
 static void
-emitCheckEventsOrDeschedule(const Instruction &instruction)
-{
-  if (!instruction.getCanEvent()) {
-    std::cout << "DESCHEDULE(PC);\n";
-    return;
-  }
-  std::cout << "if (sys.hasPendingEvent()) {\n"
-            << "  TAKE_EVENT(PC);\n"
-            << "} else {\n"
-            << "  DESCHEDULE(PC);\n"
-            << "}\n";
-}
-
-static void
 emitTraceEnd()
 {
   std::cout << "TRACE_END();\n";
@@ -700,6 +686,8 @@ protected:
   virtual void emitLoadWord(const std::string &args);
   virtual void emitLoadShort(const std::string &args);
   virtual void emitLoadByte(const std::string &args);
+private:
+  void emitCheckEventsOrDeschedule();
 };
 
 void InlineCodeEmitter::emitUpdateExecutionFrequency()
@@ -781,10 +769,23 @@ void InlineCodeEmitter::emitYield()
   emitEndLabel = true;
 }
 
+void InlineCodeEmitter::emitCheckEventsOrDeschedule()
+{
+  if (!inst->getCanEvent()) {
+    std::cout << "DESCHEDULE(PC);\n";
+    return;
+  }
+  std::cout << "if (sys.hasPendingEvent()) {\n"
+  << "  TAKE_EVENT(PC);\n"
+  << "} else {\n"
+  << "  DESCHEDULE(PC);\n"
+  << "}\n";
+}
+
 void InlineCodeEmitter::emitDeschedule()
 {
   emitCycles(*inst);
-  emitCheckEventsOrDeschedule(*inst);
+  emitCheckEventsOrDeschedule();
   emitTraceEnd();
   std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
@@ -974,7 +975,8 @@ void FunctionCodeEmitter::emitYield()
 
 void FunctionCodeEmitter::emitDeschedule()
 {
-  assert(0);
+  emitCycles();
+  std::cout << "return JIT_RETURN_DESCHEDULE;\n";
 }
 
 void FunctionCodeEmitter::emitStoreWord(const std::string &args)
@@ -1401,12 +1403,13 @@ static void emitInstFlag(const char *name, bool &emittedFlag)
 static void emitInstFlags(Instruction &inst)
 {
   bool emittedFlag = false;
-  if (inst.getMayBranch()) {
+  if (inst.getMayBranch())
     emitInstFlag("MAY_BRANCH", emittedFlag);
   if (inst.getMayYield() || inst.getMayExcept() || inst.getMayKCall() ||
       inst.getYieldBefore())
     emitInstFlag("MAY_YIELD", emittedFlag);
-  }
+  if (inst.getMayDeschedule())
+    emitInstFlag("MAY_DESCHEDULE", emittedFlag);
   if (inst.getMayStore())
     emitInstFlag("MAY_END_TRACE", emittedFlag);
   if (!emittedFlag)
@@ -2888,6 +2891,7 @@ void add()
   pseudoInst("ILLEGAL_PC_THREAD", "", "").setCustom();
   pseudoInst("ILLEGAL_INSTRUCTION", "", "").setCustom();
   pseudoInst("YIELD", "", "").setCustom();
+  pseudoInst("DESCHEDULE", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
   pseudoInst("SYSCALL", "", "").setCustom();
   pseudoInst("EXCEPTION", "", "").setCustom();

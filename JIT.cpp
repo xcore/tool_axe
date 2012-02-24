@@ -32,22 +32,23 @@ class JITImpl {
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
-  LLVMValueRef jitYieldFunction;
+  LLVMValueRef jitEarlyReturnFunction;
   LLVMPassManagerRef FPM;
   std::vector<JITInstructionFunction_t> unreachableFunctions;
+  std::vector<LLVMValueRef> earlyReturnIncomingValues;
+  std::vector<LLVMBasicBlockRef> earlyReturnIncomingBlocks;
   std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
 
   LLVMValueRef threadParam;
-  LLVMBasicBlockRef yieldBB;
-  LLVMBasicBlockRef endTraceBB;
+  LLVMBasicBlockRef earlyReturnBB;
+  LLVMValueRef earlyReturnPhi;
 
   void init();
   void resetPerFunctionState();
   void reclaimUnreachableFunctions();
   void checkReturnValue(LLVMValueRef call, LLVMValueRef f,
                         InstructionProperties &properties);
-  LLVMBasicBlockRef getOrCreateYieldBB();
-  LLVMBasicBlockRef getOrCreateEndTraceBB();
+  void ensureEarlyReturnBB(LLVMTypeRef phiType);
 
   bool compileOneFragment(Core &core, uint32_t address,
                           JITInstructionFunction_t &out, bool &endOfBlock,
@@ -82,8 +83,11 @@ void JITImpl::init()
     std::abort();
   }
   builder = LLVMCreateBuilder();
-  jitYieldFunction = LLVMGetNamedFunction(module, "jitYieldFunction");
-  assert(jitYieldFunction && "jitYieldFunction() not found in module");
+  jitEarlyReturnFunction = LLVMGetNamedFunction(module,
+                                                "jitEarlyReturnFunction");
+  assert(jitEarlyReturnFunction &&
+         "jitEarlyReturnFunction() not found in module");
+
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
@@ -102,8 +106,9 @@ void JITImpl::init()
 void JITImpl::resetPerFunctionState()
 {
   threadParam = 0;
-  yieldBB = 0;
-  endTraceBB = 0;
+  earlyReturnBB = 0;
+  earlyReturnIncomingValues.clear();
+  earlyReturnIncomingBlocks.clear();
 }
 
 static bool
@@ -130,73 +135,50 @@ void JITImpl::reclaimUnreachableFunctions()
   unreachableFunctions.clear();
 }
 
+static bool mayReturnEarly(InstructionProperties &properties)
+{
+  return properties.mayYield() || properties.mayEndTrace() ||
+         properties.mayDeschedule();
+}
+
 void
 JITImpl::checkReturnValue(LLVMValueRef call, LLVMValueRef f,
                           InstructionProperties &properties)
 {
-  if (!properties.mayYield() && !properties.mayEndTrace())
+  if (!mayReturnEarly(properties))
     return;
   LLVMValueRef cmp =
     LLVMBuildICmp(builder, LLVMIntNE, call,
                   LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_CONTINUE), "");
   LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
-  if (properties.mayYield() && properties.mayEndTrace()) {
-    LLVMBasicBlockRef returnBB = LLVMAppendBasicBlock(f, "");
-    LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
-    LLVMPositionBuilderAtEnd(builder, returnBB);
-    LLVMValueRef isYield =
-      LLVMBuildICmp(builder, LLVMIntEQ, call,
-                    LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_YIELD), "");
-    LLVMBuildCondBr(builder, isYield, getOrCreateYieldBB(),
-                    getOrCreateEndTraceBB());    
-  } else {
-    LLVMBasicBlockRef returnBB;
-    if (properties.mayYield()) {
-      returnBB = getOrCreateYieldBB();
-    } else {
-      returnBB = getOrCreateEndTraceBB();
-      assert(properties.mayEndTrace());
-    }
-    LLVMBuildCondBr(builder, cmp, returnBB, afterBB);
-  }
+  ensureEarlyReturnBB(LLVMTypeOf(call));
+  LLVMBuildCondBr(builder, cmp, earlyReturnBB, afterBB);
+  earlyReturnIncomingBlocks.push_back(LLVMGetInsertBlock(builder));
+  earlyReturnIncomingValues.push_back(call);
   LLVMPositionBuilderAtEnd(builder, afterBB);
 }
 
-LLVMBasicBlockRef JITImpl::getOrCreateYieldBB()
+void JITImpl::ensureEarlyReturnBB(LLVMTypeRef phiType)
 {
-  if (yieldBB)
-    return yieldBB;
+  if (earlyReturnBB)
+    return;
   // Save off current insert point.
   LLVMBasicBlockRef savedBB = LLVMGetInsertBlock(builder);
   LLVMValueRef f = LLVMGetBasicBlockParent(savedBB);
-  yieldBB = LLVMAppendBasicBlock(f, "yield");
-  LLVMPositionBuilderAtEnd(builder, yieldBB);
-  // Call jitYieldFunction.
+  earlyReturnBB = LLVMAppendBasicBlock(f, "early_return");
+  LLVMPositionBuilderAtEnd(builder, earlyReturnBB);
+  // Create phi (incoming values will be filled in later).
+  earlyReturnPhi = LLVMBuildPhi(builder, phiType, "");
+  // Call jitEarlyReturnFunction.
   LLVMValueRef args[] = {
-    threadParam
+    threadParam,
+    earlyReturnPhi
   };
-  LLVMBuildCall(builder, jitYieldFunction, args, 1, "");
+  LLVMBuildCall(builder, jitEarlyReturnFunction, args, 2, "");
   // Return
   LLVMBuildRetVoid(builder);
   // Restore insert point.
   LLVMPositionBuilderAtEnd(builder, savedBB);
-  return yieldBB;
-}
-
-LLVMBasicBlockRef JITImpl::getOrCreateEndTraceBB()
-{
-  if (endTraceBB)
-    return endTraceBB;
-  // Save off current insert point.
-  LLVMBasicBlockRef savedBB = LLVMGetInsertBlock(builder);
-  LLVMValueRef f = LLVMGetBasicBlockParent(savedBB);
-  endTraceBB = LLVMAppendBasicBlock(f, "endtrace");
-  LLVMPositionBuilderAtEnd(builder, endTraceBB);
-  // Return
-  LLVMBuildRetVoid(builder);
-  // Restore insert point.
-  LLVMPositionBuilderAtEnd(builder, savedBB);
-  return endTraceBB;
 }
 
 void JITImpl::compileBlock(Core &core, uint32_t address)
@@ -309,6 +291,12 @@ compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
   } while (properties->function);
   // Build return.
   LLVMBuildRetVoid(builder);
+  // Add incoming phi values.
+  if (earlyReturnBB) {
+    LLVMAddIncoming(earlyReturnPhi, &earlyReturnIncomingValues[0],
+                    &earlyReturnIncomingBlocks[0],
+                    earlyReturnIncomingValues.size());
+  }
   if (DEBUG_JIT) {
     LLVMDumpValue(f);
     LLVMVerifyFunction(f, LLVMAbortProcessAction);
