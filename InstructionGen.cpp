@@ -1377,8 +1377,7 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  if (inst.getMayPauseOn() ||
-      inst.getMayDeschedule())
+  if (inst.getMayPauseOn())
     return;
   inst.setCanJit();
 }
