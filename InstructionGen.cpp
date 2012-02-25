@@ -877,6 +877,8 @@ void FunctionCodeEmitter::emitCycles()
 
 void FunctionCodeEmitter::emitRegWriteBack()
 {
+  bool writeSR = false;
+  unsigned numSR = 0;
   const std::vector<OpType> &operands = inst->getOperands();
   for (unsigned i = 0, e = operands.size(); i != e; ++i) {
     switch (operands[i]) {
@@ -884,13 +886,25 @@ void FunctionCodeEmitter::emitRegWriteBack()
       break;
     case out:
     case inout:
-      std::cout << "THREAD.regs[" << getOperandName(*inst, i);
-      std::cout << "] = ";
-      std::cout << "op" << i << ";\n";
+      if (isSR(*inst, i)) {
+        writeSR = true;
+        numSR = i;
+      } else {
+        std::cout << "THREAD.regs[" << getOperandName(*inst, i);
+        std::cout << "] = ";
+        std::cout << "op" << i << ";\n";
+      }
       break;
     }
   }
   std::cout << "THREAD.pc = nextPc;\n";
+  if (writeSR) {
+    std::cout << "if (THREAD.setSR(op" << numSR << ")) {\n";
+    std::cout << "  THREAD.takeEvent();\n";
+    std::cout << "  THREAD.schedule();\n";
+    std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+    std::cout << "}\n";
+  }
 }
 
 void FunctionCodeEmitter::emitUpdateExecutionFrequency()
@@ -987,8 +1001,8 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
 
 void FunctionCodeEmitter::emitYield()
 {
-  emitRegWriteBack();
   emitCycles();
+  emitRegWriteBack();
   emitUpdateExecutionFrequency();
   emitYieldIfTimeSliceExpired();
   emitNormalReturn();
@@ -1228,6 +1242,13 @@ static std::string getInstFunctionName(Instruction &inst)
   return "Instruction_" + inst.getName();
 }
 
+static std::string getOperandType(Instruction &inst, unsigned i)
+{
+  if (isSR(inst, i))
+    return "Thread::sr_t";
+  return "uint32_t";
+}
+
 static void
 emitInstDispatch(Instruction &instruction)
 {
@@ -1239,7 +1260,6 @@ emitInstDispatch(Instruction &instruction)
   unsigned size = instruction.getSize();
   const std::vector<OpType> &operands = instruction.getOperands();
   const std::string &code = instruction.getCode();
-
 
   if (size % 2 != 0) {
     std::cerr << "error: unexpected instruction size " << size << "\n";
@@ -1257,21 +1277,20 @@ emitInstDispatch(Instruction &instruction)
     std::cout << "UNUSED(";
     if (operands[i] == in)
       std::cout << "const ";
-    if (isSR(instruction, i)) {
-      std::cout << "Thread::sr_t op" << i << ") = this->sr";
-    } else {
-      std::cout << "uint32_t op" << i << ')';
-      switch (operands[i]) {
-        default:
-          break;
-        case in:
-        case inout:
+    std::cout << getOperandType(instruction, i) << " op" << i << ')';
+    switch (operands[i]) {
+      default:
+        break;
+      case in:
+      case inout:
+        if (isSR(instruction, i))
+          std::cout << " = THREAD.sr";
+        else
           std::cout << " = REG(" << getOperandName(instruction, i) << ')';
-          break;
-        case imm:
-          std::cout << " = IMM(" << getOperandName(instruction, i) << ')';
-          break;
-      }
+        break;
+      case imm:
+        std::cout << " = IMM(" << getOperandName(instruction, i) << ')';
+        break;
     }
     std::cout << ";\n";
   }
@@ -1334,13 +1353,17 @@ static void emitInstFunction(Instruction &inst)
     std::cout << "UNUSED(";
     if (operands[i] == in)
       std::cout << "const ";
-    std::cout << "uint32_t op" << i << ')';
+    std::cout << getOperandType(inst, i) <<  " op" << i << ')';
     switch (operands[i]) {
     default:
       break;
     case in:
     case inout:
-      std::cout << " = THREAD.regs[" << getOperandName(inst, i) << ']';
+      if (isSR(inst, i)) {
+        std::cout << " = THREAD.sr";
+      } else {
+        std::cout << " = THREAD.regs[" << getOperandName(inst, i) << ']';
+      }
       break;
     case imm:
       std::cout << " = field" << i;
@@ -1392,12 +1415,6 @@ static void analyzeInst(Instruction &inst) {
   CodePropertyExtractor propertyExtractor;
   propertyExtractor.setInstruction(inst);
   propertyExtractor.emit(inst.getCode());
-  const std::vector<OpType> &operands = inst.getOperands();
-  for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {
-    if (isSR(inst, i)) {
-      return;
-    }
-  }
   inst.setCanJit();
 }
 

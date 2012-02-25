@@ -356,9 +356,9 @@ do { \
   SAVE_CACHED(); \
   if (this->setSR(bits)) { \
     THREAD.takeEvent(); \
+    THREAD.schedule(); \
+    return; \
   } \
-  THREAD.schedule(); \
-  return; \
 } while(0)
 
 #define INSTRUCTION_CYCLES 4
