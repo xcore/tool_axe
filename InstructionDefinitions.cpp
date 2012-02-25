@@ -24,13 +24,9 @@ extern "C" void jitEarlyReturnFunction(Thread &t, JITReturn returnCode) {
     break;
   case JIT_RETURN_END_TRACE:
     break;
-  case JIT_RETURN_YIELD:
+  case JIT_RETURN_END_THREAD_EXECUTION:
     t.pendingPc = t.pc;
-    t.pc = t.getParent().getYieldAddr();
-    break;
-  case JIT_RETURN_DESCHEDULE:
-    t.pendingPc = t.pc;
-    t.pc = t.getParent().getDescheduleAddr();
+    t.pc = t.getParent().getEndThreadExecutionAddr();
     break;
   }
 }

@@ -934,7 +934,8 @@ void FunctionCodeEmitter::emitNextPc()
 void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
 {
   std::cout << "if (THREAD.hasTimeSliceExpired()) {\n";
-  std::cout << "return JIT_RETURN_YIELD;\n";
+  std::cout << "  THREAD.schedule();\n";
+  std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
 
@@ -976,7 +977,8 @@ void FunctionCodeEmitter::emitYield()
 void FunctionCodeEmitter::emitDeschedule()
 {
   emitCycles();
-  std::cout << "return JIT_RETURN_DESCHEDULE;\n";
+  std::cout << "THREAD.waiting() = true\n";
+  std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
 void FunctionCodeEmitter::emitStoreWord(const std::string &args)
@@ -2889,8 +2891,7 @@ void add()
   pseudoInst("ILLEGAL_PC", "", "").setCustom();
   pseudoInst("ILLEGAL_PC_THREAD", "", "").setCustom();
   pseudoInst("ILLEGAL_INSTRUCTION", "", "").setCustom();
-  pseudoInst("YIELD", "", "").setCustom();
-  pseudoInst("DESCHEDULE", "", "").setCustom();
+  pseudoInst("END_THREAD_EXECUTION", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
   pseudoInst("SYSCALL", "", "").setCustom();
   pseudoInst("EXCEPTION", "", "").setCustom();
