@@ -287,8 +287,9 @@ public:
   void dump() const;
 
   void schedule();
+  void takeEvent();
+  bool hasPendingEvent() const;
   
-private:
   /// Enable for events on the current thread.
   /// \return true if there is a pending event, false otherwise.
   bool enableEvents()
@@ -322,10 +323,10 @@ public:
   }
   bool isExecuting() const;
   void run(ticks_t time);
+  bool setC(ticks_t time, ResourceID resID, uint32_t val);
 private:
   template <bool tracing> void runAux(ticks_t time);
   bool setSRSlowPath(sr_t old);
-  bool setC(ticks_t time, ResourceID resID, uint32_t val);
 };
 
 struct PendingEvent {

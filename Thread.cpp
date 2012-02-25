@@ -65,6 +65,16 @@ void Thread::schedule()
   getParent().getParent()->getParent()->schedule(*this);
 }
 
+void Thread::takeEvent()
+{
+  getParent().getParent()->getParent()->takeEvent(*this);
+}
+
+bool Thread::hasPendingEvent() const
+{
+  return getParent().getParent()->getParent()->hasPendingEvent();
+}
+
 bool Thread::setSRSlowPath(sr_t enabled)
 {
   if (enabled[EEBLE]) {
@@ -330,24 +340,24 @@ do { \
 do { \
   if (THREAD.hasTimeSliceExpired()) { \
     SAVE_CACHED(); \
-    sys.schedule(*this); \
+    THREAD.schedule(); \
     return; \
   } \
 } while(0)
 #define TAKE_EVENT(pc) \
 do { \
   SAVE_CACHED(); \
-  sys.takeEvent(*this); \
-  sys.schedule(*this); \
+  THREAD.takeEvent(); \
+  THREAD.schedule(); \
   return; \
 } while(0)
 #define SETSR(bits, pc) \
 do { \
   SAVE_CACHED(); \
   if (this->setSR(bits)) { \
-    sys.takeEvent(*this); \
+    THREAD.takeEvent(); \
   } \
-  sys.schedule(*this); \
+  THREAD.schedule(); \
   return; \
 } while(0)
 

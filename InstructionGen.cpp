@@ -523,17 +523,6 @@ emitRegWriteBack(const Instruction &instruction)
 }
 
 static void
-emitCheckEvents(const Instruction &instruction)
-{
-  if (!instruction.getCanEvent())
-    return;
-
-  std::cout << "if (sys.hasPendingEvent()) {\n"
-            << "  TAKE_EVENT(PC);\n"
-            << "}\n";
-}
-
-static void
 emitTraceEnd()
 {
   std::cout << "TRACE_END();\n";
@@ -667,9 +656,10 @@ class InlineCodeEmitter : public CodeEmitter {
   const Instruction *inst;
 public:
   InlineCodeEmitter() : emitEndLabel(false) {}
-  void emitUpdateExecutionFrequency();
+  void emitUpdateExecutionFrequency() const;
   void setInstruction(const Instruction &i) { inst = &i; }
   bool getEmitEndLabel() const { return emitEndLabel; }
+  void emitCheckEvents() const;
 protected:
   virtual void emitBegin();
   virtual void emitRaw(const std::string &s);
@@ -690,13 +680,23 @@ private:
   void emitCheckEventsOrDeschedule();
 };
 
-void InlineCodeEmitter::emitUpdateExecutionFrequency()
+void InlineCodeEmitter::emitUpdateExecutionFrequency() const
 {
   if (inst->getMayBranch()) {
     std::cout << "if (!tracing) {\n";
     std::cout << "  CORE.updateExecutionFrequency(PC);\n";
     std::cout << "}\n";
   }
+}
+
+void InlineCodeEmitter::emitCheckEvents() const
+{
+  if (!inst->getCanEvent())
+    return;
+
+  std::cout << "if (sys.hasPendingEvent()) {\n";
+  std::cout << "  TAKE_EVENT(PC);\n";
+  std::cout << "}\n";
 }
 
 void InlineCodeEmitter::emitBegin()
@@ -761,7 +761,7 @@ void InlineCodeEmitter::emitYield()
 {
   emitCycles(*inst);
   emitRegWriteBack(*inst);
-  emitCheckEvents(*inst);
+  emitCheckEvents();
   emitTraceEnd();
   emitUpdateExecutionFrequency();
   std::cout << "YIELD(PC);\n";
@@ -850,6 +850,7 @@ public:
   void emitUpdateExecutionFrequency();
   void emitYieldIfTimeSliceExpired();
   void emitNormalReturn();
+  void emitCheckEvents() const;
   void setInstruction(const Instruction &i) { inst = &i; }
 protected:
   virtual void emitBegin();
@@ -899,8 +900,21 @@ void FunctionCodeEmitter::emitUpdateExecutionFrequency()
   }
 }
 
+void FunctionCodeEmitter::emitCheckEvents() const
+{
+  if (!inst->getCanEvent())
+    return;
+
+  std::cout << "if (THREAD.hasPendingEvent()) {\n";
+  std::cout << "  THREAD.takeEvent();\n";
+  std::cout << "  THREAD.schedule();\n";
+  std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+  std::cout << "}\n";
+}
+
 void FunctionCodeEmitter::emitNormalReturn()
 {
+  emitCheckEvents();
   if (inst->getMayStore()) {
     std::cout << "return retval;\n";
   } else {
@@ -977,7 +991,8 @@ void FunctionCodeEmitter::emitYield()
 void FunctionCodeEmitter::emitDeschedule()
 {
   emitCycles();
-  std::cout << "THREAD.waiting() = true\n";
+  emitCheckEvents();
+  std::cout << "THREAD.waiting() = true;\n";
   std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
@@ -1272,7 +1287,7 @@ emitInstDispatch(Instruction &instruction)
     // Write operands.
     emitCycles(instruction);
     emitRegWriteBack(instruction);
-    emitCheckEvents(instruction);
+    emitter.emitCheckEvents();
     emitTraceEnd();
     emitter.emitUpdateExecutionFrequency();
   }
@@ -1371,8 +1386,6 @@ static void analyzeInst(Instruction &inst) {
   CodePropertyExtractor propertyExtractor;
   propertyExtractor.setInstruction(inst);
   propertyExtractor.emit(inst.getCode());
-  if (inst.getCanEvent())
-    return;
   const std::vector<OpType> &operands = inst.getOperands();
   for (unsigned i = 0, numOps = operands.size(); i != numOps; ++i) {
     if (isSR(inst, i)) {
@@ -2028,7 +2041,7 @@ void add()
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
   fru6_in("SETC", "setc res[%0], %1",
-       "if (!setC(TIME, ResourceID(%0), %1)) {\n"
+       "if (!THREAD.setC(TIME, ResourceID(%0), %1)) {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, %0)\n"
        "}\n")
     .setYieldBefore().setCanEvent();
@@ -2299,7 +2312,7 @@ void add()
           "  ERROR();\n"
           "}\n");
   fl2r_in("SETC", "setc res[%0], %1",
-          "if (!setC(TIME, ResourceID(%0), %1)) {\n"
+          "if (!THREAD.setC(TIME, ResourceID(%0), %1)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
           "}\n").setYieldBefore().setCanEvent();
   fl2r_in("SETCLK", "setclk res[%1], %0",
