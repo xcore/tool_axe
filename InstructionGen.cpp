@@ -158,7 +158,6 @@ private:
   bool canEvent:1;
   bool unimplemented:1;
   bool custom:1;
-  bool canJit:1;
   bool mayBranch:1;
   bool mayLoad:1;
   bool mayStore:1;
@@ -185,7 +184,6 @@ public:
     canEvent(false),
     unimplemented(false),
     custom(false),
-    canJit(false),
     mayBranch(false),
     mayLoad(false),
     mayStore(false),
@@ -213,7 +211,6 @@ public:
   bool getCanEvent() const { return canEvent; }
   bool getUnimplemented() const { return unimplemented; }
   bool getCustom() const { return custom; }
-  bool getCanJit() const { return canJit; }
   bool getMayBranch() const {
     // In future we might want to exclude instructions which use the PC without
     // writing it.
@@ -256,10 +253,6 @@ public:
   }
   Instruction &setCustom() {
     custom = true;
-    return *this;
-  }
-  Instruction &setCanJit() {
-    canJit = true;
     return *this;
   }
   Instruction &setMayLoad() {
@@ -1334,7 +1327,7 @@ static void emitInstDispatch()
 
 static void emitInstFunction(Instruction &inst)
 {
-  if (!inst.getCanJit())
+  if (inst.getCustom() || inst.getUnimplemented())
     return;
   std::cout << "extern \"C\" JITReturn " << getInstFunctionName(inst) << '(';
   std::cout << "Thread &thread, uint32_t nextPc";
@@ -1415,7 +1408,6 @@ static void analyzeInst(Instruction &inst) {
   CodePropertyExtractor propertyExtractor;
   propertyExtractor.setInstruction(inst);
   propertyExtractor.emit(inst.getCode());
-  inst.setCanJit();
 }
 
 static void analyze()
@@ -1454,10 +1446,10 @@ static void emitInstFlags(Instruction &inst)
 static void emitInstProperties(Instruction &inst)
 {
   std::cout << "{ ";
-  if (inst.getCanJit())
-    std::cout << '"' << getInstFunctionName(inst) << '"';
-  else
+  if (inst.getCustom() || inst.getUnimplemented())
     std::cout << '0';
+  else
+    std::cout << '"' << getInstFunctionName(inst) << '"';
   std::cout << ", " << inst.getSize();
   std::cout << ", " << inst.getNumExplicitOperands();
   std::cout << ", ";
