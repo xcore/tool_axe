@@ -976,7 +976,13 @@ void FunctionCodeEmitter::emitKCall(const std::string &args)
 
 void FunctionCodeEmitter::emitPauseOn(const std::string &args)
 {
-  assert(0);
+  emitCycles();
+  emitCheckEvents();
+  std::cout << "THREAD.pausedOn = ";
+  emitNested(args);
+  std::cout << ";\n";
+  std::cout << "THREAD.waiting() = true;\n";
+  std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
 void FunctionCodeEmitter::emitYield()
@@ -1392,8 +1398,6 @@ static void analyzeInst(Instruction &inst) {
       return;
     }
   }
-  if (inst.getMayPauseOn())
-    return;
   inst.setCanJit();
 }
 
@@ -2629,7 +2633,7 @@ void add()
          "    break;\n"
          "  }\n"
          "} else {\n"
-         "  %exception(ET_ILLEGAL_RESOURCE, REG(OP(1)));\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
          "}\n").setYieldBefore();
 
   f1r("SETSP", "set sp, %0", "%1 = %0;")
@@ -2772,7 +2776,8 @@ void add()
       "if (Port *port = checkPort(CORE, resID)) {\n"
       "  switch (port->sync(THREAD, TIME)) {\n"
       "  default: assert(0 && \"Unexpected syncr result\");\n"
-      "  case Resource::CONTINUE: PC++; break;\n"
+      "  case Resource::CONTINUE:\n"
+      "    break;\n"
       "  case Resource::DESCHEDULE:\n"
       "    %pause_on(port);\n"
       "  }\n"
