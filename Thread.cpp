@@ -326,19 +326,11 @@ JITReturn Instruction_TSETMR_2r(Thread &thread) {
 #undef TRACE_REG_WRITE
 #undef TRACE_END
 
-#ifdef DIRECT_THREADED
-#define INST(s) s ## _label
-#define ENDINST goto *(opcode[PC] + (char*)&&INST(INITIALIZE))
-#define OPCODE(s) ((char*)&&INST(s) - (char*)&&INST(INITIALIZE))
-#define START_DISPATCH_LOOP ENDINST;
-#define END_DISPATCH_LOOP
-#else
 #define INST(inst) case (inst)
 #define ENDINST break
 #define OPCODE(s) s
 #define START_DISPATCH_LOOP while(1) { switch (opcode[PC]) {
 #define END_DISPATCH_LOOP } }
-#endif
 
 #define REG(Num) this->regs[Num]
 #define IMM(Num) (Num)
@@ -455,18 +447,7 @@ void Thread::runAux(ticks_t time) {
       } else {
         assert(instructionProperties[opc].size == 2);
       }
-#ifdef DIRECT_THREADED
-      static OPCODE_TYPE opcodeMap[] = {
-#define EMIT_INSTRUCTION_LIST
-#define DO_INSTRUCTION(inst) OPCODE(inst),
-#include "InstructionGenOutput.inc"
-#undef EMIT_INSTRUCTION_LIST
-#undef DO_INSTRUCTION
-      };
-      opcode[PC] = opcodeMap[opc];
-#else
       opcode[PC] = opc;
-#endif
       // Reexecute current instruction.
       ENDINST;
     }

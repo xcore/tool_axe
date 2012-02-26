@@ -40,11 +40,7 @@ enum InstructionOpcode {
 
 #include "JITInstructionFunction.h"
 
-#ifdef DIRECT_THREADED
-typedef ptrdiff_t OPCODE_TYPE;
-#else
 typedef InstructionOpcode OPCODE_TYPE;
-#endif
 
 struct Operands {
   union {

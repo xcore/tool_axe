@@ -111,11 +111,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   // Initialise instruction cache.
   for (unsigned i = 0; i < (RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
        ++i) {
-#ifdef DIRECT_THREADED
-    opcode[i] = 0;
-#else
     opcode[i] = INITIALIZE;
-#endif
   }
   for (unsigned i = 0; i != (RamSize >> 1); ++i) {
     invalidationInfo[i] = INVALIDATE_NONE;
