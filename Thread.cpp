@@ -296,6 +296,27 @@ Tracer::get().traceEnd(); \
 #define EMIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
 #undef EMIT_INSTRUCTION_FUNCTIONS
+
+
+#define INSTRUCTION_CYCLES 4
+
+template<bool tracing>
+JITReturn Instruction_TSETMR_2r(Thread &thread) {
+  TRACE("tsetmr ", Register(OP(0)), ", ", SrcRegister(OP(1)));
+  THREAD.time += INSTRUCTION_CYCLES;
+  Synchroniser *sync = THREAD.getSync();
+  if (sync) {
+    sync->master().reg((OP(0))) = THREAD.reg(OP(1));
+  } else {
+    // Undocumented behaviour, possibly incorrect. However this seems to
+    // match the simulator.
+    THREAD.reg(OP(0)) = THREAD.reg(OP(1));
+  }
+  THREAD.pc++;
+  TRACE_END();
+  return JIT_RETURN_CONTINUE;
+}
+
 #undef THREAD
 #undef CORE
 #undef ERROR
@@ -416,100 +437,11 @@ void Thread::runAux(ticks_t time) {
 #undef EMIT_INSTRUCTION_DISPATCH
   // Two operand short.
   INST(TSETMR_2r):
-    {
-      TRACE("tsetmr ", Register(OP(0)), ", ", SrcRegister(OP(1)));
-      TIME += INSTRUCTION_CYCLES;
-      Synchroniser *sync = this->getSync();
-      if (sync) {
-        sync->master().reg(IMM(OP(0))) = REG(OP(1));
-      } else {
-        // Undocumented behaviour, possibly incorrect. However this seems to
-        // match the simulator.
-        REG(OP(0)) = REG(OP(1));
-      }
-      PC++;
-      TRACE_END();
-    }
-    ENDINST;
-      
-  // Zero operand short
-  INST(SSYNC_0r):
-    {
-      TRACE("ssync");
-      TIME += INSTRUCTION_CYCLES;
-      Synchroniser *sync = this->getSync();
-      // May schedule / deschedule threads
-      if (!sync) {
-        // TODO is this right?
-        DESCHEDULE(PC);
-      } else {
-        switch (sync->ssync(*this)) {
-        case Synchroniser::SYNC_CONTINUE:
-          PC++;
-          break;
-        case Synchroniser::SYNC_DESCHEDULE:
-          TRACE_END();
-          PAUSE_ON(PC, sync);
-          break;
-        case Synchroniser::SYNC_KILL:
-          {
-            free();
-            TRACE_END();
-            DESCHEDULE(PC);
-          }
-        }
-      }
-      TRACE_END();
-    }
-    ENDINST;
-  INST(FREET_0r):
-    {
-      TRACE("freet");
-      if (this->getSync()) {
-        // TODO check expected behaviour
-        ERROR();
-      }
-      free();
-      TRACE_END();
-      DESCHEDULE(PC);
-    }
+    if (Instruction_TSETMR_2r<tracing>(THREAD) == JIT_RETURN_END_THREAD_EXECUTION)
+      return;
     ENDINST;
   
   // Pseudo instructions.
-  INST(SYSCALL):
-    int retval;
-    this->pc = PC;
-    switch (SyscallHandler::doSyscall(*this, retval)) {
-    case SyscallHandler::EXIT:
-      throw (ExitException(retval));
-    case SyscallHandler::DESCHEDULE:
-      DESCHEDULE(PC);
-      break;
-    case SyscallHandler::CONTINUE:
-      uint32_t target = TO_PC(REG(LR));
-      if (CHECK_PC(target)) {
-        PC = target;
-        YIELD(PC);
-      } else {
-        EXCEPTION(ET_ILLEGAL_PC, REG(LR));
-      }
-      break;
-    }
-    ENDINST;
-  INST(EXCEPTION):
-    this->pc = PC;
-    SyscallHandler::doException(*this);
-    throw (ExitException(1));
-    ENDINST;
-  INST(ILLEGAL_PC):
-    EXCEPTION(ET_ILLEGAL_PC, FROM_PC(PC));
-    ENDINST;
-  INST(ILLEGAL_PC_THREAD):
-    EXCEPTION(ET_ILLEGAL_PC, this->pendingPc);
-    ENDINST;
-  INST(ILLEGAL_INSTRUCTION):
-    EXCEPTION(ET_ILLEGAL_INSTRUCTION, 0);
-    ENDINST;
   INST(DECODE):
     {
       InstructionOpcode opc;

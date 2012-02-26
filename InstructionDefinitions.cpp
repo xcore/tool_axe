@@ -13,6 +13,7 @@
 #include "Exceptions.h"
 #include "Synchroniser.h"
 #include "InstructionMacrosCommon.h"
+#include "SyscallHandler.h"
 #include <cstdio>
 
 /// Use to get the required LLVM type for instruction functions.

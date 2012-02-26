@@ -516,8 +516,10 @@ emitRegWriteBack(const Instruction &instruction)
 }
 
 static void
-emitTraceEnd()
+emitTraceEnd(const Instruction &inst)
 {
+  if (inst.getFormat().empty())
+    return;
   std::cout << "TRACE_END();\n";
 }
 
@@ -719,7 +721,7 @@ void InlineCodeEmitter::emitNextPc()
 void InlineCodeEmitter::emitException(const std::string &args)
 {
   emitCycles(*inst);
-  emitTraceEnd();
+  emitTraceEnd(*inst);
   std::cout << "EXCEPTION(";
   emitNested(args);
   std::cout << ");\n";
@@ -731,7 +733,7 @@ void InlineCodeEmitter::emitKCall(const std::string &args)
 {
   emitCycles(*inst);
   emitRegWriteBack(*inst);
-  emitTraceEnd();
+  emitTraceEnd(*inst);
   std::cout << "EXCEPTION(ET_KCALL, ";
   emitNested(args);
   std::cout << ");\n";
@@ -742,7 +744,7 @@ void InlineCodeEmitter::emitKCall(const std::string &args)
 void InlineCodeEmitter::emitPauseOn(const std::string &args)
 {
   emitCycles(*inst);
-  emitTraceEnd();
+  emitTraceEnd(*inst);
   std::cout << "PAUSE_ON(PC, ";
   emitNested(args);
   std::cout << ");\n";
@@ -755,7 +757,7 @@ void InlineCodeEmitter::emitYield()
   emitCycles(*inst);
   emitRegWriteBack(*inst);
   emitCheckEvents();
-  emitTraceEnd();
+  emitTraceEnd(*inst);
   emitUpdateExecutionFrequency();
   std::cout << "YIELD(PC);\n";
   std::cout << "goto " << getEndLabel(*inst) << ";\n";
@@ -779,7 +781,7 @@ void InlineCodeEmitter::emitDeschedule()
 {
   emitCycles(*inst);
   emitCheckEventsOrDeschedule();
-  emitTraceEnd();
+  emitTraceEnd(*inst);
   std::cout << "goto " << getEndLabel(*inst) << ";\n";
   emitEndLabel = true;
 }
@@ -888,7 +890,7 @@ void FunctionCodeEmitter::emitRegWriteBack()
         std::cout << "THREAD.regs[" << getOperandName(*inst, i);
         std::cout << "] = ";
         std::cout << "op" << i << ";\n";
-        if (!jit) {
+        if (!jit && !inst->getFormat().empty()) {
           std::cout << "TRACE_REG_WRITE((Register)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
@@ -903,7 +905,7 @@ void FunctionCodeEmitter::emitRegWriteBack()
     std::cout << "  THREAD.takeEvent();\n";
     std::cout << "  THREAD.schedule();\n";
     if (!jit)
-      emitTraceEnd();
+      emitTraceEnd(*inst);
     std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
     std::cout << "}\n";
   }
@@ -925,7 +927,7 @@ void FunctionCodeEmitter::emitCheckEvents() const
   std::cout << "  THREAD.takeEvent();\n";
   std::cout << "  THREAD.schedule();\n";
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
@@ -934,7 +936,7 @@ void FunctionCodeEmitter::emitNormalReturn()
 {
   emitCheckEvents();
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   if (inst->getMayStore()) {
     std::cout << "return retval;\n";
   } else {
@@ -970,7 +972,7 @@ void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
   std::cout << "if (THREAD.hasTimeSliceExpired()) {\n";
   std::cout << "  THREAD.schedule();\n";
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
@@ -983,7 +985,7 @@ void FunctionCodeEmitter::emitException(const std::string &args)
   emitCycles();
   emitYieldIfTimeSliceExpired();
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   std::cout << "return JIT_RETURN_END_TRACE;\n";
 }
 
@@ -996,7 +998,7 @@ void FunctionCodeEmitter::emitKCall(const std::string &args)
   emitCycles();
   emitYieldIfTimeSliceExpired();
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   std::cout << "return JIT_RETURN_END_TRACE;\n";
 }
 
@@ -1009,7 +1011,7 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
   std::cout << ";\n";
   std::cout << "THREAD.waiting() = true;\n";
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
@@ -1028,7 +1030,7 @@ void FunctionCodeEmitter::emitDeschedule()
   emitCheckEvents();
   std::cout << "THREAD.waiting() = true;\n";
   if (!jit)
-    emitTraceEnd();
+    emitTraceEnd(*inst);
   std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
@@ -1227,6 +1229,8 @@ static void
 emitTrace(Instruction &instruction)
 {
   const std::string &format = instruction.getFormat();
+  if (format.empty())
+    return;
 
   std::vector<std::string> args;
   scanFormatArgs(format.c_str(), instruction, args);
@@ -2896,7 +2900,14 @@ void add()
       "%store_word(%0, PhyAddr);\n")
     .addImplicitOp(ET, in)
     .addImplicitOp(SP, in);
-  f0r("FREET", "freet", "").setCustom();
+  f0r("FREET", "freet",
+      "if (THREAD.getSync()) {\n"
+      "  // TODO check expected behaviour\n"
+      "  ERROR();\n"
+      "}\n"
+      "THREAD.free();\n"
+      "%deschedule\n"
+      );
   f0r("DCALL", "dcall", "").setUnimplemented();
   f0r("DRET", "dret", "").setUnimplemented();
   f0r("DENTSP", "dentsp", "").setUnimplemented();
@@ -2904,14 +2915,52 @@ void add()
   f0r("WAITEU", "waiteu",
       "THREAD.enableEvents();\n"
       "%deschedule\n").setYieldBefore().setCanEvent();
-  f0r("SSYNC", "", "").setCustom();
-
-  pseudoInst("ILLEGAL_PC", "", "").setCustom();
-  pseudoInst("ILLEGAL_PC_THREAD", "", "").setCustom();
-  pseudoInst("ILLEGAL_INSTRUCTION", "", "").setCustom();
+  f0r("SSYNC", "ssync",
+      "Synchroniser *sync = THREAD.getSync();\n"
+      "if (!sync) {\n"
+      "  // TODO is this right?\n"
+      "  %deschedule;\n"
+      "} else {\n"
+      "  switch (sync->ssync(THREAD)) {\n"
+      "    case Synchroniser::SYNC_CONTINUE:\n"
+      "      break;\n"
+      "    case Synchroniser::SYNC_DESCHEDULE:\n"
+      "      %pause_on(sync);\n"
+      "      break;\n"
+      "    case Synchroniser::SYNC_KILL:\n"
+      "      THREAD.free();\n"
+      "      %deschedule;\n"
+      "      break;\n"
+      "  }\n"
+      "}\n");
+  pseudoInst("ILLEGAL_PC", "", "%exception(ET_ILLEGAL_PC, FROM_PC(%pc) - 2)");
+  pseudoInst("ILLEGAL_PC_THREAD", "",
+             "%exception(ET_ILLEGAL_PC, THREAD.pendingPc)");
+  pseudoInst("ILLEGAL_INSTRUCTION", "",
+             "%exception(ET_ILLEGAL_INSTRUCTION, 0)");
+  pseudoInst("SYSCALL", "",
+    "int retval;\n"
+    "switch (SyscallHandler::doSyscall(THREAD, retval)) {\n"
+    "case SyscallHandler::EXIT:\n"
+    "  throw (ExitException(retval));\n"
+    "case SyscallHandler::DESCHEDULE:\n"
+    "  %deschedule;\n"
+    "  break;\n"
+    "case SyscallHandler::CONTINUE:\n"
+    "  uint32_t target = TO_PC(%0);\n"
+    "  if (CHECK_PC(target)) {\n"
+    "    %pc = target;\n"
+    "    %yield\n"
+    "  } else {\n"
+    "    %exception(ET_ILLEGAL_PC, %0);\n"
+    "  }\n"
+    "  break;\n"
+    "}\n")
+    .addImplicitOp(LR, in);
+  pseudoInst("EXCEPTION", "",
+             "SyscallHandler::doException(THREAD);\n"
+             "throw (ExitException(1));\n");
   pseudoInst("DECODE", "", "").setCustom();
-  pseudoInst("SYSCALL", "", "").setCustom();
-  pseudoInst("EXCEPTION", "", "").setCustom();
   pseudoInst("INITIALIZE", "", "").setCustom();
   pseudoInst("JIT_INSTRUCTION", "", "").setCustom();
 }
