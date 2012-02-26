@@ -40,13 +40,12 @@ enum InstructionOpcode {
 
 #include "JITInstructionFunction.h"
 
-typedef InstructionOpcode OPCODE_TYPE;
+typedef JITInstructionFunction_t OPCODE_TYPE;
 
 struct Operands {
   union {
     uint32_t ops[3];
     uint8_t lops[6];
-    JITInstructionFunction_t func;
   };
 };
 

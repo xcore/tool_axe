@@ -336,4 +336,6 @@ struct PendingEvent {
   ticks_t time;
 };
 
+void initInstructionCache(Core &c);
+
 #endif // _Thread_h_

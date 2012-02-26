@@ -121,7 +121,8 @@ void JITImpl::reclaimUnreachableFunctions()
        e = unreachableFunctions.end(); it != e; ++it) {
     std::map<JITInstructionFunction_t,LLVMValueRef>::iterator entry =
       functionPtrMap.find(*it);
-    assert(entry != functionPtrMap.end());
+    if (entry == functionPtrMap.end())
+      continue;
     LLVMFreeMachineCodeForFunction(executionEngine, entry->second);
     LLVMDeleteFunction(entry->second);
     functionPtrMap.erase(entry);
@@ -173,13 +174,14 @@ void JITImpl::compileBlock(Core &core, uint32_t address)
   init();
   if (!unreachableFunctions.empty())
     reclaimUnreachableFunctions();
+  if (functionPtrMap.count(core.opcode[address >> 1]) != 0)
+    return;
   bool endOfBlock;
   uint32_t nextAddress;
   JITInstructionFunction_t out;
   do {
     if (compileOneFragment(core, address, out, endOfBlock, nextAddress)) {
-      core.opcode[address >> 1] = core.getJitFunctionOpcode();
-      core.operands[address >> 1].func = out;
+      core.opcode[address >> 1] = out;
     }
     address = nextAddress;
   } while (!endOfBlock);

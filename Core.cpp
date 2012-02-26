@@ -107,12 +107,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
     portNum[width] = num;
   }
   thread[0].alloc(0);
-  
-  // Initialise instruction cache.
-  for (unsigned i = 0; i < (RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
-       ++i) {
-    opcode[i] = INITIALIZE;
-  }
+  initInstructionCache(*this);
   for (unsigned i = 0; i != (RamSize >> 1); ++i) {
     invalidationInfo[i] = INVALIDATE_NONE;
   }
@@ -225,7 +220,7 @@ bool Core::setExceptionAddress(uint32_t value)
 void Core::
 initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
           OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-          OPCODE_TYPE exception, OPCODE_TYPE jitFunction)
+          OPCODE_TYPE exception)
 {
   const uint32_t ramSizeShorts = ram_size >> 1;
   // Initialise instruction cache.
@@ -239,7 +234,6 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   if (exceptionAddress < ramSizeShorts)
     opcode[exceptionAddress] = exception;
   decodeOpcode = decode;
-  jitFunctionOpcode = jitFunction;
 }
 
 bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)
@@ -329,9 +323,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
   unsigned char info;
   do {
     info = invalidationInfo[shiftedAddress];
-    if (opcode[shiftedAddress] == jitFunctionOpcode) {
-      JIT::markUnreachable(operands[shiftedAddress].func);
-    }
+    JIT::markUnreachable(opcode[shiftedAddress]);
     opcode[shiftedAddress] = decodeOpcode;
     executionFrequency[shiftedAddress] = 0;
     invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
@@ -343,7 +335,5 @@ void Core::runJIT(uint32_t shiftedAddress)
   if (shiftedAddress >= (ram_size >> 1))
     return;
   executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
-  if (opcode[shiftedAddress] == jitFunctionOpcode)
-    return;
   JIT::compileBlock(*this, shiftedAddress << 1);
 }

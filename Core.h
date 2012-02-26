@@ -68,7 +68,6 @@ private:
   Node *parent;
   std::string codeReference;
   OPCODE_TYPE decodeOpcode;
-  OPCODE_TYPE jitFunctionOpcode;
 
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
@@ -124,7 +123,7 @@ public:
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-                 OPCODE_TYPE exception, OPCODE_TYPE jitFunction);
+                 OPCODE_TYPE exception);
 
   void updateExecutionFrequency(uint32_t shiftedAddress) {
     const executionFrequency_t threshold = 20;
@@ -241,8 +240,6 @@ public:
   unsigned getIllegalPCThreadAddr() const {
     return ((ram_size >> 1) - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
   }
-
-  OPCODE_TYPE getJitFunctionOpcode() const { return jitFunctionOpcode; }
 
   void finalize();
   void updateIDs();

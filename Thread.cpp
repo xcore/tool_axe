@@ -317,6 +317,29 @@ JITReturn Instruction_TSETMR_2r(Thread &thread) {
   return JIT_RETURN_CONTINUE;
 }
 
+template<bool tracing>
+JITReturn Instruction_DECODE(Thread &thread) {
+  InstructionOpcode opc;
+  instructionDecode(CORE, THREAD.pc, opc, CORE.operands[THREAD.pc]);
+  instructionTransform(opc, CORE.operands[THREAD.pc], CORE, THREAD.pc);
+  if (CORE.invalidationInfo[THREAD.pc] == Core::INVALIDATE_NONE) {
+    CORE.invalidationInfo[THREAD.pc] = Core::INVALIDATE_CURRENT;
+  }
+  if (instructionProperties[opc].size == 4) {
+    CORE.invalidationInfo[THREAD.pc + 1] = Core::INVALIDATE_CURRENT_AND_PREVIOUS;
+  } else {
+    assert(instructionProperties[opc].size == 2);
+  }
+  static OPCODE_TYPE opcodeMap[] = {
+#define EMIT_INSTRUCTION_LIST
+#define DO_INSTRUCTION(inst) & Instruction_ ## inst <tracing>,
+#include "InstructionGenOutput.inc"
+#undef EMIT_INSTRUCTION_LIST
+  };
+  CORE.opcode[THREAD.pc] = opcodeMap[opc];
+  return JIT_RETURN_END_TRACE;
+}
+
 #undef THREAD
 #undef CORE
 #undef ERROR
@@ -325,81 +348,6 @@ JITReturn Instruction_TSETMR_2r(Thread &thread) {
 #undef TRACE
 #undef TRACE_REG_WRITE
 #undef TRACE_END
-
-#define INST(inst) case (inst)
-#define ENDINST break
-#define OPCODE(s) s
-#define START_DISPATCH_LOOP while(1) { switch (opcode[PC]) {
-#define END_DISPATCH_LOOP } }
-
-#define REG(Num) this->regs[Num]
-#define IMM(Num) (Num)
-#define THREAD (*this)
-#define CORE (*core)
-#define PC THREAD.pc
-#define OP(n) (operands[PC].ops[(n)])
-#define LOP(n) (operands[PC].lops[(n)])
-#define EXCEPTION(et, ed) \
-do { \
-  PC = exception(THREAD, PC, et, ed); \
-  YIELD(PC); \
-} while(0);
-#define ERROR() \
-do { \
-  internalError(*this, __FILE__, __LINE__); \
-} while(0)
-#define TRACE(...) \
-do { \
-  if (tracing) { \
-    Tracer::get().trace(*this, __VA_ARGS__); \
-  } \
-} while(0)
-#define TRACE_REG_WRITE(register, value) \
-do { \
-  if (tracing) { \
-    Tracer::get().regWrite(register, value); \
-  } \
-} while(0)
-#define TRACE_END() \
-do { \
-  if (tracing) { \
-    Tracer::get().traceEnd(); \
-  } \
-} while(0)
-#define DESCHEDULE(pc) \
-do { \
-  this->waiting() = true; \
-  return; \
-} while(0)
-#define PAUSE_ON(pc, resource) \
-do { \
-  this->waiting() = true; \
-  this->pausedOn = resource; \
-  return; \
-} while(0)
-#define YIELD(pc) \
-do { \
-  if (THREAD.hasTimeSliceExpired()) { \
-    THREAD.schedule(); \
-    return; \
-  } \
-} while(0)
-#define TAKE_EVENT(pc) \
-do { \
-  THREAD.takeEvent(); \
-  THREAD.schedule(); \
-  return; \
-} while(0)
-#define SETSR(bits, pc) \
-do { \
-  if (this->setSR(bits)) { \
-    THREAD.takeEvent(); \
-    THREAD.schedule(); \
-    return; \
-  } \
-} while(0)
-
-#define INSTRUCTION_CYCLES 4
 
 void Thread::run(ticks_t time)
 {
@@ -411,49 +359,28 @@ void Thread::run(ticks_t time)
 
 template <bool tracing>
 void Thread::runAux(ticks_t time) {
-  Core *core = &this->getParent();
-  OPCODE_TYPE *opcode = core->opcode;
-  Operands *operands = core->operands;
+  OPCODE_TYPE *opcode = getParent().opcode;
 
-  // The main dispatch loop. On backward branches and indirect jumps we call
-  // YIELD() to ensure one thread which never pauses cannot starve the
-  // other threads.
-  START_DISPATCH_LOOP
-  INST(INITIALIZE):
-    getParent().initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
-                          OPCODE(ILLEGAL_PC_THREAD), OPCODE(SYSCALL),
-                          OPCODE(EXCEPTION), OPCODE(JIT_INSTRUCTION));
-    ENDINST;
-#define EMIT_INSTRUCTION_DISPATCH
-#include "InstructionGenOutput.inc"
-#undef EMIT_INSTRUCTION_DISPATCH
-  // Two operand short.
-  INST(TSETMR_2r):
-    if (Instruction_TSETMR_2r<tracing>(THREAD) == JIT_RETURN_END_THREAD_EXECUTION)
+  while (1) {
+    if ((*opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
       return;
-    ENDINST;
-  
-  // Pseudo instructions.
-  INST(DECODE):
-    {
-      InstructionOpcode opc;
-      instructionDecode(CORE, PC, opc, operands[PC]);
-      instructionTransform(opc, operands[PC], CORE, PC);
-      if (CORE.invalidationInfo[PC] == Core::INVALIDATE_NONE) {
-        CORE.invalidationInfo[PC] = Core::INVALIDATE_CURRENT;
-      }
-      if (instructionProperties[opc].size == 4) {
-        CORE.invalidationInfo[PC + 1] = Core::INVALIDATE_CURRENT_AND_PREVIOUS;
-      } else {
-        assert(instructionProperties[opc].size == 2);
-      }
-      opcode[PC] = opc;
-      // Reexecute current instruction.
-      ENDINST;
-    }
-  INST(JIT_INSTRUCTION):
-    if (operands[PC].func(THREAD) == JIT_RETURN_END_THREAD_EXECUTION)
-      return;
-    ENDINST;
-  END_DISPATCH_LOOP
+  }
+}
+
+template<bool tracing>
+void initInstructionCacheAux(Core &c)
+{
+  c.initCache(&Instruction_DECODE<tracing> ,
+              &Instruction_ILLEGAL_PC<tracing> ,
+              &Instruction_ILLEGAL_PC_THREAD<tracing> ,
+              &Instruction_SYSCALL<tracing> ,
+              &Instruction_EXCEPTION<tracing>);
+}
+
+void initInstructionCache(Core &c)
+{
+  if (Tracer::get().getTracingEnabled())
+    initInstructionCacheAux<true>(c);
+  else
+    initInstructionCacheAux<false>(c);
 }

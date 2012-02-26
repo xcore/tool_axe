@@ -913,9 +913,13 @@ void FunctionCodeEmitter::emitRegWriteBack()
 
 void FunctionCodeEmitter::emitUpdateExecutionFrequency()
 {
+  if (!jit)
+    std::cout << "if (!tracing) {\n";
   if (inst->getMayBranch()) {
     std::cout << "CORE.updateExecutionFrequency(THREAD.pc);\n";
   }
+  if (!jit)
+    std::cout << "}\n";
 }
 
 void FunctionCodeEmitter::emitCheckEvents() const
@@ -1267,29 +1271,6 @@ static std::string getOperandType(Instruction &inst, unsigned i)
   if (isSR(inst, i))
     return "Thread::sr_t";
   return "uint32_t";
-}
-
-static void
-emitInstDispatch(Instruction &inst)
-{
-  if (inst.getCustom())
-    return;
-  const std::string &name = inst.getName();
-  std::cout << "INST(" << name << "):";
-  std::cout << "  if (" << getInstFunctionName(inst) << "<tracing>(THREAD)";
-  std::cout << " == JIT_RETURN_END_THREAD_EXECUTION)\n";
-  std::cout << "    return;\n";
-  std::cout << "ENDINST;\n";
-}
-
-static void emitInstDispatch()
-{
-  std::cout << "#ifdef EMIT_INSTRUCTION_DISPATCH\n";
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
-    emitInstDispatch(**it);
-  }
-  std::cout << "#endif //EMIT_INSTRUCTION_DISPATCH\n";
 }
 
 static void emitInstFunction(Instruction &inst, bool jit)
@@ -2961,8 +2942,6 @@ void add()
              "SyscallHandler::doException(THREAD);\n"
              "throw (ExitException(1));\n");
   pseudoInst("DECODE", "", "").setCustom();
-  pseudoInst("INITIALIZE", "", "").setCustom();
-  pseudoInst("JIT_INSTRUCTION", "", "").setCustom();
 }
 
 int main()
@@ -2971,7 +2950,6 @@ int main()
   analyze();
   emitInstFunctions();
   emitJitInstFunctions();
-  emitInstDispatch();
   emitInstList();
   emitInstProperties();
 }

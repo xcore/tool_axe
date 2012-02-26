@@ -461,8 +461,7 @@ typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
 int
 loop(const char *filename, const LoopbackPorts &loopbackPorts,
      const std::string &vcdFile,
-     const PeripheralDescriptorWithPropertiesVector &peripherals,
-     bool tracing)
+     const PeripheralDescriptorWithPropertiesVector &peripherals)
 {
   std::auto_ptr<SymbolInfo> SI(new SymbolInfo);
   std::set<Core*> coresWithImage;
@@ -519,11 +518,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
   }
   SyscallHandler::setCoreCount(coresWithImage.size());
 
-  // Initialise tracing
   Tracer::get().setSymbolInfo(SI);
-  if (tracing) {
-    Tracer::get().setTracingEnabled(tracing);
-  }
   return sys.run();
 }
 
@@ -689,5 +684,8 @@ main(int argc, char **argv) {
     Tracer::get().setColour(true);
   }
 #endif
-  return loop(file, loopbackPorts, vcdFile, peripherals, tracing);
+  if (tracing) {
+    Tracer::get().setTracingEnabled(tracing);
+  }
+  return loop(file, loopbackPorts, vcdFile, peripherals);
 }
