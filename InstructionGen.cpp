@@ -836,7 +836,9 @@ emitCode(const Instruction &instruction,
 }
 
 class FunctionCodeEmitter : public CodeEmitter {
+  bool jit;
 public:
+  FunctionCodeEmitter(bool isJit) : jit(isJit) {}
   const Instruction *inst;
   void emitCycles();
   void emitRegWriteBack();
@@ -886,15 +888,22 @@ void FunctionCodeEmitter::emitRegWriteBack()
         std::cout << "THREAD.regs[" << getOperandName(*inst, i);
         std::cout << "] = ";
         std::cout << "op" << i << ";\n";
+        if (!jit) {
+          std::cout << "TRACE_REG_WRITE((Register)" << getOperandName(*inst, i);
+          std::cout << ", " << "op" << i << ");\n";
+        }
       }
       break;
     }
   }
+
   std::cout << "THREAD.pc = nextPc;\n";
   if (writeSR) {
     std::cout << "if (THREAD.setSR(op" << numSR << ")) {\n";
     std::cout << "  THREAD.takeEvent();\n";
     std::cout << "  THREAD.schedule();\n";
+    if (!jit)
+      emitTraceEnd();
     std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
     std::cout << "}\n";
   }
@@ -915,6 +924,8 @@ void FunctionCodeEmitter::emitCheckEvents() const
   std::cout << "if (THREAD.hasPendingEvent()) {\n";
   std::cout << "  THREAD.takeEvent();\n";
   std::cout << "  THREAD.schedule();\n";
+  if (!jit)
+    emitTraceEnd();
   std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
@@ -922,6 +933,8 @@ void FunctionCodeEmitter::emitCheckEvents() const
 void FunctionCodeEmitter::emitNormalReturn()
 {
   emitCheckEvents();
+  if (!jit)
+    emitTraceEnd();
   if (inst->getMayStore()) {
     std::cout << "return retval;\n";
   } else {
@@ -956,6 +969,8 @@ void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
 {
   std::cout << "if (THREAD.hasTimeSliceExpired()) {\n";
   std::cout << "  THREAD.schedule();\n";
+  if (!jit)
+    emitTraceEnd();
   std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
@@ -967,6 +982,8 @@ void FunctionCodeEmitter::emitException(const std::string &args)
   std::cout << ");\n";
   emitCycles();
   emitYieldIfTimeSliceExpired();
+  if (!jit)
+    emitTraceEnd();
   std::cout << "return JIT_RETURN_END_TRACE;\n";
 }
 
@@ -978,6 +995,8 @@ void FunctionCodeEmitter::emitKCall(const std::string &args)
   std::cout << ");\n";
   emitCycles();
   emitYieldIfTimeSliceExpired();
+  if (!jit)
+    emitTraceEnd();
   std::cout << "return JIT_RETURN_END_TRACE;\n";
 }
 
@@ -989,6 +1008,8 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
   emitNested(args);
   std::cout << ";\n";
   std::cout << "THREAD.waiting() = true;\n";
+  if (!jit)
+    emitTraceEnd();
   std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
@@ -1006,6 +1027,8 @@ void FunctionCodeEmitter::emitDeschedule()
   emitCycles();
   emitCheckEvents();
   std::cout << "THREAD.waiting() = true;\n";
+  if (!jit)
+    emitTraceEnd();
   std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
@@ -1243,75 +1266,19 @@ static std::string getOperandType(Instruction &inst, unsigned i)
 }
 
 static void
-emitInstDispatch(Instruction &instruction)
+emitInstDispatch(Instruction &inst)
 {
-  if (instruction.getCustom())
+  if (inst.getCustom())
     return;
-  const std::string &name = instruction.getName();
+  const std::string &name = inst.getName();
   std::cout << "INST(" << name << "):";
-
-  unsigned size = instruction.getSize();
-  const std::vector<OpType> &operands = instruction.getOperands();
-  const std::string &code = instruction.getCode();
-
-  if (size % 2 != 0) {
-    std::cerr << "error: unexpected instruction size " << size << "\n";
-    std::exit(1);
-  }
-  if (instruction.getYieldBefore()) {
-    std::cout << "\n"
-                 "if (THREAD.hasTimeSliceExpired()) {\n"
-                 "  YIELD(PC);\n"
-                 "} else";
-  }
-  std::cout << " {\n";
-  // Read operands.
-  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
-    std::cout << "UNUSED(";
-    if (operands[i] == in)
-      std::cout << "const ";
-    std::cout << getOperandType(instruction, i) << " op" << i << ')';
-    switch (operands[i]) {
-      default:
-        break;
-      case in:
-      case inout:
-        if (isSR(instruction, i))
-          std::cout << " = THREAD.sr";
-        else
-          std::cout << " = REG(" << getOperandName(instruction, i) << ')';
-        break;
-      case imm:
-        std::cout << " = IMM(" << getOperandName(instruction, i) << ')';
-        break;
-    }
-    std::cout << ";\n";
-  }
-  if (!instruction.getUnimplemented()) {
-    std::cout << "uint32_t nextPc = PC + " << size / 2 << ";\n";
-  }
-  emitTrace(instruction);
-
-  // Do operation.
-  bool emitEndLabel = false;
-  if (instruction.getUnimplemented()) {
-    std::cout << "ERROR();\n";
+  if (inst.getUnimplemented()) {
+    std::cout << "  ERROR();\n";
   } else {
-    InlineCodeEmitter emitter;
-    emitter.setInstruction(instruction);
-    emitter.emit(code);
-    emitEndLabel = emitter.getEmitEndLabel();
-    std::cout << '\n';
-    // Write operands.
-    emitCycles(instruction);
-    emitRegWriteBack(instruction);
-    emitter.emitCheckEvents();
-    emitTraceEnd();
-    emitter.emitUpdateExecutionFrequency();
+    std::cout << "  if (" << getInstFunctionName(inst) << "<tracing>(THREAD)";
+    std::cout << " == JIT_RETURN_END_THREAD_EXECUTION)\n";
+    std::cout << "    return;\n";
   }
-  std::cout << "}\n";
-  if (emitEndLabel)
-    std::cout << getEndLabel(instruction) << ":;\n";
   std::cout << "ENDINST;\n";
 }
 
@@ -1325,17 +1292,29 @@ static void emitInstDispatch()
   std::cout << "#endif //EMIT_INSTRUCTION_DISPATCH\n";
 }
 
-static void emitInstFunction(Instruction &inst)
+static void emitInstFunction(Instruction &inst, bool jit)
 {
   if (inst.getCustom() || inst.getUnimplemented())
     return;
-  std::cout << "extern \"C\" JITReturn " << getInstFunctionName(inst) << '(';
-  std::cout << "Thread &thread, uint32_t nextPc";
-  for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
-    std::cout << ", uint32_t field" << i;
+  assert((inst.getSize() & 1) == 0 && "Unexpected instruction size");
+  if (jit)
+    std::cout << "extern \"C\" ";
+  else
+    std::cout << "template <bool tracing>\n";
+  std::cout << "JITReturn " << getInstFunctionName(inst) << '(';
+  std::cout << "Thread &thread";
+  if (jit) {
+    std::cout << ", uint32_t nextPc";
+    for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
+      std::cout << ", uint32_t field" << i;
+    }
   }
   std::cout << ") {\n";
-  FunctionCodeEmitter emitter;
+  if (!jit) {
+    std::cout << "uint32_t nextPc = THREAD.pc + " << inst.getSize()/2;
+    std::cout << ";\n";
+  }
+  FunctionCodeEmitter emitter(jit);
   emitter.setInstruction(inst);
   if (inst.getYieldBefore()) {
     emitter.emitYieldIfTimeSliceExpired();
@@ -1359,7 +1338,7 @@ static void emitInstFunction(Instruction &inst)
       }
       break;
     case imm:
-      std::cout << " = field" << i;
+      std::cout << " = " << getOperandName(inst, i);
       break;
     }
     std::cout << ";\n";
@@ -1367,6 +1346,8 @@ static void emitInstFunction(Instruction &inst)
   if (inst.getMayStore()) {
     std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
   }
+  if (!jit)
+    emitTrace(inst);
   emitter.emit(inst.getCode());
   std::cout << '\n';
   // Write operands.
@@ -1382,9 +1363,19 @@ static void emitInstFunctions()
   std::cout << "#ifdef EMIT_INSTRUCTION_FUNCTIONS\n";
   for (std::vector<Instruction*>::iterator it = instructions.begin(),
        e = instructions.end(); it != e; ++it) {
-    emitInstFunction(**it);
+    emitInstFunction(**it, false);
   }
   std::cout << "#endif //EMIT_INSTRUCTION_FUNCTIONS\n";
+}
+
+static void emitJitInstFunctions()
+{
+  std::cout << "#ifdef EMIT_JIT_INSTRUCTION_FUNCTIONS\n";
+  for (std::vector<Instruction*>::iterator it = instructions.begin(),
+       e = instructions.end(); it != e; ++it) {
+    emitInstFunction(**it, true);
+  }
+  std::cout << "#endif //EMIT_JIT_INSTRUCTION_FUNCTIONS\n";
 }
 
 static void emitInstList(Instruction &instruction)
@@ -2930,6 +2921,7 @@ int main()
   add();
   analyze();
   emitInstFunctions();
+  emitJitInstFunctions();
   emitInstDispatch();
   emitInstList();
   emitInstProperties();

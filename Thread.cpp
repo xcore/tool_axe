@@ -269,6 +269,42 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 
 #include "InstructionMacrosCommon.h"
 
+#define THREAD thread
+#define CORE THREAD.getParent()
+//#define ERROR() internalError(THREAD, __FILE__, __LINE__);
+#define ERROR() std::abort();
+#define OP(n) (CORE.operands[THREAD.pc].ops[(n)])
+#define LOP(n) (CORE.operands[THREAD.pc].lops[(n)])
+#define TRACE(...) \
+do { \
+if (tracing) { \
+Tracer::get().trace(THREAD, __VA_ARGS__); \
+} \
+} while(0)
+#define TRACE_REG_WRITE(register, value) \
+do { \
+if (tracing) { \
+Tracer::get().regWrite(register, value); \
+} \
+} while(0)
+#define TRACE_END() \
+do { \
+if (tracing) { \
+Tracer::get().traceEnd(); \
+} \
+} while(0)
+#define EMIT_INSTRUCTION_FUNCTIONS
+#include "InstructionGenOutput.inc"
+#undef EMIT_INSTRUCTION_FUNCTIONS
+#undef THREAD
+#undef CORE
+#undef ERROR
+#undef OP
+#undef LOP
+#undef TRACE
+#undef TRACE_REG_WRITE
+#undef TRACE_END
+
 #ifdef DIRECT_THREADED
 #define INST(s) s ## _label
 #define ENDINST goto *(opcode[PC] + (char*)&&INST(INITIALIZE))
@@ -283,15 +319,11 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define END_DISPATCH_LOOP } }
 #endif
 
-#define SAVE_CACHED() \
-do { \
-  this->pc = PC;\
-} while(0)
 #define REG(Num) this->regs[Num]
 #define IMM(Num) (Num)
 #define THREAD (*this)
 #define CORE (*core)
-#define PC this->pc
+#define PC THREAD.pc
 #define OP(n) (operands[PC].ops[(n)])
 #define LOP(n) (operands[PC].lops[(n)])
 #define EXCEPTION(et, ed) \
@@ -301,13 +333,11 @@ do { \
 } while(0);
 #define ERROR() \
 do { \
-  SAVE_CACHED(); \
   internalError(*this, __FILE__, __LINE__); \
 } while(0)
 #define TRACE(...) \
 do { \
   if (tracing) { \
-    SAVE_CACHED(); \
     Tracer::get().trace(*this, __VA_ARGS__); \
   } \
 } while(0)
@@ -325,13 +355,11 @@ do { \
 } while(0)
 #define DESCHEDULE(pc) \
 do { \
-  SAVE_CACHED(); \
   this->waiting() = true; \
   return; \
 } while(0)
 #define PAUSE_ON(pc, resource) \
 do { \
-  SAVE_CACHED(); \
   this->waiting() = true; \
   this->pausedOn = resource; \
   return; \
@@ -339,21 +367,18 @@ do { \
 #define YIELD(pc) \
 do { \
   if (THREAD.hasTimeSliceExpired()) { \
-    SAVE_CACHED(); \
     THREAD.schedule(); \
     return; \
   } \
 } while(0)
 #define TAKE_EVENT(pc) \
 do { \
-  SAVE_CACHED(); \
   THREAD.takeEvent(); \
   THREAD.schedule(); \
   return; \
 } while(0)
 #define SETSR(bits, pc) \
 do { \
-  SAVE_CACHED(); \
   if (this->setSR(bits)) { \
     THREAD.takeEvent(); \
     THREAD.schedule(); \
@@ -373,7 +398,6 @@ void Thread::run(ticks_t time)
 
 template <bool tracing>
 void Thread::runAux(ticks_t time) {
-  SystemState &sys = *getParent().getParent()->getParent();
   Core *core = &this->getParent();
   OPCODE_TYPE *opcode = core->opcode;
   Operands *operands = core->operands;

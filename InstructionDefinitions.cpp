@@ -26,6 +26,6 @@ extern "C" JITReturn jitInstructionTemplate(Thread &t, uint32_t pc) {
 #define ERROR() std::abort();
 #define OP(n) (field ## n)
 #define LOP(n) OP(n)
-#define EMIT_INSTRUCTION_FUNCTIONS
+#define EMIT_JIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
-#undef EMIT_INSTRUCTION_FUNCTIONS
+#undef EMIT_JIT_INSTRUCTION_FUNCTIONS
