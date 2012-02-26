@@ -32,7 +32,6 @@ class JITImpl {
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
-  LLVMValueRef jitEarlyReturnFunction;
   LLVMPassManagerRef FPM;
   std::vector<JITInstructionFunction_t> unreachableFunctions;
   std::vector<LLVMValueRef> earlyReturnIncomingValues;
@@ -83,11 +82,6 @@ void JITImpl::init()
     std::abort();
   }
   builder = LLVMCreateBuilder();
-  jitEarlyReturnFunction = LLVMGetNamedFunction(module,
-                                                "jitEarlyReturnFunction");
-  assert(jitEarlyReturnFunction &&
-         "jitEarlyReturnFunction() not found in module");
-
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
@@ -169,14 +163,7 @@ void JITImpl::ensureEarlyReturnBB(LLVMTypeRef phiType)
   LLVMPositionBuilderAtEnd(builder, earlyReturnBB);
   // Create phi (incoming values will be filled in later).
   earlyReturnPhi = LLVMBuildPhi(builder, phiType, "");
-  // Call jitEarlyReturnFunction.
-  LLVMValueRef args[] = {
-    threadParam,
-    earlyReturnPhi
-  };
-  LLVMBuildCall(builder, jitEarlyReturnFunction, args, 2, "");
-  // Return
-  LLVMBuildRetVoid(builder);
+  LLVMBuildRet(builder, earlyReturnPhi);
   // Restore insert point.
   LLVMPositionBuilderAtEnd(builder, savedBB);
 }
@@ -290,7 +277,9 @@ compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
       endOfBlock = true;
   } while (properties->function);
   // Build return.
-  LLVMBuildRetVoid(builder);
+  LLVMBuildRet(builder,
+               LLVMConstInt(LLVMGetReturnType(jitFunctionType),
+                            JIT_RETURN_CONTINUE, 0));
   // Add incoming phi values.
   if (earlyReturnBB) {
     LLVMAddIncoming(earlyReturnPhi, &earlyReturnIncomingValues[0],

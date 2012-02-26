@@ -2918,7 +2918,6 @@ void add()
   pseudoInst("ILLEGAL_PC", "", "").setCustom();
   pseudoInst("ILLEGAL_PC_THREAD", "", "").setCustom();
   pseudoInst("ILLEGAL_INSTRUCTION", "", "").setCustom();
-  pseudoInst("END_THREAD_EXECUTION", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
   pseudoInst("SYSCALL", "", "").setCustom();
   pseudoInst("EXCEPTION", "", "").setCustom();

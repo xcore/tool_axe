@@ -17,6 +17,6 @@ enum JITReturn {
   JIT_RETURN_END_THREAD_EXECUTION,
 };
 
-typedef void (*JITInstructionFunction_t)(Thread &);
+typedef JITReturn (*JITInstructionFunction_t)(Thread &);
 
 #endif // _JITInstructionFunction_h_

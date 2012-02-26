@@ -16,20 +16,8 @@
 #include <cstdio>
 
 /// Use to get the required LLVM type for instruction functions.
-extern "C" void jitInstructionTemplate(Thread &t, uint32_t pc) {
-}
-
-extern "C" void jitEarlyReturnFunction(Thread &t, JITReturn returnCode) {
-  switch (returnCode) {
-  default:
-    break;
-  case JIT_RETURN_END_TRACE:
-    break;
-  case JIT_RETURN_END_THREAD_EXECUTION:
-    t.pendingPc = t.pc;
-    t.pc = t.getParent().getEndThreadExecutionAddr();
-    break;
-  }
+extern "C" JITReturn jitInstructionTemplate(Thread &t, uint32_t pc) {
+  return JIT_RETURN_CONTINUE;
 }
 
 #define THREAD thread

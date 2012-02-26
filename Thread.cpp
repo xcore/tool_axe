@@ -384,8 +384,7 @@ void Thread::runAux(ticks_t time) {
   START_DISPATCH_LOOP
   INST(INITIALIZE):
     getParent().initCache(OPCODE(DECODE), OPCODE(ILLEGAL_PC),
-                          OPCODE(ILLEGAL_PC_THREAD),
-                          OPCODE(END_THREAD_EXECUTION), OPCODE(SYSCALL),
+                          OPCODE(ILLEGAL_PC_THREAD), OPCODE(SYSCALL),
                           OPCODE(EXCEPTION), OPCODE(JIT_INSTRUCTION));
     ENDINST;
 #define EMIT_INSTRUCTION_DISPATCH
@@ -484,10 +483,6 @@ void Thread::runAux(ticks_t time) {
   INST(ILLEGAL_PC_THREAD):
     EXCEPTION(ET_ILLEGAL_PC, this->pendingPc);
     ENDINST;
-  INST(END_THREAD_EXECUTION):
-    PC = THREAD.pendingPc;
-    return;
-    ENDINST;
   INST(ILLEGAL_INSTRUCTION):
     EXCEPTION(ET_ILLEGAL_INSTRUCTION, 0);
     ENDINST;
@@ -520,7 +515,8 @@ void Thread::runAux(ticks_t time) {
       ENDINST;
     }
   INST(JIT_INSTRUCTION):
-    operands[PC].func(THREAD);
+    if (operands[PC].func(THREAD) == JIT_RETURN_END_THREAD_EXECUTION)
+      return;
     ENDINST;
   END_DISPATCH_LOOP
 }
