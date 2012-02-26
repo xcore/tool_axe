@@ -1272,13 +1272,9 @@ emitInstDispatch(Instruction &inst)
     return;
   const std::string &name = inst.getName();
   std::cout << "INST(" << name << "):";
-  if (inst.getUnimplemented()) {
-    std::cout << "  ERROR();\n";
-  } else {
-    std::cout << "  if (" << getInstFunctionName(inst) << "<tracing>(THREAD)";
-    std::cout << " == JIT_RETURN_END_THREAD_EXECUTION)\n";
-    std::cout << "    return;\n";
-  }
+  std::cout << "  if (" << getInstFunctionName(inst) << "<tracing>(THREAD)";
+  std::cout << " == JIT_RETURN_END_THREAD_EXECUTION)\n";
+  std::cout << "    return;\n";
   std::cout << "ENDINST;\n";
 }
 
@@ -1294,7 +1290,7 @@ static void emitInstDispatch()
 
 static void emitInstFunction(Instruction &inst, bool jit)
 {
-  if (inst.getCustom() || inst.getUnimplemented())
+  if (inst.getCustom())
     return;
   assert((inst.getSize() & 1) == 0 && "Unexpected instruction size");
   if (jit)
@@ -1310,51 +1306,55 @@ static void emitInstFunction(Instruction &inst, bool jit)
     }
   }
   std::cout << ") {\n";
-  if (!jit) {
-    std::cout << "uint32_t nextPc = THREAD.pc + " << inst.getSize()/2;
-    std::cout << ";\n";
-  }
-  FunctionCodeEmitter emitter(jit);
-  emitter.setInstruction(inst);
-  if (inst.getYieldBefore()) {
-    emitter.emitYieldIfTimeSliceExpired();
-  }
-  // Read operands.
-  const std::vector<OpType> &operands = inst.getOperands();
-  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
-    std::cout << "UNUSED(";
-    if (operands[i] == in)
-      std::cout << "const ";
-    std::cout << getOperandType(inst, i) <<  " op" << i << ')';
-    switch (operands[i]) {
-    default:
-      break;
-    case in:
-    case inout:
-      if (isSR(inst, i)) {
-        std::cout << " = THREAD.sr";
-      } else {
-        std::cout << " = THREAD.regs[" << getOperandName(inst, i) << ']';
-      }
-      break;
-    case imm:
-      std::cout << " = " << getOperandName(inst, i);
-      break;
+  if (inst.getUnimplemented()) {
+    std::cout << "ERROR();\n";
+  } else {
+    if (!jit) {
+      std::cout << "uint32_t nextPc = THREAD.pc + " << inst.getSize()/2;
+      std::cout << ";\n";
     }
-    std::cout << ";\n";
+    FunctionCodeEmitter emitter(jit);
+    emitter.setInstruction(inst);
+    if (inst.getYieldBefore()) {
+      emitter.emitYieldIfTimeSliceExpired();
+    }
+    // Read operands.
+    const std::vector<OpType> &operands = inst.getOperands();
+    for (unsigned i = 0, e = operands.size(); i != e; ++i) {
+      std::cout << "UNUSED(";
+      if (operands[i] == in)
+        std::cout << "const ";
+      std::cout << getOperandType(inst, i) <<  " op" << i << ')';
+      switch (operands[i]) {
+      default:
+        break;
+      case in:
+      case inout:
+        if (isSR(inst, i)) {
+          std::cout << " = THREAD.sr";
+        } else {
+          std::cout << " = THREAD.regs[" << getOperandName(inst, i) << ']';
+        }
+        break;
+      case imm:
+        std::cout << " = " << getOperandName(inst, i);
+        break;
+      }
+      std::cout << ";\n";
+    }
+    if (inst.getMayStore()) {
+      std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
+    }
+    if (!jit)
+      emitTrace(inst);
+    emitter.emit(inst.getCode());
+    std::cout << '\n';
+    // Write operands.
+    emitter.emitRegWriteBack();
+    emitter.emitCycles();
+    emitter.emitUpdateExecutionFrequency();
+    emitter.emitNormalReturn();
   }
-  if (inst.getMayStore()) {
-    std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
-  }
-  if (!jit)
-    emitTrace(inst);
-  emitter.emit(inst.getCode());
-  std::cout << '\n';
-  // Write operands.
-  emitter.emitRegWriteBack();
-  emitter.emitCycles();
-  emitter.emitUpdateExecutionFrequency();
-  emitter.emitNormalReturn();
   std::cout << "}\n";
 }
 
@@ -1437,7 +1437,7 @@ static void emitInstFlags(Instruction &inst)
 static void emitInstProperties(Instruction &inst)
 {
   std::cout << "{ ";
-  if (inst.getCustom() || inst.getUnimplemented())
+  if (inst.getCustom())
     std::cout << '0';
   else
     std::cout << '"' << getInstFunctionName(inst) << '"';
