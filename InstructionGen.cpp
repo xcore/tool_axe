@@ -478,44 +478,6 @@ isSR(const Instruction &inst, unsigned i)
 }
 
 static void
-emitCycles(const Instruction &instruction)
-{
-  std::cout << "TIME += " << instruction.getCycles() << ";\n";
-}
-
-static void
-emitRegWriteBack(const Instruction &instruction)
-{
-  const std::vector<OpType> &operands = instruction.getOperands();
-  bool writeSR = false;
-  unsigned numSR = 0;
-
-  // Write operands.
-  for (unsigned i = 0, e = operands.size(); i != e; ++i) {
-    switch (operands[i]) {
-      default:
-        break;
-      case out:
-      case inout:
-        if (isSR(instruction, i)) {
-          writeSR = true;
-          numSR = i;
-        } else {
-          std::cout << "REG(" << getOperandName(instruction, i) << ')'
-          << " = op" << i << ";\n";
-          std::cout << "TRACE_REG_WRITE((Register)" << getOperandName(instruction, i)
-                    << ", " << "op" << i << ");\n";
-        }
-        break;
-    }
-  }
-  std::cout << "PC = nextPc;\n";
-  if (writeSR) {
-    std::cout << "SETSR(op" << numSR << ", PC);\n";
-  }
-}
-
-static void
 emitTraceEnd(const Instruction &inst)
 {
   if (inst.getFormat().empty())
@@ -644,197 +606,6 @@ void CodeEmitter::emitNested(const std::string &code)
       emitRaw(s[i]);
     }
   }
-}
-
-class InlineCodeEmitter : public CodeEmitter {
-  bool emitEndLabel;
-  const Instruction *inst;
-public:
-  InlineCodeEmitter() : emitEndLabel(false) {}
-  void emitUpdateExecutionFrequency() const;
-  void setInstruction(const Instruction &i) { inst = &i; }
-  bool getEmitEndLabel() const { return emitEndLabel; }
-  void emitCheckEvents() const;
-protected:
-  virtual void emitBegin();
-  virtual void emitRaw(const std::string &s);
-  virtual void emitOp(unsigned);
-  virtual void emitNextPc();
-  virtual void emitException(const std::string &args);
-  virtual void emitKCall(const std::string &args);
-  virtual void emitPauseOn(const std::string &args);
-  virtual void emitYield();
-  virtual void emitDeschedule();
-  virtual void emitStoreWord(const std::string &args);
-  virtual void emitStoreShort(const std::string &args);
-  virtual void emitStoreByte(const std::string &args);
-  virtual void emitLoadWord(const std::string &args);
-  virtual void emitLoadShort(const std::string &args);
-  virtual void emitLoadByte(const std::string &args);
-private:
-  void emitCheckEventsOrDeschedule();
-};
-
-void InlineCodeEmitter::emitUpdateExecutionFrequency() const
-{
-  if (inst->getMayBranch()) {
-    std::cout << "if (!tracing) {\n";
-    std::cout << "  CORE.updateExecutionFrequency(PC);\n";
-    std::cout << "}\n";
-  }
-}
-
-void InlineCodeEmitter::emitCheckEvents() const
-{
-  if (!inst->getCanEvent())
-    return;
-
-  std::cout << "if (sys.hasPendingEvent()) {\n";
-  std::cout << "  TAKE_EVENT(PC);\n";
-  std::cout << "}\n";
-}
-
-void InlineCodeEmitter::emitBegin()
-{
-  emitEndLabel = false;
-}
-
-void InlineCodeEmitter::emitRaw(const std::string &s)
-{
-  std::cout << s;
-}
-
-void InlineCodeEmitter::emitOp(unsigned num)
-{
-  if (num >= inst->getOperands().size()) {
-    std::cerr << "error: operand out of range in code string\n";
-    std::exit(1);
-  }
-  std::cout << "op" << num;
-}
-
-void InlineCodeEmitter::emitNextPc()
-{
-  std::cout << "nextPc";
-}
-
-void InlineCodeEmitter::emitException(const std::string &args)
-{
-  emitCycles(*inst);
-  emitTraceEnd(*inst);
-  std::cout << "EXCEPTION(";
-  emitNested(args);
-  std::cout << ");\n";
-  std::cout << "goto " << getEndLabel(*inst) << ";\n";
-  emitEndLabel = true;
-}
-
-void InlineCodeEmitter::emitKCall(const std::string &args)
-{
-  emitCycles(*inst);
-  emitRegWriteBack(*inst);
-  emitTraceEnd(*inst);
-  std::cout << "EXCEPTION(ET_KCALL, ";
-  emitNested(args);
-  std::cout << ");\n";
-  std::cout << "goto " << getEndLabel(*inst) << ";\n";
-  emitEndLabel = true;
-}
-
-void InlineCodeEmitter::emitPauseOn(const std::string &args)
-{
-  emitCycles(*inst);
-  emitTraceEnd(*inst);
-  std::cout << "PAUSE_ON(PC, ";
-  emitNested(args);
-  std::cout << ");\n";
-  std::cout << "goto " << getEndLabel(*inst) << ";\n";
-  emitEndLabel = true;
-}
-
-void InlineCodeEmitter::emitYield()
-{
-  emitCycles(*inst);
-  emitRegWriteBack(*inst);
-  emitCheckEvents();
-  emitTraceEnd(*inst);
-  emitUpdateExecutionFrequency();
-  std::cout << "YIELD(PC);\n";
-  std::cout << "goto " << getEndLabel(*inst) << ";\n";
-  emitEndLabel = true;
-}
-
-void InlineCodeEmitter::emitCheckEventsOrDeschedule()
-{
-  if (!inst->getCanEvent()) {
-    std::cout << "DESCHEDULE(PC);\n";
-    return;
-  }
-  std::cout << "if (sys.hasPendingEvent()) {\n"
-  << "  TAKE_EVENT(PC);\n"
-  << "} else {\n"
-  << "  DESCHEDULE(PC);\n"
-  << "}\n";
-}
-
-void InlineCodeEmitter::emitDeschedule()
-{
-  emitCycles(*inst);
-  emitCheckEventsOrDeschedule();
-  emitTraceEnd(*inst);
-  std::cout << "goto " << getEndLabel(*inst) << ";\n";
-  emitEndLabel = true;
-}
-
-void InlineCodeEmitter::emitStoreWord(const std::string &args)
-{
-  std::cout << "STORE_WORD(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void InlineCodeEmitter::emitStoreShort(const std::string &args)
-{
-  std::cout << "STORE_SHORT(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void InlineCodeEmitter::emitStoreByte(const std::string &args)
-{
-  std::cout << "STORE_BYTE(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void InlineCodeEmitter::emitLoadWord(const std::string &args)
-{
-  std::cout << "LOAD_WORD(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void InlineCodeEmitter::emitLoadShort(const std::string &args)
-{
-  std::cout << "LOAD_SHORT(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void InlineCodeEmitter::emitLoadByte(const std::string &args)
-{
-  std::cout << "LOAD_BYTE(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-static void
-emitCode(const Instruction &instruction,
-         const std::string &code)
-{
-  InlineCodeEmitter emitter;
-  emitter.setInstruction(instruction);
-  emitter.emit(code);
 }
 
 class FunctionCodeEmitter : public CodeEmitter {
@@ -1084,6 +855,15 @@ void FunctionCodeEmitter::emitLoadByte(const std::string &args)
   std::cout << "LOAD_BYTE(";
   emitNested(args);
   std::cout << ")";
+}
+
+static void
+emitCode(const Instruction &instruction,
+         const std::string &code)
+{
+  FunctionCodeEmitter emitter(false);
+  emitter.setInstruction(instruction);
+  emitter.emit(code);
 }
 
 class CodePropertyExtractor : public CodeEmitter {

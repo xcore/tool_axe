@@ -351,16 +351,8 @@ JITReturn Instruction_DECODE(Thread &thread) {
 
 void Thread::run(ticks_t time)
 {
-  if (Tracer::get().getTracingEnabled())
-    runAux<true>(time);
-  else
-    runAux<false>(time);
-}
-
-template <bool tracing>
-void Thread::runAux(ticks_t time) {
   OPCODE_TYPE *opcode = getParent().opcode;
-
+  
   while (1) {
     if ((*opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
       return;

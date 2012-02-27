@@ -325,7 +325,6 @@ public:
   void run(ticks_t time);
   bool setC(ticks_t time, ResourceID resID, uint32_t val);
 private:
-  template <bool tracing> void runAux(ticks_t time);
   bool setSRSlowPath(sr_t old);
 };
 
