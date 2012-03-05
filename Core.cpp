@@ -323,8 +323,8 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
   unsigned char info;
   do {
     info = invalidationInfo[shiftedAddress];
-    JIT::markUnreachable(opcode[shiftedAddress]);
-    opcode[shiftedAddress] = decodeOpcode;
+    if (!JIT::invalidate(*this, shiftedAddress))
+      opcode[shiftedAddress] = decodeOpcode;
     executionFrequency[shiftedAddress] = 0;
     invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);

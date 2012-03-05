@@ -17,7 +17,7 @@
 #include <cstdio>
 
 /// Use to get the required LLVM type for instruction functions.
-extern "C" JITReturn jitInstructionTemplate(Thread &t, uint32_t pc) {
+extern "C" JITReturn jitInstructionTemplate(Thread &t) {
   return JIT_RETURN_CONTINUE;
 }
 

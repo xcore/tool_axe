@@ -125,6 +125,8 @@ public:
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
                  OPCODE_TYPE exception);
 
+  OPCODE_TYPE getDecodeOpcode() const { return decodeOpcode; }
+
   void updateExecutionFrequency(uint32_t shiftedAddress) {
     const executionFrequency_t threshold = 20;
     if (++executionFrequency[shiftedAddress] > threshold) {

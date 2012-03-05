@@ -26,6 +26,19 @@
 #include <cassert>
 #include <map>
 
+struct JITFunctionInfo {
+  explicit JITFunctionInfo(uint32_t a) :
+    shiftedAddress(a), value(0), func(0), isStub(false) {}
+  JITFunctionInfo(uint32_t a, LLVMValueRef v, JITInstructionFunction_t f,
+                  bool s) :
+    shiftedAddress(a), value(v), func(f), isStub(s) {}
+  uint32_t shiftedAddress;
+  LLVMValueRef value;
+  JITInstructionFunction_t func;
+  std::set<JITFunctionInfo*> references;
+  bool isStub;
+};
+
 class JITImpl {
   bool initialized;
   LLVMModuleRef module;
@@ -33,10 +46,10 @@ class JITImpl {
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
   LLVMPassManagerRef FPM;
-  std::vector<JITInstructionFunction_t> unreachableFunctions;
+  std::vector<uint32_t> unreachableFunctions;
   std::vector<LLVMValueRef> earlyReturnIncomingValues;
   std::vector<LLVMBasicBlockRef> earlyReturnIncomingBlocks;
-  std::map<JITInstructionFunction_t,LLVMValueRef> functionPtrMap;
+  std::map<uint32_t,JITFunctionInfo*> jitFunctionMap;
 
   LLVMValueRef threadParam;
   LLVMBasicBlockRef earlyReturnBB;
@@ -48,18 +61,32 @@ class JITImpl {
   void checkReturnValue(LLVMValueRef call, LLVMValueRef f,
                         InstructionProperties &properties);
   void ensureEarlyReturnBB(LLVMTypeRef phiType);
-
-  bool compileOneFragment(Core &core, uint32_t address,
-                          JITInstructionFunction_t &out, bool &endOfBlock,
+  JITFunctionInfo *getJITFunctionOrStubImpl(uint32_t shiftedAddress);
+  LLVMValueRef getJITFunctionOrStub(uint32_t shiftedAddress,
+                                    JITFunctionInfo *caller);
+  bool compileOneFragment(Core &core, uint32_t address, bool &endOfBlock,
                           uint32_t &nextAddress);
+  bool emitJumpToNextFragment(InstructionOpcode &opc, Operands &operands,
+                              uint32_t shiftedNextAddress,
+                              JITFunctionInfo *caller);
+  JITInstructionFunction_t getFunctionThunk(JITFunctionInfo &info);
 public:
   JITImpl() : initialized(false) {}
+  ~JITImpl();
   static JITImpl instance;
-  void markUnreachable(const JITInstructionFunction_t f);
+  bool invalidate(Core &c, uint32_t shiftedAddress);
   void compileBlock(Core &core, uint32_t address);
 };
 
 JITImpl JITImpl::instance;
+
+JITImpl::~JITImpl()
+{
+  for (std::map<uint32_t,JITFunctionInfo*>::iterator it = jitFunctionMap.begin(),
+       e = jitFunctionMap.end(); it != e; ++it) {
+    delete it->second;
+  }
+}
 
 void JITImpl::init()
 {
@@ -117,15 +144,18 @@ getInstruction(Core &core, uint32_t address, InstructionOpcode &opc,
 
 void JITImpl::reclaimUnreachableFunctions()
 {
-  for (std::vector<JITInstructionFunction_t>::iterator it = unreachableFunctions.begin(),
+  for (std::vector<uint32_t>::iterator it = unreachableFunctions.begin(),
        e = unreachableFunctions.end(); it != e; ++it) {
-    std::map<JITInstructionFunction_t,LLVMValueRef>::iterator entry =
-      functionPtrMap.find(*it);
-    if (entry == functionPtrMap.end())
+    std::map<uint32_t,JITFunctionInfo*>::iterator entry =
+      jitFunctionMap.find(*it);
+    if (entry == jitFunctionMap.end())
       continue;
-    LLVMFreeMachineCodeForFunction(executionEngine, entry->second);
-    LLVMDeleteFunction(entry->second);
-    functionPtrMap.erase(entry);
+    LLVMValueRef value = entry->second->value;
+    LLVMFreeMachineCodeForFunction(executionEngine, value);
+    LLVMReplaceAllUsesWith(value, LLVMGetUndef(LLVMTypeOf(value)));
+    LLVMDeleteFunction(value);
+    delete entry->second;
+    jitFunctionMap.erase(entry);
   }
   unreachableFunctions.clear();
 }
@@ -174,17 +204,108 @@ void JITImpl::compileBlock(Core &core, uint32_t address)
   init();
   if (!unreachableFunctions.empty())
     reclaimUnreachableFunctions();
-  if (functionPtrMap.count(core.opcode[address >> 1]) != 0)
-    return;
   bool endOfBlock;
   uint32_t nextAddress;
-  JITInstructionFunction_t out;
   do {
-    if (compileOneFragment(core, address, out, endOfBlock, nextAddress)) {
-      core.opcode[address >> 1] = out;
-    }
+    compileOneFragment(core, address, endOfBlock, nextAddress);
     address = nextAddress;
   } while (!endOfBlock);
+}
+
+static bool
+getSuccessors(InstructionOpcode &opc, Operands &operands,
+              uint32_t shiftedNextAddress, std::set<uint32_t> &successors)
+{
+  switch (opc) {
+  default: return false;
+  case BRFT_ru6:
+  case BRFT_lru6:
+  case BRBT_ru6:
+  case BRBT_lru6:
+  case BRFF_ru6:
+  case BRFF_lru6:
+  case BRBF_ru6:
+  case BRBF_lru6:
+      assert(shiftedNextAddress != operands.ops[1]);
+    successors.insert(shiftedNextAddress);
+    successors.insert(operands.ops[1]);
+      return true;
+  case BRFU_u6:
+  case BRFU_lu6:
+  case BRBU_u6:
+  case BRBU_lu6:
+    successors.insert(operands.ops[0]);
+    return true;
+  case BLRF_u10:
+  case BLRF_lu10:
+  case BLRB_u10:
+  case BLRB_lu10:
+    successors.insert(operands.ops[0]);
+    return true;
+  }
+}
+
+JITFunctionInfo *JITImpl::getJITFunctionOrStubImpl(uint32_t shiftedAddress)
+{
+  JITFunctionInfo *&info = jitFunctionMap[shiftedAddress];
+  if (info)
+    return info;
+  LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
+  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
+  LLVMSetFunctionCallConv(f, LLVMFastCallConv);
+  LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
+  LLVMPositionBuilderAtEnd(builder, entryBB);
+  LLVMBuildRet(builder,
+               LLVMConstInt(LLVMGetReturnType(jitFunctionType),
+                            JIT_RETURN_CONTINUE, 0));
+  if (DEBUG_JIT) {
+    LLVMDumpValue(f);
+    LLVMVerifyFunction(f, LLVMAbortProcessAction);
+  }
+  JITInstructionFunction_t code =
+    reinterpret_cast<JITInstructionFunction_t>(
+     LLVMGetPointerToGlobal(executionEngine, f));
+  info = new JITFunctionInfo(shiftedAddress, f, code, true);
+  LLVMPositionBuilderAtEnd(builder, savedInsertPoint);
+  return info;
+}
+
+LLVMValueRef JITImpl::
+getJITFunctionOrStub(uint32_t shiftedAddress, JITFunctionInfo *caller)
+{
+  JITFunctionInfo *info = getJITFunctionOrStubImpl(shiftedAddress);
+  info->references.insert(caller);
+  return info->value;
+}
+
+bool JITImpl::
+emitJumpToNextFragment(InstructionOpcode &opc, Operands &operands,
+                       uint32_t shiftedNextAddress, JITFunctionInfo *caller)
+{
+  std::set<uint32_t> successors;
+  if (!getSuccessors(opc, operands, shiftedNextAddress, successors))
+    return false;
+  // TODO conditional branches.
+  if (successors.size() != 1)
+    return false;
+  LLVMValueRef next = getJITFunctionOrStub(*successors.begin(), caller);
+  LLVMValueRef args[] = {
+    threadParam
+  };
+  LLVMValueRef call = LLVMBuildCall(builder, next, args, 1, "");
+  LLVMSetTailCall(call, true);
+  LLVMSetInstructionCallConv(call, LLVMFastCallConv);
+  LLVMBuildRet(builder, call);
+  return true;
+}
+
+static void deleteFunctionBody(LLVMValueRef f)
+{
+  LLVMBasicBlockRef bb = LLVMGetFirstBasicBlock(f);
+  while (bb) {
+    LLVMDeleteBasicBlock(bb);
+    bb = LLVMGetFirstBasicBlock(f);
+  }
 }
 
 /// Try and compile a fragment starting at the specified address. Returns
@@ -193,11 +314,23 @@ void JITImpl::compileBlock(Core &core, uint32_t address)
 /// address after the current function. \a endOfBlock is set to true if the
 /// next address is in a new basic block.
 bool JITImpl::
-compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
+compileOneFragment(Core &core, uint32_t startAddress,
                    bool &endOfBlock, uint32_t &nextAddress)
 {
   assert(initialized);
   resetPerFunctionState();
+
+  uint32_t address = startAddress;
+
+  std::map<uint32_t,JITFunctionInfo*>::iterator infoIt =
+    jitFunctionMap.find(startAddress >> 1);
+  JITFunctionInfo *info =
+    (infoIt == jitFunctionMap.end()) ? 0 : infoIt->second;
+  if (info && !info->isStub) {
+    endOfBlock = true;
+    return false;
+  }
+
   endOfBlock = false;
   nextAddress = address;
 
@@ -219,8 +352,19 @@ compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
   if (!properties->function) {
     return false;
   }
-  // Create function to contain the code we are about to add.
-  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
+  LLVMValueRef f;
+  if (info) {
+    f = info->value;
+    info->func = 0;
+    info->isStub = false;
+    deleteFunctionBody(f);
+  } else {
+    info = new JITFunctionInfo(address >> 1);
+    jitFunctionMap.insert(std::make_pair(address >> 1, info));
+    // Create function to contain the code we are about to add.
+    info->value = f = LLVMAddFunction(module, "", jitFunctionType);
+    LLVMSetFunctionCallConv(f, LLVMFastCallConv);
+  }
   threadParam = LLVMGetParam(f, 0);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
@@ -231,7 +375,7 @@ compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
     assert(callee && "Function for instruction not found in module");
     LLVMTypeRef calleeType = LLVMGetElementType(LLVMTypeOf(callee));
     unsigned numArgs = properties->numExplicitOperands + 2;
-    unsigned nextAddress = address + properties->size;
+    nextAddress = address + properties->size;
     assert(LLVMCountParamTypes(calleeType) == numArgs);
     LLVMTypeRef paramTypes[8];
     assert(numArgs <= 8);
@@ -278,10 +422,15 @@ compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
     if (properties->mayBranch())
       endOfBlock = true;
   } while (properties->function);
-  // Build return.
-  LLVMBuildRet(builder,
-               LLVMConstInt(LLVMGetReturnType(jitFunctionType),
-                            JIT_RETURN_CONTINUE, 0));
+  if (properties->mayBranch() && properties->function &&
+      emitJumpToNextFragment(opc, operands, nextAddress >> 1, info)) {
+    // Nothing
+  } else {
+    // Build return.
+    LLVMBuildRet(builder,
+                 LLVMConstInt(LLVMGetReturnType(jitFunctionType),
+                              JIT_RETURN_CONTINUE, 0));
+  }
   // Add incoming phi values.
   if (earlyReturnBB) {
     LLVMAddIncoming(earlyReturnPhi, &earlyReturnIncomingValues[0],
@@ -299,16 +448,64 @@ compileOneFragment(Core &core, uint32_t address, JITInstructionFunction_t &out,
   }
   LLVMRunFunctionPassManager(FPM, f);
   // Compile.
-  out = reinterpret_cast<JITInstructionFunction_t>(
-                                                   LLVMGetPointerToGlobal(executionEngine, f));
-  functionPtrMap.insert(std::make_pair(out, f));
+  JITInstructionFunction_t compiledFunction =
+    reinterpret_cast<JITInstructionFunction_t>(
+      LLVMRecompileAndRelinkFunction(executionEngine, f));
+  info->isStub = false;
+  info->func = compiledFunction;
+  core.opcode[startAddress >> 1] = getFunctionThunk(*info);
   return true;
 }
 
-void JITImpl::markUnreachable(const JITInstructionFunction_t f)
+JITInstructionFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)
 {
-  assert(initialized);
-  unreachableFunctions.push_back(f);
+  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
+  LLVMValueRef thread = LLVMGetParam(f, 0);
+  LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
+  LLVMPositionBuilderAtEnd(builder, entryBB);
+  LLVMValueRef args[] = {
+    thread
+  };
+  LLVMValueRef call = LLVMBuildCall(builder, info.value, args, 1, "");
+  LLVMSetTailCall(call, true);
+  LLVMSetInstructionCallConv(call, LLVMFastCallConv);
+  LLVMBuildRet(builder, call);
+  if (DEBUG_JIT) {
+    LLVMDumpValue(f);
+    LLVMVerifyFunction(f, LLVMAbortProcessAction);
+  }
+  return reinterpret_cast<JITInstructionFunction_t>(
+    LLVMGetPointerToGlobal(executionEngine, f));
+}
+
+bool JITImpl::invalidate(Core &core, uint32_t shiftedAddress)
+{
+  std::map<uint32_t,JITFunctionInfo*>::iterator entry =
+    jitFunctionMap.find(shiftedAddress);
+  if (entry == jitFunctionMap.end())
+    return false;
+
+  std::vector<JITFunctionInfo*> worklist;
+  std::set<JITFunctionInfo*> toInvalidate;
+  worklist.push_back(entry->second);
+  toInvalidate.insert(entry->second);
+  do {
+    JITFunctionInfo *info = worklist.back();
+    worklist.pop_back();
+    for (std::set<JITFunctionInfo*>::iterator it = info->references.begin(),
+         e = info->references.end(); it != e; ++it) {
+      if (!toInvalidate.insert(*it).second)
+        continue;
+      worklist.push_back(*it);
+    }
+  } while (!worklist.empty());
+  for (std::set<JITFunctionInfo*>::iterator it = toInvalidate.begin(),
+       e = toInvalidate.end(); it != e; ++it) {
+    uint32_t shiftedAddress = (*it)->shiftedAddress;
+    core.opcode[shiftedAddress] = core.getDecodeOpcode();
+    unreachableFunctions.push_back(shiftedAddress);
+  }
+  return true;
 }
 
 void JIT::compileBlock(Core &core, uint32_t address)
@@ -316,7 +513,7 @@ void JIT::compileBlock(Core &core, uint32_t address)
   return JITImpl::instance.compileBlock(core, address);
 }
 
-void JIT::markUnreachable(const JITInstructionFunction_t f)
+bool JIT::invalidate(Core &core, uint32_t shiftedAddress)
 {
-  JITImpl::instance.markUnreachable(f);
+  return JITImpl::instance.invalidate(core, shiftedAddress);
 }

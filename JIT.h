@@ -14,7 +14,7 @@ class Core;
 
 namespace JIT {
   void compileBlock(Core &c, uint32_t address);
-  void markUnreachable(const JITInstructionFunction_t f);
+  bool invalidate(Core &c, uint32_t shiftedAddress);
 };
 
 #endif // _JIT_h_
