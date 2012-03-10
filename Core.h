@@ -41,7 +41,8 @@ enum ProcessorState {
 class Core {
 public:
   enum {
-    ILLEGAL_PC_THREAD_ADDR_OFFSET = 4
+    RUN_JIT_ADDR_OFFSET = 2,
+    ILLEGAL_PC_THREAD_ADDR_OFFSET = 3
   };
   enum {
     INVALIDATE_NONE,
@@ -94,8 +95,6 @@ private:
     invalidateSlowPath(address >> 1);
     return true;
   }
-
-  void runJIT(uint32_t shiftedAddress);
 public:
   // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
   // pseudo instruction just past the end of memory. This saves
@@ -123,15 +122,23 @@ public:
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-                 OPCODE_TYPE exception);
+                 OPCODE_TYPE exception, OPCODE_TYPE runJit);
 
   OPCODE_TYPE getDecodeOpcode() const { return decodeOpcode; }
 
-  void updateExecutionFrequency(uint32_t shiftedAddress) {
-    const executionFrequency_t threshold = 20;
+  void runJIT(uint32_t shiftedAddress);
+
+  bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
+    const executionFrequency_t threshold = 50;
     if (++executionFrequency[shiftedAddress] > threshold) {
-      runJIT(shiftedAddress);
+      return true;
     }
+    return false;
+  }
+
+  void updateExecutionFrequency(uint32_t shiftedAddress) {
+    if (updateExecutionFrequencyFromStub(shiftedAddress))
+      runJIT(shiftedAddress);
   }
 
   uint32_t targetPc(unsigned pc) const
@@ -238,6 +245,10 @@ public:
 
   bool getLocalChanendDest(ResourceID ID, ChanEndpoint *&result);
   ChanEndpoint *getChanendDest(ResourceID ID);
+
+  unsigned getRunJitAddr() const {
+    return ((ram_size >> 1) - 1) + RUN_JIT_ADDR_OFFSET;
+  }
 
   unsigned getIllegalPCThreadAddr() const {
     return ((ram_size >> 1) - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;

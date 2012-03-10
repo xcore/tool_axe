@@ -25,6 +25,14 @@ extern "C" uint32_t jitGetPc(Thread &t) {
   return t.pc;
 }
 
+extern "C" JITReturn jitStubImpl(Thread &t) {
+  if (t.getParent().updateExecutionFrequencyFromStub(t.pc)) {
+    t.pendingPc = t.pc;
+    t.pc = t.getParent().getRunJitAddr();
+  }
+  return JIT_RETURN_END_TRACE;
+}
+
 #define THREAD thread
 #define CORE THREAD.getParent()
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);

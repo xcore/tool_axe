@@ -684,13 +684,13 @@ void FunctionCodeEmitter::emitRegWriteBack()
 
 void FunctionCodeEmitter::emitUpdateExecutionFrequency()
 {
-  if (!jit)
-    std::cout << "if (!tracing) {\n";
+  if (jit)
+    return;
+  std::cout << "if (!tracing) {\n";
   if (inst->getMayBranch()) {
     std::cout << "CORE.updateExecutionFrequency(THREAD.pc);\n";
   }
-  if (!jit)
-    std::cout << "}\n";
+  std::cout << "}\n";
 }
 
 void FunctionCodeEmitter::emitCheckEvents() const
@@ -2721,6 +2721,7 @@ void add()
   pseudoInst("EXCEPTION", "",
              "SyscallHandler::doException(THREAD);\n"
              "throw (ExitException(1));\n");
+  pseudoInst("RUN_JIT", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
 }
 

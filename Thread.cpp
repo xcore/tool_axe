@@ -318,6 +318,13 @@ JITReturn Instruction_TSETMR_2r(Thread &thread) {
 }
 
 template<bool tracing>
+JITReturn Instruction_RUN_JIT(Thread &thread) {
+  CORE.runJIT(THREAD.pendingPc);
+  THREAD.pc = THREAD.pendingPc;
+  return JIT_RETURN_END_TRACE;
+}
+
+template<bool tracing>
 JITReturn Instruction_DECODE(Thread &thread) {
   InstructionOpcode opc;
   instructionDecode(CORE, THREAD.pc, opc, CORE.operands[THREAD.pc]);
@@ -362,11 +369,12 @@ void Thread::run(ticks_t time)
 template<bool tracing>
 void initInstructionCacheAux(Core &c)
 {
-  c.initCache(&Instruction_DECODE<tracing> ,
-              &Instruction_ILLEGAL_PC<tracing> ,
-              &Instruction_ILLEGAL_PC_THREAD<tracing> ,
-              &Instruction_SYSCALL<tracing> ,
-              &Instruction_EXCEPTION<tracing>);
+  c.initCache(&Instruction_DECODE<tracing>,
+              &Instruction_ILLEGAL_PC<tracing>,
+              &Instruction_ILLEGAL_PC_THREAD<tracing>,
+              &Instruction_SYSCALL<tracing>,
+              &Instruction_EXCEPTION<tracing>,
+              &Instruction_RUN_JIT<tracing>);
 }
 
 void initInstructionCache(Core &c)

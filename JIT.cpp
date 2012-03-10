@@ -45,6 +45,7 @@ class JITImpl {
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
+  LLVMValueRef jitStubImplFunction;
   LLVMValueRef jitGetPcFunction;
   LLVMPassManagerRef FPM;
   std::vector<uint32_t> unreachableFunctions;
@@ -115,6 +116,8 @@ void JITImpl::init()
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
+  jitStubImplFunction = LLVMGetNamedFunction(module, "jitStubImpl");
+  assert(jitStubImplFunction && "jitStubImpl() not found in module");
   jitGetPcFunction = LLVMGetNamedFunction(module, "jitGetPc");
   assert(jitGetPcFunction && "jitGetPc() not found in module");
   FPM = LLVMCreateFunctionPassManagerForModule(module);
@@ -262,9 +265,12 @@ JITFunctionInfo *JITImpl::getJITFunctionOrStubImpl(uint32_t shiftedAddress)
   LLVMSetFunctionCallConv(f, LLVMFastCallConv);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
-  LLVMBuildRet(builder,
-               LLVMConstInt(LLVMGetReturnType(jitFunctionType),
-                            JIT_RETURN_CONTINUE, 0));
+  LLVMValueRef args[] = {
+    LLVMGetParam(f, 0)
+  };
+  LLVMValueRef call =
+    LLVMBuildCall(builder, jitStubImplFunction, args, 1, "");
+  LLVMBuildRet(builder, call);
   if (DEBUG_JIT) {
     LLVMDumpValue(f);
     LLVMVerifyFunction(f, LLVMAbortProcessAction);
