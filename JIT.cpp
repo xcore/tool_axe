@@ -45,6 +45,7 @@ class JITImpl {
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
+  LLVMValueRef jitGetPcFunction;
   LLVMPassManagerRef FPM;
   std::vector<uint32_t> unreachableFunctions;
   std::vector<LLVMValueRef> earlyReturnIncomingValues;
@@ -54,6 +55,7 @@ class JITImpl {
   LLVMValueRef threadParam;
   LLVMBasicBlockRef earlyReturnBB;
   LLVMValueRef earlyReturnPhi;
+  std::vector<LLVMValueRef> calls;
 
   void init();
   void resetPerFunctionState();
@@ -66,6 +68,7 @@ class JITImpl {
                                     JITFunctionInfo *caller);
   bool compileOneFragment(Core &core, uint32_t address, bool &endOfBlock,
                           uint32_t &nextAddress);
+  void emitJumpToNextFragment(uint32_t targetPc, JITFunctionInfo *caller);
   bool emitJumpToNextFragment(InstructionOpcode &opc, Operands &operands,
                               uint32_t shiftedNextAddress,
                               JITFunctionInfo *caller);
@@ -112,12 +115,15 @@ void JITImpl::init()
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
+  jitGetPcFunction = LLVMGetNamedFunction(module, "jitGetPc");
+  assert(jitGetPcFunction && "jitGetPc() not found in module");
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
   LLVMAddBasicAliasAnalysisPass(FPM);
   LLVMAddGVNPass(FPM);
   LLVMAddDeadStoreEliminationPass(FPM);
   LLVMAddInstructionCombiningPass(FPM);
+  LLVMAddJumpThreadingPass(FPM);
   LLVMAddCFGSimplificationPass(FPM);
   LLVMExtraAddDeadCodeEliminationPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
@@ -130,6 +136,7 @@ void JITImpl::resetPerFunctionState()
   earlyReturnBB = 0;
   earlyReturnIncomingValues.clear();
   earlyReturnIncomingBlocks.clear();
+  calls.clear();
 }
 
 static bool
@@ -278,17 +285,17 @@ getJITFunctionOrStub(uint32_t shiftedAddress, JITFunctionInfo *caller)
   return info->value;
 }
 
-bool JITImpl::
-emitJumpToNextFragment(InstructionOpcode &opc, Operands &operands,
-                       uint32_t shiftedNextAddress, JITFunctionInfo *caller)
+LLVMBasicBlockRef
+appendBBToCurrentFunction(LLVMBuilderRef builder, const char *name)
 {
-  std::set<uint32_t> successors;
-  if (!getSuccessors(opc, operands, shiftedNextAddress, successors))
-    return false;
-  // TODO conditional branches.
-  if (successors.size() != 1)
-    return false;
-  LLVMValueRef next = getJITFunctionOrStub(*successors.begin(), caller);
+  LLVMBasicBlockRef currentBB = LLVMGetInsertBlock(builder);
+  LLVMValueRef function = LLVMGetBasicBlockParent(currentBB);
+  return LLVMAppendBasicBlock(function, name);
+}
+
+void JITImpl::emitJumpToNextFragment(uint32_t targetPc, JITFunctionInfo *caller)
+{
+  LLVMValueRef next = getJITFunctionOrStub(targetPc, caller);
   LLVMValueRef args[] = {
     threadParam
   };
@@ -296,6 +303,39 @@ emitJumpToNextFragment(InstructionOpcode &opc, Operands &operands,
   LLVMSetTailCall(call, true);
   LLVMSetInstructionCallConv(call, LLVMFastCallConv);
   LLVMBuildRet(builder, call);
+}
+
+bool JITImpl::
+emitJumpToNextFragment(InstructionOpcode &opc, Operands &operands,
+                       uint32_t shiftedNextAddress, JITFunctionInfo *caller)
+{
+  std::set<uint32_t> successors;
+  if (!getSuccessors(opc, operands, shiftedNextAddress, successors))
+    return false;
+  unsigned numSuccessors = successors.size();
+  if (numSuccessors == 0)
+    return false;
+  std::set<uint32_t>::iterator it = successors.begin();
+  ++it;
+  if (it != successors.end()) {
+    LLVMValueRef args[] = {
+      threadParam
+    };
+    LLVMValueRef nextPc = LLVMBuildCall(builder, jitGetPcFunction, args, 1, "");
+    calls.push_back(nextPc);
+    for (;it != successors.end(); ++it) {
+      LLVMValueRef cmp =
+        LLVMBuildICmp(builder, LLVMIntEQ, nextPc,
+                      LLVMConstInt(LLVMTypeOf(nextPc), *it, false), "");
+      LLVMBasicBlockRef trueBB = appendBBToCurrentFunction(builder, "");
+      LLVMBasicBlockRef afterBB = appendBBToCurrentFunction(builder, "");
+      LLVMBuildCondBr(builder, cmp, trueBB, afterBB);
+      LLVMPositionBuilderAtEnd(builder, trueBB);
+      emitJumpToNextFragment(*it, caller);
+      LLVMPositionBuilderAtEnd(builder, afterBB);
+    }
+  }
+  emitJumpToNextFragment(*successors.begin(), caller);
   return true;
 }
 
@@ -368,7 +408,6 @@ compileOneFragment(Core &core, uint32_t startAddress,
   threadParam = LLVMGetParam(f, 0);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
-  std::vector<LLVMValueRef> calls;
   do {
     // Lookup function to call.
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);

@@ -21,6 +21,10 @@ extern "C" JITReturn jitInstructionTemplate(Thread &t) {
   return JIT_RETURN_CONTINUE;
 }
 
+extern "C" uint32_t jitGetPc(Thread &t) {
+  return t.pc;
+}
+
 #define THREAD thread
 #define CORE THREAD.getParent()
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
