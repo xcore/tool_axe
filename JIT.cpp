@@ -107,7 +107,7 @@ void JITImpl::init()
     std::abort();
   }
   // TODO experiment with opt level.
-  if (LLVMCreateJITCompilerForModule(&executionEngine, module, 2,
+  if (LLVMCreateJITCompilerForModule(&executionEngine, module, 1,
                                       &outMessage)) {
     std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
     std::abort();
@@ -123,12 +123,12 @@ void JITImpl::init()
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
   LLVMAddBasicAliasAnalysisPass(FPM);
+  LLVMAddJumpThreadingPass(FPM);
   LLVMAddGVNPass(FPM);
-  LLVMAddDeadStoreEliminationPass(FPM);
-  LLVMAddInstructionCombiningPass(FPM);
   LLVMAddJumpThreadingPass(FPM);
   LLVMAddCFGSimplificationPass(FPM);
-  LLVMExtraAddDeadCodeEliminationPass(FPM);
+  LLVMAddDeadStoreEliminationPass(FPM);
+  LLVMAddInstructionCombiningPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
   if (DEBUG_JIT) {
     LLVMExtraRegisterJitDisassembler(executionEngine, LLVMGetTarget(module));
@@ -392,11 +392,6 @@ compileOneFragment(Core &core, uint32_t startAddress,
   instructionTransform(opc, operands, core, address >> 1);
   InstructionProperties *properties = &instructionProperties[opc];
   nextAddress = address + properties->size;
-  // There isn't much point JITing a single instruction.
-  if (properties->mayBranch()) {
-    endOfBlock = true;
-    return false;
-  }
   // Check if we can JIT the instruction.
   if (!properties->function) {
     return false;
@@ -495,6 +490,9 @@ compileOneFragment(Core &core, uint32_t startAddress,
     LLVMExtraInlineFunction(*it);
   }
   LLVMRunFunctionPassManager(FPM, f);
+  if (DEBUG_JIT) {
+    LLVMDumpValue(f);
+  }
   // Compile.
   JITInstructionFunction_t compiledFunction =
     reinterpret_cast<JITInstructionFunction_t>(

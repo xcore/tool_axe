@@ -129,7 +129,7 @@ public:
   void runJIT(uint32_t shiftedAddress);
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
-    const executionFrequency_t threshold = 50;
+    const executionFrequency_t threshold = 128;
     if (++executionFrequency[shiftedAddress] > threshold) {
       return true;
     }
