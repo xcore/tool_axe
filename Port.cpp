@@ -4,6 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "Resource.h"
+#include "ClockBlock.h"
 #include "Core.h"
 #include "PortNames.h"
 #include <algorithm>
@@ -713,6 +714,13 @@ bool Port::checkTransferWidth(uint32_t value)
   case 32:
     return true;
   }
+}
+
+void Port::setClkInitial(ClockBlock *c) {
+  clock = c;
+  clock->attachPort(this);
+  portCounter = 0;
+  seeClockChange(time);
 }
 
 void Port::setClk(Thread &thread, ClockBlock *c, ticks_t time)

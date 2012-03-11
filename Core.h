@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -6,18 +6,14 @@
 #ifndef _Core_h_
 #define _Core_h_
 
-#include <stdint.h>
-#include <ostream>
-#include <algorithm>
+#include "Config.h"
 #include <iterator>
 #include <cstring>
-#include <cstdlib>
-#include "BitManip.h"
-#include "Config.h"
 #include "Resource.h"
 #include "Thread.h"
 #include "Port.h"
 #include "Instruction.h"
+#include "BitManip.h"
 #include <string>
 #include <climits>
 
@@ -217,20 +213,7 @@ public:
     return invalidateByte(address);
   }
 
-  Resource *allocResource(Thread &current, ResourceType type)
-  {
-    if (type > LAST_STD_RES_TYPE || !allocatable[type])
-      return 0;
-    for (unsigned i = 0; i < resourceNum[type]; i++) {
-      if (!resource[type][i]->isInUse()) {
-        bool allocated = resource[type][i]->alloc(current);
-        assert(allocated);
-        (void)allocated; // Silence compiler.
-        return resource[type][i];
-      }
-    }
-    return 0;
-  }
+  Resource *allocResource(Thread &current, ResourceType type);
 
   Thread *allocThread(Thread &current)
   {

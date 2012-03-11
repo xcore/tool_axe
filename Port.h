@@ -7,7 +7,6 @@
 #define _Port_h_
 
 #include "Resource.h"
-#include "ClockBlock.h"
 #include "BitManip.h"
 #include "PortInterface.h"
 #include <stdint.h>
@@ -190,12 +189,7 @@ public:
     return makeMask(getPortWidth());
   }
 
-  void setClkInitial(ClockBlock *c) {
-    clock = c;
-    clock->attachPort(this);
-    portCounter = 0;
-    seeClockChange(time);
-  }
+  void setClkInitial(ClockBlock *c);
 
   void setClk(Thread &thread, ClockBlock *c, ticks_t time);
 

@@ -18,6 +18,10 @@ class EventableResource;
 class SystemState;
 class Node;
 
+inline std::ostream &operator<<(std::ostream &out, const Register &r) {
+  return out << getRegisterName(r);
+}
+
 class SrcRegister {
   Register reg;
 public:

@@ -10,6 +10,8 @@
 #include "Trace.h"
 #include "Synchroniser.h"
 #include "Chanend.h"
+#include "ClockBlock.h"
+#include <cstdlib>
 
 uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
 {

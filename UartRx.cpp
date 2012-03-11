@@ -15,6 +15,7 @@
 #include "Node.h"
 #include "Core.h"
 #include <iostream>
+#include <cstdlib>
 
 const unsigned DEFAULT_BIT_RATE = 115200;
 

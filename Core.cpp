@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-12, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -162,6 +162,21 @@ void Core::dumpPaused() const
     }
     std::cout << "\n";
   }
+}
+
+Resource *Core::allocResource(Thread &current, ResourceType type)
+{
+  if (type > LAST_STD_RES_TYPE || !allocatable[type])
+    return 0;
+  for (unsigned i = 0; i < resourceNum[type]; i++) {
+    if (!resource[type][i]->isInUse()) {
+      bool allocated = resource[type][i]->alloc(current);
+      assert(allocated);
+      (void)allocated; // Silence compiler.
+      return resource[type][i];
+    }
+  }
+  return 0;
 }
 
 const Port *Core::getPortByID(ResourceID ID) const

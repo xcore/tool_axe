@@ -1,4 +1,4 @@
-// Copyright (c) 2011-12, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -16,8 +16,10 @@
 #include "InstructionHelpers.h"
 #include "Synchroniser.h"
 #include "Chanend.h"
+#include "ClockBlock.h"
 #include "InstructionProperties.h"
 #include <iostream>
+#include <cstdlib>
 
 const char *registerNames[] = {
   "r0",

@@ -36,6 +36,7 @@ add_executable(axe
   Core.cpp
   Runnable.h
   RunnableQueue.h
+  RunnableQueue.cpp
   Thread.h
   Thread.cpp
   SyscallHandler.h

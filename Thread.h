@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-12, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -7,7 +7,6 @@
 #define _Thread_h_
 
 #include <stdint.h>
-#include <ostream>
 #include <bitset>
 #include "Runnable.h"
 #include "RunnableQueue.h"
@@ -56,11 +55,6 @@ inline const char *getRegisterName(unsigned RegNum) {
     return registerNames[RegNum];
   }
   return "?";
-}
-
-inline std::ostream &operator<<(std::ostream &out, const Register &r)
-{
-  return out << getRegisterName(r);
 }
 
 class EventableResourceIterator :
