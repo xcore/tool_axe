@@ -11,35 +11,32 @@
 
 class RunnableQueue {
 private:
-  class Sentinel : public Runnable {
-  public:
-    Sentinel() : Runnable() {}
-    void run(ticks_t) {
-      assert(0 && "Unimplemented\n");
-    }
-  };
-  Sentinel head;
+  Runnable *head;
   bool contains(Runnable &thread) const
   {
-    return thread.prev != 0;
+    return thread.prev != 0 || &thread == head;
   }
 public:
-  RunnableQueue() {}
+  RunnableQueue() : head(0) {}
   
   Runnable &front() const
   {
-    return *head.next;
+    return *head;
   }
   
   bool empty() const
   {
-    return !head.next;
+    return !head;
   }
   
   void remove(Runnable &thread)
   {
     assert(contains(thread));
-    thread.prev->next = thread.next;
+    if (&thread == head) {
+      head = thread.next;
+    } else {
+      thread.prev->next = thread.next;
+    }
     if (thread.next)
       thread.next->prev = thread.prev;
     thread.prev = 0;
@@ -52,20 +49,32 @@ public:
       remove(thread);
     }
     thread.wakeUpTime = time;
-    Runnable *p = &head;
-    while (p->next && time >= p->next->wakeUpTime)
-      p = p->next;
-    thread.prev = p;
-    thread.next = p->next;
-    if (p->next)
-      p->next->prev = &thread;
-    p->next = &thread;
+    if (!head) {
+      thread.next = 0;
+      head = &thread;
+    } else if (time < head->wakeUpTime) {
+      head->prev = &thread;
+      thread.next = head;
+      head = &thread;
+    } else {
+      Runnable *p = head;
+      while (p->next && time >= p->next->wakeUpTime)
+        p = p->next;
+      thread.prev = p;
+      thread.next = p->next;
+      if (p->next)
+        p->next->prev = &thread;
+      p->next = &thread;
+    }
   }
   
   void pop()
   {
-    assert(head.next);
-    remove(*head.next);
+    assert(!empty());
+    if (head->next) {
+      head->next->prev = 0;
+    }
+    head = head->next;
   }
 };
 
