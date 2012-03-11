@@ -122,6 +122,11 @@ add_executable(axe
   ${AXE_BINARY_DIR}/InstructionBitcode.inc
   )
 
+if (COMPILER_IS_GCC_COMPATIBLE)
+  set_source_files_properties(LLVMExtra.cpp PROPERTIES
+                              COMPILE_FLAGS "-fno-rtti")
+endif()
+
 include_directories(${AXE_SOURCE_DIR}/thirdparty/boost)
 # make sure cmake addes the binary directory for the project to the include path
 include_directories(${AXE_BINARY_DIR})

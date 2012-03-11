@@ -7,6 +7,7 @@
 #define _LLVMExtra_h_
 
 #include "llvm-c/Core.h"
+#include "llvm-c/ExecutionEngine.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,6 +18,9 @@ LLVMExtraCreateMemoryBufferWithPtr(const char *ptr, size_t length);
 LLVMBool LLVMExtraInlineFunction(LLVMValueRef call);
 
 void LLVMExtraAddDeadCodeEliminationPass(LLVMPassManagerRef PM);
+
+void LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
+                                      const char *triple);
 
 #ifdef __cplusplus
 } // extern "C"

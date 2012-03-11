@@ -130,6 +130,9 @@ void JITImpl::init()
   LLVMAddCFGSimplificationPass(FPM);
   LLVMExtraAddDeadCodeEliminationPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
+  if (DEBUG_JIT) {
+    LLVMExtraRegisterJitDisassembler(executionEngine, LLVMGetTarget(module));
+  }
   initialized = true;
 }
 
