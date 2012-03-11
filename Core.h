@@ -75,8 +75,9 @@ private:
   void invalidateSlowPath(uint32_t shiftedAddress);
 
   bool invalidateWord(uint32_t address) {
-    if (invalidationInfo[address >> 1] == INVALIDATE_NONE &&
-        invalidationInfo[(address >> 1) + 1] == INVALIDATE_NONE)
+    uint16_t info;
+    std::memcpy(&info, &invalidationInfo[address >> 1], sizeof(info));
+    if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
       return false;
     invalidateWordSlowPath(address);
     return true;
