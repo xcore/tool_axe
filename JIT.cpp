@@ -230,7 +230,8 @@ getSuccessors(InstructionOpcode &opc, Operands &operands,
               uint32_t shiftedNextAddress, std::set<uint32_t> &successors)
 {
   switch (opc) {
-  default: return false;
+  default:
+    return false;
   case BRFT_ru6:
   case BRFT_lru6:
   case BRBT_ru6:
@@ -239,10 +240,9 @@ getSuccessors(InstructionOpcode &opc, Operands &operands,
   case BRFF_lru6:
   case BRBF_ru6:
   case BRBF_lru6:
-      assert(shiftedNextAddress != operands.ops[1]);
     successors.insert(shiftedNextAddress);
     successors.insert(operands.ops[1]);
-      return true;
+    return true;
   case BRFU_u6:
   case BRFU_lu6:
   case BRBU_u6:
@@ -254,6 +254,12 @@ getSuccessors(InstructionOpcode &opc, Operands &operands,
   case BLRB_u10:
   case BLRB_lu10:
     successors.insert(operands.ops[0]);
+    return true;
+  case LDAPB_u10:
+  case LDAPB_lu10:
+  case LDAPF_u10:
+  case LDAPF_lu10:
+    successors.insert(shiftedNextAddress);
     return true;
   }
 }
