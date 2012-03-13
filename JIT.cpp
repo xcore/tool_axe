@@ -47,6 +47,7 @@ class JITImpl {
   LLVMTypeRef jitFunctionType;
   LLVMValueRef jitStubImplFunction;
   LLVMValueRef jitGetPcFunction;
+  LLVMValueRef jitUpdateExecutionFrequencyFunction;
   LLVMPassManagerRef FPM;
   std::vector<uint32_t> unreachableFunctions;
   std::vector<LLVMValueRef> earlyReturnIncomingValues;
@@ -115,11 +116,15 @@ void JITImpl::init()
   builder = LLVMCreateBuilder();
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
-  jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
   jitStubImplFunction = LLVMGetNamedFunction(module, "jitStubImpl");
   assert(jitStubImplFunction && "jitStubImpl() not found in module");
   jitGetPcFunction = LLVMGetNamedFunction(module, "jitGetPc");
   assert(jitGetPcFunction && "jitGetPc() not found in module");
+  jitUpdateExecutionFrequencyFunction =
+    LLVMGetNamedFunction(module, "jitUpdateExecutionFrequency");
+  assert(jitUpdateExecutionFrequencyFunction &&
+         "jitUpdateExecutionFrequency() not found in module");
+  jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
   LLVMAddBasicAliasAnalysisPass(FPM);
@@ -475,6 +480,12 @@ compileOneFragment(Core &core, uint32_t startAddress,
       emitJumpToNextFragment(opc, operands, nextAddress >> 1, info)) {
     // Nothing
   } else {
+    LLVMValueRef args[] = {
+      threadParam
+    };
+    LLVMValueRef call =
+      LLVMBuildCall(builder, jitUpdateExecutionFrequencyFunction, args, 1, "");
+    calls.push_back(call);
     // Build return.
     LLVMBuildRet(builder,
                  LLVMConstInt(LLVMGetReturnType(jitFunctionType),

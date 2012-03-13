@@ -33,6 +33,10 @@ extern "C" JITReturn jitStubImpl(Thread &t) {
   return JIT_RETURN_END_TRACE;
 }
 
+extern "C" void jitUpdateExecutionFrequency(Thread &t) {
+  t.getParent().updateExecutionFrequency(t.pc);
+}
+
 #define THREAD thread
 #define CORE THREAD.getParent()
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
