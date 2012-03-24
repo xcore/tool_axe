@@ -11,17 +11,13 @@
 #include <cstring>
 #include <cctype>
 #include <cassert>
+#include "InstructionProperties.h"
 
 // TODO emit line markers.
 
-enum OpType {
-  in,
-  out,
-  inout,
-  imm
-};
+using namespace OperandProperties;
 
-enum Register {
+enum ImplicitOp {
   R0,
   R1,
   R2,
@@ -38,8 +34,8 @@ enum Register {
   DP,
   SP,
   LR,
-  ED,
   ET,
+  ED,
   KEP,
   KSP,
   SR,
@@ -48,34 +44,34 @@ enum Register {
   SSR
 };
 
-const char *getRegisterName(Register reg) {
+const char *getImplicitOpName(ImplicitOp reg) {
   switch (reg) {
   default:
     assert(0 && "Unexpected register");
     return "?";
-  case R0: return "R0";
-  case R1: return "R1";
-  case R2: return "R2";
-  case R3: return "R3";
-  case R4: return "R4";
-  case R5: return "R5";
-  case R6: return "R6";
-  case R7: return "R7";
-  case R8: return "R8";
-  case R9: return "R9";
-  case R10: return "R10";
-  case R11: return "R11";
-  case CP: return "CP";
-  case DP: return "DP";
-  case SP: return "SP";
-  case LR: return "LR";
-  case ET: return "ET";
-  case ED: return "ED";
-  case KEP: return "KEP";
-  case KSP: return "KSP";
-  case SPC: return "SPC";
-  case SED: return "SED";
-  case SSR: return "SSR";
+  case R0: return "Register::R0";
+  case R1: return "Register::R1";
+  case R2: return "Register::R2";
+  case R3: return "Register::R3";
+  case R4: return "Register::R4";
+  case R5: return "Register::R5";
+  case R6: return "Register::R6";
+  case R7: return "Register::R7";
+  case R8: return "Register::R8";
+  case R9: return "Register::R9";
+  case R10: return "Register::R10";
+  case R11: return "Register::R11";
+  case CP: return "Register::CP";
+  case DP: return "Register::DP";
+  case SP: return "Register::SP";
+  case LR: return "Register::LR";
+  case ET: return "Register::ET";
+  case ED: return "Register::ED";
+  case KEP: return "Register::KEP";
+  case KSP: return "Register::KSP";
+  case SPC: return "Register::SPC";
+  case SED: return "Register::SED";
+  case SSR: return "Register::SSR";
   }
 }
 
@@ -148,7 +144,7 @@ private:
   std::string name;
   unsigned size;
   std::vector<OpType> operands;
-  std::vector<Register> implicitOps;
+  std::vector<ImplicitOp> implicitOps;
   std::string format;
   std::string code;
   std::string transformStr;
@@ -198,10 +194,12 @@ public:
   const std::string &getName() const { return name; }
   unsigned getSize() const { return size; }
   const std::vector<OpType> &getOperands() const { return operands; }
+  unsigned getNumOperands() const { return operands.size(); }
+  unsigned getNumImplicitOperands() const { return implicitOps.size(); }
   unsigned getNumExplicitOperands() const {
     return operands.size() - implicitOps.size();
   }
-  const std::vector<Register> &getImplicitOps() const { return implicitOps; }
+  const std::vector<ImplicitOp> &getImplicitOps() const { return implicitOps; }
   const std::string &getFormat() const { return format; }
   const std::string &getCode() const { return code; }
   const std::string &getTransform() const { return transformStr; }
@@ -224,7 +222,7 @@ public:
   bool getMayPauseOn() const { return mayPauseOn; }
   bool getMayYield() const { return mayYield; }
   bool getMayDeschedule() const { return mayDeschedule; }
-  Instruction &addImplicitOp(Register reg, OpType type) {
+  Instruction &addImplicitOp(ImplicitOp reg, OpType type) {
     assert(type != imm);
     implicitOps.push_back(reg);
     operands.push_back(type);
@@ -293,7 +291,7 @@ class InstructionRefs {
   std::vector<Instruction*> refs;
 public:
   void add(Instruction *i) { refs.push_back(i); }
-  InstructionRefs &addImplicitOp(Register reg, OpType type);
+  InstructionRefs &addImplicitOp(ImplicitOp reg, OpType type);
   InstructionRefs &transform(const std::string &t, const std::string &rt);
   InstructionRefs &setCycles(unsigned value);
   InstructionRefs &setYieldBefore();
@@ -302,7 +300,7 @@ public:
 };
 
 InstructionRefs &InstructionRefs::
-addImplicitOp(Register reg, OpType type)
+addImplicitOp(ImplicitOp reg, OpType type)
 {
   for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
        it != e; ++it) {
@@ -439,11 +437,11 @@ std::string getEndLabel(const Instruction &instruction)
 }
 
 static bool
-isFixedRegister(const Instruction &inst, unsigned i, Register &value)
+isFixedRegister(const Instruction &inst, unsigned i, ImplicitOp &value)
 {
   const std::vector<OpType> &ops = inst.getOperands();
-  const std::vector<Register> &implicitOps = inst.getImplicitOps();
-  unsigned numExplicitOperands = ops.size() - implicitOps.size();
+  const std::vector<ImplicitOp> &implicitOps = inst.getImplicitOps();
+  unsigned numExplicitOperands = inst.getNumExplicitOperands();
   if (i < numExplicitOperands)
     return false;
   if (i >= ops.size()) {
@@ -458,9 +456,9 @@ isFixedRegister(const Instruction &inst, unsigned i, Register &value)
 static std::string
 getOperandName(const Instruction &inst, unsigned i)
 {
-  Register reg;
+  ImplicitOp reg;
   if (isFixedRegister(inst, i, reg)) {
-    return getRegisterName(reg);
+    return getImplicitOpName(reg);
   }
   std::ostringstream buf;
   const char *opMacro = inst.getOperands().size() > 3 ? "LOP" : "OP";
@@ -471,7 +469,7 @@ getOperandName(const Instruction &inst, unsigned i)
 static bool
 isSR(const Instruction &inst, unsigned i)
 {
-  Register value;
+  ImplicitOp value;
   if (!isFixedRegister(inst, i, value))
     return false;
   return value == SR;
@@ -689,7 +687,7 @@ void FunctionCodeEmitter::emitRegWriteBack()
         std::cout << "] = ";
         std::cout << "op" << i << ";\n";
         if (!jit && !inst->getFormat().empty()) {
-          std::cout << "TRACE_REG_WRITE((Register)" << getOperandName(*inst, i);
+          std::cout << "TRACE_REG_WRITE((Register::Reg)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
       }
@@ -995,9 +993,12 @@ scanFormatArgs(const char *format, Instruction &instruction,
           switch (operands[value]) {
           default: assert(0 && "Unexpected operand type");
           case out:
-            buf << "Register(" << getOperandName(instruction, value) << ')';
+            buf << "DestRegister(" << getOperandName(instruction, value) << ')';
             break;
           case in:
+            buf << "SrcDestRegister(" << getOperandName(instruction, value);
+            buf << ')';
+            break;
           case inout:
             buf << "SrcRegister(" << getOperandName(instruction, value) << ')';
             break;
@@ -1068,7 +1069,7 @@ static std::string getInstFunctionName(Instruction &inst)
   return "Instruction_" + inst.getName();
 }
 
-static std::string getOperandType(Instruction &inst, unsigned i)
+static std::string getOperandDeclarationType(Instruction &inst, unsigned i)
 {
   if (isSR(inst, i))
     return "Thread::sr_t";
@@ -1111,7 +1112,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
       std::cout << "UNUSED(";
       if (operands[i] == in)
         std::cout << "const ";
-      std::cout << getOperandType(inst, i) <<  " op" << i << ')';
+      std::cout << getOperandDeclarationType(inst, i) <<  " op" << i << ')';
       switch (operands[i]) {
       default:
         break;
@@ -1221,15 +1222,101 @@ static void emitInstFlags(Instruction &inst)
     std::cout << 0;
 }
 
+static bool isSpecialImplicitOperand(ImplicitOp reg)
+{
+  return reg == SR;
+}
+
+static unsigned getNumSpecialImplicitOperands(Instruction &inst)
+{
+  if (inst.getNumImplicitOperands() == 0)
+    return 0;
+  unsigned count = 0;
+  for (unsigned i = 0, e = inst.getNumImplicitOperands(); i != e; ++i) {
+    if (isSpecialImplicitOperand(inst.getImplicitOps()[i]))
+      count++;
+  }
+  return count;
+}
+
+static unsigned getNumImplicitOperandsIgnoreSpecial(Instruction &inst)
+{
+  return inst.getNumImplicitOperands() - getNumSpecialImplicitOperands(inst);
+}
+
+static unsigned getNumOperandsIgnoreSpecial(Instruction &inst)
+{
+  return inst.getNumOperands() - getNumSpecialImplicitOperands(inst);
+}
+
+static void emitInstPropertiesArrays(Instruction &inst)
+{
+  if (getNumOperandsIgnoreSpecial(inst) > 0) {
+    std::cout << "static OperandProperties::OpType";
+    std::cout << ' ' << getInstFunctionName(inst) << "_ops[] = {\n";
+    bool needComma = false;
+    for (unsigned i = 0, e = inst.getNumOperands(); i != e; ++i) {
+      ImplicitOp reg;
+      if (isFixedRegister(inst, i, reg) && isSpecialImplicitOperand(reg))
+        continue;
+      if (needComma)
+        std::cout << ",\n";
+      switch (inst.getOperands()[i]) {
+      default: assert(0 && "Unexpected operand type");
+      case in:
+        std::cout << "  OperandProperties::in";
+        break;
+      case out:
+        std::cout << "  OperandProperties::out";
+        break;
+      case inout:
+        std::cout << "  OperandProperties::inout";
+        break;
+      case imm:
+        std::cout << "  OperandProperties::imm";
+        break;
+      }
+      needComma = true;
+    }
+    std::cout << "\n};\n";
+  }
+  if (getNumImplicitOperandsIgnoreSpecial(inst) > 0) {
+    std::cout << "static Register::Reg";
+    std::cout << ' ' << getInstFunctionName(inst) << "_implicit_ops[] = {\n";
+    bool needComma = false;
+    for (unsigned i = 0, e = inst.getNumImplicitOperands(); i != e; ++i) {
+      ImplicitOp reg = inst.getImplicitOps()[i];
+      if (isSpecialImplicitOperand(reg))
+        continue;
+      if (needComma)
+        std::cout << ",\n";
+      std::cout << "  " << getImplicitOpName(reg);
+      needComma = true;
+    }
+    std::cout << "\n};\n";
+  }
+}
+
 static void emitInstProperties(Instruction &inst)
 {
+  unsigned numOps = getNumOperandsIgnoreSpecial(inst);
+  unsigned numImplicit = getNumImplicitOperandsIgnoreSpecial(inst);
   std::cout << "{ ";
   if (inst.getCustom())
     std::cout << '0';
   else
     std::cout << '"' << getInstFunctionName(inst) << '"';
+  if (numOps == 0)
+    std::cout << ", 0";
+  else
+    std::cout << ", " << getInstFunctionName(inst) << "_ops";
+  if (numImplicit == 0)
+    std::cout << ", 0";
+  else
+    std::cout << ", " << getInstFunctionName(inst) << "_implicit_ops";
   std::cout << ", " << inst.getSize();
-  std::cout << ", " << inst.getNumExplicitOperands();
+  std::cout << ", " << numOps;
+  std::cout << ", " << numImplicit;
   std::cout << ", ";
   emitInstFlags(inst);
   std::cout << " }";
@@ -1238,6 +1325,11 @@ static void emitInstProperties(Instruction &inst)
 static void emitInstProperties()
 {
   std::cout << "#ifdef EMIT_INSTRUCTION_PROPERTIES\n";
+  for (std::vector<Instruction*>::iterator it = instructions.begin(),
+       e = instructions.end(); it != e; ++it) {
+    emitInstPropertiesArrays(**it);
+  }
+  std::cout << "InstructionProperties instructionProperties[] = {\n";
   bool needComma = false;
   for (std::vector<Instruction*>::iterator it = instructions.begin(),
        e = instructions.end(); it != e; ++it) {
@@ -1246,7 +1338,7 @@ static void emitInstProperties()
     emitInstProperties(**it);
     needComma = true;
   }
-  std::cout << '\n';
+  std::cout << "\n};\n";
   std::cout << "#endif //EMIT_INSTRUCTION_PROPERTIES\n";
 }
 
@@ -1998,7 +2090,7 @@ void add()
           "ResourceID resID(%1);\n"
           "Thread *t = checkThread(CORE, resID);\n"
           "if (t && t->inSSync()) {\n"
-          "  t->reg(LR) = %0;\n"
+          "  t->reg(Register::LR) = %0;\n"
           "} else {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
           "}\n");
@@ -2098,7 +2190,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(DP) = %0;\n"
+         "  t->reg(Register::DP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2106,7 +2198,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(SP) = %0;\n"
+         "  t->reg(Register::SP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2114,7 +2206,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(CP) = %0;\n"
+         "  t->reg(Register::CP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");

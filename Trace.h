@@ -18,16 +18,32 @@ class EventableResource;
 class SystemState;
 class Node;
 
-inline std::ostream &operator<<(std::ostream &out, const Register &r) {
+inline std::ostream &operator<<(std::ostream &out, const Register::Reg &r) {
   return out << getRegisterName(r);
 }
 
 class SrcRegister {
-  Register reg;
+  Register::Reg reg;
 public:
-  SrcRegister(Register r) : reg(r) {}
-  SrcRegister(unsigned r) : reg((Register)r) {}
-  Register getRegister() const { return reg; }
+  SrcRegister(Register::Reg r) : reg(r) {}
+  SrcRegister(unsigned r) : reg((Register::Reg)r) {}
+  Register::Reg getRegister() const { return reg; }
+};
+
+class DestRegister {
+  Register::Reg reg;
+public:
+  DestRegister(Register::Reg r) : reg(r) {}
+  DestRegister(unsigned r) : reg((Register::Reg)r) {}
+  Register::Reg getRegister() const { return reg; }
+};
+
+class SrcDestRegister {
+  Register::Reg reg;
+public:
+  SrcDestRegister(Register::Reg r) : reg(r) {}
+  SrcDestRegister(unsigned r) : reg((Register::Reg)r) {}
+  Register::Reg getRegister() const { return reg; }
 };
 
 class CPRelOffset {
@@ -105,8 +121,9 @@ private:
     *line.buf << op;
   }
 
-  void printOperand(Register op);
   void printOperand(SrcRegister op);
+  void printOperand(DestRegister op);
+  void printOperand(SrcDestRegister op);
   void printOperand(CPRelOffset op);
   void printOperand(DPRelOffset op);
 
@@ -125,7 +142,7 @@ public:
     printInstructionStart(t);
     printOperand(op0);
   }
-  
+
   template<typename T0, typename T1>
   void trace(const Thread &t, T0 op0, T1 op1)
   {
@@ -133,7 +150,7 @@ public:
     printOperand(op0);
     printOperand(op1);
   }
-  
+
   template<typename T0, typename T1, typename T2>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2)
   {
@@ -142,7 +159,7 @@ public:
     printOperand(op1);
     printOperand(op2);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2,
              T3 op3)
@@ -153,7 +170,7 @@ public:
     printOperand(op2);
     printOperand(op3);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4)
   {
@@ -164,7 +181,7 @@ public:
     printOperand(op3);
     printOperand(op4);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
@@ -178,7 +195,7 @@ public:
     printOperand(op4);
     printOperand(op5);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
            typename T5, typename T6>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
@@ -193,7 +210,7 @@ public:
     printOperand(op5);
     printOperand(op6);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
            typename T5, typename T6, typename T7>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
@@ -209,7 +226,7 @@ public:
     printOperand(op6);
     printOperand(op7);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
@@ -226,7 +243,7 @@ public:
     printOperand(op7);
     printOperand(op8);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8, typename T9>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
@@ -244,7 +261,7 @@ public:
     printOperand(op8);
     printOperand(op9);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
   void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
@@ -263,7 +280,7 @@ public:
     printOperand(op9);
     printOperand(op10);
   }
-  
+
   template<typename T0, typename T1, typename T2, typename T3, typename T4,
   typename T5, typename T6, typename T7, typename T8, typename T9, typename T10,
   typename T11>
@@ -285,7 +302,7 @@ public:
     printOperand(op11);
   }
 
-  void regWrite(Register reg, uint32_t value);
+  void regWrite(Register::Reg reg, uint32_t value);
 
   void traceEnd() {
     printCommonEnd();
@@ -298,12 +315,12 @@ public:
   void SSwitchAck(const Node &node, uint32_t dest);
   void SSwitchAck(const Node &node, uint32_t data, uint32_t dest);
 
-  void exception(const Thread &t, uint32_t et, uint32_t ed, 
+  void exception(const Thread &t, uint32_t et, uint32_t ed,
                  uint32_t sed, uint32_t ssr, uint32_t spc);
 
   void event(const Thread &t, const EventableResource &res, uint32_t pc,
              uint32_t ev);
-  
+
   void interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
                  uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed);
 

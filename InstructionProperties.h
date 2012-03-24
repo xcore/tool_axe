@@ -6,6 +6,17 @@
 #ifndef _InstructionProperties_h_
 #define _InstructionProperties_h_
 
+#include "Register.h"
+
+namespace OperandProperties {
+  enum OpType {
+    in,
+    out,
+    inout,
+    imm
+  };
+}
+
 struct InstructionProperties {
   enum Flags {
     MAY_BRANCH = 1 << 0,
@@ -14,14 +25,19 @@ struct InstructionProperties {
     MAY_END_TRACE = 1 << 3,
   };
   const char *function;
+  OperandProperties::OpType *ops;
+  Register::Reg *implicitOps;
   unsigned char size;
-  unsigned char numExplicitOperands;
+  unsigned char numOperands;
+  unsigned char numImplicitOperands;
   unsigned char flags;
   bool mayBranch() const { return flags & MAY_BRANCH; }
   bool mayYield() const { return flags & MAY_YIELD; }
   bool mayDeschedule() const { return flags & MAY_DESCHEDULE; }
   bool mayEndTrace() const { return flags & MAY_END_TRACE; }
-
+  unsigned getNumExplicitOperands() const {
+    return numOperands - numImplicitOperands;
+  }
 };
 
 extern InstructionProperties instructionProperties[];

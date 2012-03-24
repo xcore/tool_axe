@@ -8,6 +8,8 @@
 #include "Node.h"
 #include "SystemState.h"
 
+using namespace Register;
+
 const char *Resource::getResourceName(ResourceType type)
 {
   switch (type) {

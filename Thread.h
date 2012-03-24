@@ -11,6 +11,7 @@
 #include "Runnable.h"
 #include "RunnableQueue.h"
 #include "Resource.h"
+#include "Register.h"
 
 class Synchroniser;
 
@@ -21,37 +22,10 @@ public:
   unsigned getStatus() const { return status; }
 };
 
-enum Register {
-  R0,
-  R1,
-  R2,
-  R3,
-  R4,
-  R5,
-  R6,
-  R7,
-  R8,
-  R9,
-  R10,
-  R11,
-  CP,
-  DP,
-  SP,
-  LR,
-  ET,
-  ED,
-  KEP,
-  KSP,
-  SPC,
-  SED,
-  SSR,
-  NUM_REGISTERS
-};
-
 extern const char *registerNames[];
 
 inline const char *getRegisterName(unsigned RegNum) {
-  if (RegNum < NUM_REGISTERS) {
+  if (RegNum < Register::NUM_REGISTERS) {
     return registerNames[RegNum];
   }
   return "?";
@@ -132,7 +106,7 @@ public:
     FAST = 7
   };
   typedef std::bitset<8> sr_t;
-  uint32_t regs[NUM_REGISTERS];
+  uint32_t regs[Register::NUM_REGISTERS];
   /// The program counter. Note that the pc will not be valid if the thread is
   /// executing since it is cached in the dispatch loop.
   uint32_t pc;
@@ -146,20 +120,8 @@ public:
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
 
-  Thread() : Resource(RES_TYPE_THREAD), parent(0), scheduler(0) {
-    time = 0;
-    pc = 0;
-    regs[KEP] = 0;
-    regs[KSP] = 0;
-    regs[SPC] = 0;
-    regs[SED] = 0;
-    regs[ET] = 0;
-    regs[ED] = 0;
-    eeble() = false;
-    ieble() = false;
-    setInUse(false);
-  }
-  
+  Thread();
+
   bool hasTimeSliceExpired() const {
     if (scheduler->empty())
       return false;
@@ -189,17 +151,17 @@ public:
   {
     eventEnabledResources.add(res);
   }
-  
+
   void removeEventEnabledResource(EventableResource *res)
   {
     eventEnabledResources.remove(res);
   }
-  
+
   void addInterruptEnabledResource(EventableResource *res)
   {
     interruptEnabledResources.add(res);
   }
-  
+
   void removeInterruptEnabledResource(EventableResource *res)
   {
     interruptEnabledResources.remove(res);
@@ -220,7 +182,7 @@ public:
     assert(!sync && "Synchroniser set twice");
     sync = &s;
   }
-  
+
   bool inSSync() const
   {
     return ssync;
@@ -230,7 +192,7 @@ public:
   {
     ssync = value;
   }
-  
+
   Synchroniser *getSync()
   {
     return sync;
@@ -240,11 +202,11 @@ public:
   {
     return regs[RegNum];
   }
-  
+
   sr_t::reference ieble() {
     return sr[IEBLE];
   }
-  
+
   bool ieble() const {
     return sr[IEBLE];
   }
@@ -272,7 +234,7 @@ public:
   sr_t::reference waiting() {
     return sr[WAITING];
   }
-  
+
   bool waiting() const {
     return sr[WAITING];
   }
@@ -283,7 +245,7 @@ public:
   void schedule();
   void takeEvent();
   bool hasPendingEvent() const;
-  
+
   /// Enable for events on the current thread.
   /// \return true if there is a pending event, false otherwise.
   bool enableEvents()

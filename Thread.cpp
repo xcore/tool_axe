@@ -21,6 +21,8 @@
 #include <iostream>
 #include <cstdlib>
 
+using namespace Register;
+
 const char *registerNames[] = {
   "r0",
   "r1",
@@ -46,6 +48,20 @@ const char *registerNames[] = {
   "sed",
   "ssr"
 };
+
+Thread::Thread() : Resource(RES_TYPE_THREAD), parent(0), scheduler(0) {
+  time = 0;
+  pc = 0;
+  regs[KEP] = 0;
+  regs[KSP] = 0;
+  regs[SPC] = 0;
+  regs[SED] = 0;
+  regs[ET] = 0;
+  regs[ED] = 0;
+  eeble() = false;
+  ieble() = false;
+  setInUse(false);
+}
 
 void Thread::finalize()
 {
@@ -304,7 +320,7 @@ Tracer::get().traceEnd(); \
 
 template<bool tracing>
 JITReturn Instruction_TSETMR_2r(Thread &thread) {
-  TRACE("tsetmr ", Register(OP(0)), ", ", SrcRegister(OP(1)));
+  TRACE("tsetmr ", DestRegister(OP(0)), ", ", SrcRegister(OP(1)));
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
   if (sync) {
@@ -361,7 +377,7 @@ JITReturn Instruction_DECODE(Thread &thread) {
 void Thread::run(ticks_t time)
 {
   OPCODE_TYPE *opcode = getParent().opcode;
-  
+
   while (1) {
     if ((*opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
       return;

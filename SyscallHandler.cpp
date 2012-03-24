@@ -32,6 +32,8 @@
 #define lseek _lseek
 #endif
 
+using namespace Register;
+
 class SyscallHandlerImpl {
 private:
   const scoped_array<int> fds;
@@ -46,14 +48,14 @@ private:
   int convertOpenMode(int mode);
   bool convertLseekType(int whence, int &converted);
   void doException(const Thread &state, uint32_t et, uint32_t ed);
-  
+
 public:
   SyscallHandlerImpl();
 
   void setCoreCount(unsigned count) { coreCount = count; }
   SyscallHandler::SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);
-  
+
   static SyscallHandlerImpl instance;
 };
 

@@ -8,6 +8,8 @@
 #include "Core.h"
 #include "Trace.h"
 
+using namespace Register;
+
 SystemState::~SystemState()
 {
   for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
@@ -60,7 +62,7 @@ ChanEndpoint *SystemState::getChanendDest(ResourceID ID)
 {
   unsigned coreID = ID.node();
   // TODO build lookup map.
-  
+
   for (node_iterator outerIt = node_begin(), outerE = node_end();
        outerIt != outerE; ++outerIt) {
     Node &node = **outerIt;

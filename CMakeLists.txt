@@ -79,6 +79,7 @@ add_executable(axe
   PortArg.cpp
   PortNames.h
   PortNames.cpp
+  Register.h
   Trace.h
   Trace.cpp
   BitManip.h

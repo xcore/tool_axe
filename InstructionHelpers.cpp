@@ -13,6 +13,8 @@
 #include "ClockBlock.h"
 #include <cstdlib>
 
+using namespace Register;
+
 uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
 {
   uint32_t sed = t.regs[ED];

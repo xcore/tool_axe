@@ -151,7 +151,7 @@ void JITImpl::resetPerFunctionState()
 }
 
 static bool
-getInstruction(Core &core, uint32_t address, InstructionOpcode &opc, 
+getInstruction(Core &core, uint32_t address, InstructionOpcode &opc,
                Operands &operands)
 {
   if (!core.isValidAddress(address))
@@ -428,7 +428,7 @@ compileOneFragment(Core &core, uint32_t startAddress,
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
     assert(callee && "Function for instruction not found in module");
     LLVMTypeRef calleeType = LLVMGetElementType(LLVMTypeOf(callee));
-    unsigned numArgs = properties->numExplicitOperands + 2;
+    unsigned numArgs = properties->getNumExplicitOperands() + 2;
     nextAddress = address + properties->size;
     assert(LLVMCountParamTypes(calleeType) == numArgs);
     LLVMTypeRef paramTypes[8];
@@ -440,8 +440,8 @@ compileOneFragment(Core &core, uint32_t startAddress,
     args[1] = LLVMConstInt(paramTypes[1], nextAddress >> 1, false);
     for (unsigned i = 2; i < numArgs; i++) {
       uint32_t value =
-      properties->numExplicitOperands <= 3 ? operands.ops[i - 2] :
-      operands.lops[i - 2];
+      properties->getNumExplicitOperands() <= 3 ? operands.ops[i - 2] :
+                                                  operands.lops[i - 2];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");

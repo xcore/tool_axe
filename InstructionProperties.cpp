@@ -6,6 +6,4 @@
 #include "InstructionProperties.h"
 
 #define EMIT_INSTRUCTION_PROPERTIES
-InstructionProperties instructionProperties[] = {
 #include "InstructionGenOutput.inc"
-};
