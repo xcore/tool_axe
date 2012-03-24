@@ -16,6 +16,7 @@
 #define PHYSICAL_ADDR(addr) CORE.physicalAddress(addr)
 #define VIRTUAL_ADDR(addr) CORE.virtualAddress(addr)
 #define CHECK_ADDR(addr) CORE.isValidAddress(addr)
+#define CHECK_ADDR_BYTE(addr) CHECK_ADDR(addr)
 #define CHECK_ADDR_SHORT(addr) (!((addr) & 1) && CHECK_ADDR(addr))
 #define CHECK_ADDR_WORD(addr) (!((addr) & 3) && CHECK_ADDR(addr))
 #define FROM_PC(addr) CORE.virtualAddress((addr) << 1)

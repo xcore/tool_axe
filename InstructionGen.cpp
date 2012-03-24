@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -485,10 +485,29 @@ emitTraceEnd(const Instruction &inst)
   std::cout << "TRACE_END();\n";
 }
 
+static void
+splitString(const std::string &s, char delim, std::vector<std::string> &result)
+{
+  size_t pos = 0;
+  size_t nextPos = s.find_first_of(delim, pos);
+  while (nextPos != std::string::npos) {
+    result.push_back(s.substr(pos, nextPos - pos));
+    pos = nextPos + 1;
+    nextPos = s.find_first_of(delim, pos);
+  }
+  result.push_back(s.substr(pos));
+}
+
 class CodeEmitter {
 public:
   void emit(const std::string &code);
 protected:
+  enum LoadStoreType {
+    WORD,
+    SHORT,
+    BYTE
+  };
+  const char *getLoadStoreTypeName(LoadStoreType type);
   void emitNested(const std::string &code);
   virtual void emitBegin() = 0;
   virtual void emitRaw(const std::string &s) = 0;
@@ -500,13 +519,25 @@ protected:
   virtual void emitPauseOn(const std::string &args) = 0;
   virtual void emitYield() = 0;
   virtual void emitDeschedule() = 0;
-  virtual void emitStoreWord(const std::string &args) = 0;
-  virtual void emitStoreShort(const std::string &args) = 0;
-  virtual void emitStoreByte(const std::string &args) = 0;
-  virtual void emitLoadWord(const std::string &args) = 0;
-  virtual void emitLoadShort(const std::string &args) = 0;
-  virtual void emitLoadByte(const std::string &args) = 0;
+  virtual void emitStore(const std::string &args, LoadStoreType type) = 0;
+  void emitStoreWord(const std::string &args) { emitStore(args, WORD); }
+  void emitStoreShort(const std::string &args) { emitStore(args, SHORT); }
+  void emitStoreByte(const std::string &args) { emitStore(args, BYTE); }
+  virtual void emitLoad(const std::string &args, LoadStoreType type) = 0;
+  virtual void emitLoadWord(const std::string &args) { emitLoad(args, WORD); }
+  virtual void emitLoadShort(const std::string &args) { emitLoad(args, SHORT); }
+  virtual void emitLoadByte(const std::string &args) { emitLoad(args, BYTE); }
 };
+
+const char *CodeEmitter::getLoadStoreTypeName(LoadStoreType type)
+{
+  switch (type) {
+  default: assert(0 && "Unexpected LoadStoreType");
+  case WORD: return "WORD";
+  case SHORT: return "SHORT";
+  case BYTE: return "BYTE";
+  }
+}
 
 void CodeEmitter::emit(const std::string &code)
 {
@@ -630,12 +661,8 @@ protected:
   virtual void emitPauseOn(const std::string &args);
   virtual void emitYield();
   virtual void emitDeschedule();
-  virtual void emitStoreWord(const std::string &args);
-  virtual void emitStoreShort(const std::string &args);
-  virtual void emitStoreByte(const std::string &args);
-  virtual void emitLoadWord(const std::string &args);
-  virtual void emitLoadShort(const std::string &args);
-  virtual void emitLoadByte(const std::string &args);
+  virtual void emitStore(const std::string &args, LoadStoreType type);
+  virtual void emitLoad(const std::string &args, LoadStoreType type);
 };
 
 void FunctionCodeEmitter::emitCycles()
@@ -809,52 +836,61 @@ void FunctionCodeEmitter::emitDeschedule()
   std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
 }
 
-void FunctionCodeEmitter::emitStoreWord(const std::string &args)
+void FunctionCodeEmitter::
+emitStore(const std::string &argString, LoadStoreType type)
 {
-  std::cout << "if (STORE_WORD(";
-  emitNested(args);
-  std::cout << ")) {\n";
-  std::cout << "retval = JIT_RETURN_END_TRACE;\n";
+  std::vector<std::string> args;
+  splitString(argString, ',', args);
+  assert(args.size() == 2);
+  const std::string &value = args[0];
+  const std::string &addr = args[1];
+  std::cout << "{\n";
+
+  std::cout << "  uint32_t StoreAddr = ";
+  emitNested(addr);
+  std::cout << ";\n";
+  std::cout << "  uint32_t StorePhyAddr = PHYSICAL_ADDR(StoreAddr);\n";
+
+  std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
+  std::cout << "(StorePhyAddr)) {\n";
+  emitException("ET_LOAD_STORE, StoreAddr");
+  std::cout << "  }\n";
+
+  std::cout << "  if (STORE_" << getLoadStoreTypeName(type);
+  std::cout << "(";
+  emitNested(value);
+  std::cout << ", StorePhyAddr)) {\n";
+  std::cout << "    retval = JIT_RETURN_END_TRACE;\n";
+  std::cout << "  }\n";
+
   std::cout << "}\n";
 }
 
-void FunctionCodeEmitter::emitStoreShort(const std::string &args)
+void FunctionCodeEmitter::
+emitLoad(const std::string &argString, LoadStoreType type)
 {
-  std::cout << "if (STORE_SHORT(";
-  emitNested(args);
-  std::cout << ")) {\n";
-  std::cout << "retval = JIT_RETURN_END_TRACE;\n";
+  std::vector<std::string> args;
+  splitString(argString, ',', args);
+  assert(args.size() == 2);
+  const std::string &dest = args[0];
+  const std::string &addr = args[1];
+  std::cout << "{\n";
+
+  std::cout << "  uint32_t LoadAddr = ";
+  emitNested(addr);
+  std::cout << ";\n";
+  std::cout << "  uint32_t LoadPhyAddr = PHYSICAL_ADDR(LoadAddr);\n";
+
+  std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
+  std::cout << "(LoadPhyAddr)) {\n";
+  emitException("ET_LOAD_STORE, LoadAddr");
+  std::cout << "  }\n";
+
+  emitNested(dest);
+  std::cout << " = LOAD_" << getLoadStoreTypeName(type);
+  std::cout << "(LoadPhyAddr)\n;";
+
   std::cout << "}\n";
-}
-
-void FunctionCodeEmitter::emitStoreByte(const std::string &args)
-{
-  std::cout << "if (STORE_BYTE(";
-  emitNested(args);
-  std::cout << ")) {\n";
-  std::cout << "retval = JIT_RETURN_END_TRACE;\n";
-  std::cout << "}\n";
-}
-
-void FunctionCodeEmitter::emitLoadWord(const std::string &args)
-{
-  std::cout << "LOAD_WORD(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void FunctionCodeEmitter::emitLoadShort(const std::string &args)
-{
-  std::cout << "LOAD_SHORT(";
-  emitNested(args);
-  std::cout << ")";
-}
-
-void FunctionCodeEmitter::emitLoadByte(const std::string &args)
-{
-  std::cout << "LOAD_BYTE(";
-  emitNested(args);
-  std::cout << ")";
 }
 
 static void
@@ -889,27 +925,13 @@ protected:
   }
   virtual void emitYield() { inst->setMayYield(); }
   virtual void emitDeschedule() { inst->setMayDeschedule(); }
-  virtual void emitStoreWord(const std::string &args) {
+  virtual void emitStore(const std::string &args, LoadStoreType type) {
+    inst->setMayExcept();
     inst->setMayStore();
     emitNested(args);
   }
-  virtual void emitStoreShort(const std::string &args) {
-    inst->setMayStore();
-    emitNested(args);
-  }
-  virtual void emitStoreByte(const std::string &args) {
-    inst->setMayStore();
-    emitNested(args);
-  }
-  virtual void emitLoadWord(const std::string &args) {
-    inst->setMayLoad();
-    emitNested(args);
-  }
-  virtual void emitLoadShort(const std::string &args) {
-    inst->setMayLoad();
-    emitNested(args);
-  }
-  virtual void emitLoadByte(const std::string &args) {
+  virtual void emitLoad(const std::string &args, LoadStoreType type) {
+    inst->setMayExcept();
     inst->setMayLoad();
     emitNested(args);
   }
@@ -1522,40 +1544,22 @@ void add()
   f2rus("SHR_32", "shr %0, %1, 32", "%0 = 0;");
   f3r("LDW", "ldw %0, %1[%2]",
       "uint32_t Addr = %1 + (%2 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)"
-      "}\n"
-      "%0 = LOAD_WORD(PhyAddr);\n");
+      "%load_word(%0, Addr)");
   f2rus("LDW", "ldw %0, %1[%2]",
         "uint32_t Addr = %1 + %2;\n"
-        "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-        "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-        "  %exception(ET_LOAD_STORE, Addr)"
-        "}\n"
-        "%0 = LOAD_WORD(PhyAddr);\n")
+        "%load_word(%0, Addr)")
     .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
   f3r("LD16S", "ld16s %0, %1[%2]",
       "uint32_t Addr = %1 + (%2 << 1);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_SHORT(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)"
-      "}\n"
-      "%0 = signExtend(LOAD_SHORT(PhyAddr), 16);\n");
+      "uint32_t Tmp;\n"
+      "%load_short(Tmp, Addr)"
+      "%0 = signExtend(Tmp, 16);\n");
   f3r("LD8U", "ld8u %0, %1[%2]",
       "uint32_t Addr = %1 + %2;\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)"
-      "}\n"
-      "%0 = LOAD_BYTE(PhyAddr);\n");
+      "%load_byte(%0, Addr)");
   f2rus_in("STW", "stw %0, %1[%2]",
            "uint32_t Addr = %1 + %2;\n"
-           "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-           "  %exception(ET_LOAD_STORE, Addr)"
-           "}\n"
-           "%store_word(%0, PhyAddr);\n")
+           "%store_word(%0, Addr)")
     .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
   // TSETR needs special handling as one operands is not a register on the
   // current thread.
@@ -1577,25 +1581,13 @@ void add()
   fl3r("LDA16B", "lda16 %0, %1[-%2]", "%0 = %1 - (%2 << 1);");
   fl3r_in("STW", "stw %0, %1[%2]",
           "uint32_t Addr = %1 + (%2 << 2);\n"
-          "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-          "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-          "  %exception(ET_LOAD_STORE, Addr)"
-          "}\n"
-          "%store_word(%0, PhyAddr);\n");
+          "%store_word(%0, Addr)");
   fl3r_in("ST16", "st16 %0, %1[%2]",
           "uint32_t Addr = %1 + (%2 << 1);\n"
-          "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-          "if (!CHECK_ADDR_SHORT(PhyAddr)) {\n"
-          "  %exception(ET_LOAD_STORE, Addr)"
-          "}\n"
-          "%store_short(%0, PhyAddr);\n");
+          "%store_short(%0, Addr)");
   fl3r_in("ST8", "st8 %0, %1[%2]",
           "uint32_t Addr = %1 + %2;\n"
-          "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-          "if (!CHECK_ADDR(PhyAddr)) {\n"
-          "  %exception(ET_LOAD_STORE, Addr)"
-          "}\n"
-          "%store_byte(%0, PhyAddr);\n");
+          "%store_byte(%0, Addr)");
   fl3r("MUL", "mul %0, %1, %2", "%0 = %1 * %2;");
   fl3r("DIVS", "divs %0, %1, %2",
        "if (%2 == 0 ||\n"
@@ -1719,47 +1711,27 @@ void add()
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDWDP", "ldw %0, dp[%{dp}1]",
            "uint32_t Addr = %2 + %1;\n"
-           "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-           "  %exception(ET_LOAD_STORE, Addr)\n"
-           "}\n"
-           "%0 = LOAD_WORD(PhyAddr);\n")
+           "%load_word(%0, Addr)")
     .addImplicitOp(DP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDWCP", "ldw %0, cp[%{cp}1]",
            "uint32_t Addr = %2 + %1;\n"
-           "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-           "  %exception(ET_LOAD_STORE, Addr)\n"
-           "}\n"
-           "%0 = LOAD_WORD(PhyAddr);\n")
+           "%load_word(%0, Addr)")
     .addImplicitOp(CP, in)
   .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDWSP", "ldw %0, sp[%1]",
            "uint32_t Addr = %2 + %1;\n"
-           "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-           "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-           "  %exception(ET_LOAD_STORE, Addr)\n"
-           "}\n"
-           "%0 = LOAD_WORD(PhyAddr);\n")
+           "%load_word(%0, Addr)")
     .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_in("STWDP", "stw %0, dp[%{dp}1]",
           "uint32_t Addr = %2 + %1;\n"
-          "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-          "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-          "  %exception(ET_LOAD_STORE, Addr)\n"
-          "}\n"
-          "%store_word(%0, PhyAddr);\n")
+          "%store_word(%0, Addr)")
     .addImplicitOp(DP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_in("STWSP", "stw %0, sp[%1]",
           "uint32_t Addr = %2 + %1;\n"
-          "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-          "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-          "  %exception(ET_LOAD_STORE, Addr)\n"
-          "}\n"
-          "%store_word(%0, PhyAddr);\n")
+          "%store_word(%0, Addr)")
     .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDAWSP", "ldaw %0, sp[%1]",
@@ -1823,11 +1795,7 @@ void add()
   fu6("ENTSP", "entsp %0",
       "if (%0 > 0) {\n"
       "  uint32_t Addr = %1;\n"
-      "  uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "  if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "    %exception(ET_LOAD_STORE, Addr)\n"
-      "  }\n"
-      "  %store_word(%2, PhyAddr);\n"
+      "  %store_word(%2, Addr)"
       "  %1 = %1 - %0;\n"
       "}\n")
     .addImplicitOp(SP, inout)
@@ -1837,12 +1805,8 @@ void add()
       "uint32_t target;\n"
       "if (%0 > 0) {\n"
       "  uint32_t Addr = %1 + %0;\n"
-      "  uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "  if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "    %exception(ET_LOAD_STORE, Addr)\n"
-      "  }\n"
+      "  %load_word(%2, Addr)"
       "  %1 = Addr;\n"
-      "  %2 = LOAD_WORD(PhyAddr);\n"
       "}\n"
       "target = TO_PC(%2);\n"
       "if (!CHECK_PC(target)) {\n"
@@ -1859,21 +1823,13 @@ void add()
     .setCycles(2 * INSTRUCTION_CYCLES);
   fu6("KRESTSP", "krestsp %0",
       "uint32_t Addr = %1 + %0;\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%2 = Addr;\n"
-      "%1 = LOAD_WORD(PhyAddr);")
+      "%load_word(%1, Addr)"
+      "%2 = Addr;\n")
     .addImplicitOp(SP, inout)
     .addImplicitOp(KSP, out)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
   fu6("KENTSP", "kentsp %0",
-      "uint32_t PhyAddr = PHYSICAL_ADDR(%2);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, %2)\n"
-      "}\n"
-      "%store_word(%1, PhyAddr);\n"
+      "%store_word(%1, %2)"
       "%1 = %2 - OP(0);")
     .addImplicitOp(SP, inout)
     .addImplicitOp(KSP, in)
@@ -1898,13 +1854,9 @@ void add()
     .setYieldBefore();
   fu6("BLAT", "blat %0",
       "uint32_t Addr = %2 + (%0<<2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "uint32_t value;\n"
       "uint32_t target;\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)"
-      "}\n"
-      "value = LOAD_WORD(PhyAddr);\n"
+      "%load_word(value, Addr)"
       "if (value & 1) {\n"
       "  %exception(ET_ILLEGAL_PC, value)\n"
       "}\n"
@@ -1925,11 +1877,7 @@ void add()
     .addImplicitOp(SR, in);
   fu10("LDWCPL", "ldw %1, cp[%{cp}0]",
        "uint32_t Addr = %2 + %0;\n"
-       "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-       "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-       "  %exception(ET_LOAD_STORE, Addr)\n"
-       "}\n"
-       "%1 = LOAD_WORD(PhyAddr);")
+       "%load_word(%1, Addr)")
     .addImplicitOp(R11, out)
     .addImplicitOp(CP, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
@@ -1957,13 +1905,9 @@ void add()
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
   fu10("BLACP", "bla cp[%{cp}0]",
       "uint32_t Addr = %2 + (%0<<2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
       "uint32_t value;\n"
       "uint32_t target;\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)"
-      "}\n"
-      "value = LOAD_WORD(PhyAddr);\n"
+      "%load_word(value, Addr)"
       "if (value & 1) {\n"
       "  %exception(ET_ILLEGAL_PC, value)\n"
       "}\n"
@@ -2591,74 +2535,42 @@ void add()
   f0r("DRESTSP", "drestsp", "").setUnimplemented();
   f0r("LDSPC", "ldw %0, sp[1]",
       "uint32_t Addr = %1 + (1 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%0 = LOAD_WORD(PhyAddr);\n")
+      "%load_word(%0, Addr)")
     .addImplicitOp(SPC, out)
     .addImplicitOp(SP, in);
   f0r("LDSSR", "ldw %0, sp[2]",
       "uint32_t Addr = %1 + (2 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%0 = LOAD_WORD(PhyAddr);\n")
+      "%load_word(%0, Addr)")
     .addImplicitOp(SSR, out)
     .addImplicitOp(SP, in);
   f0r("LDSED", "ldw %0, sp[3]",
       "uint32_t Addr = %1 + (3 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%0 = LOAD_WORD(PhyAddr);\n")
+      "%load_word(%0, Addr)")
     .addImplicitOp(SED, out)
     .addImplicitOp(SP, in);
   f0r("LDET", "ldw %0, sp[4]",
       "uint32_t Addr = %1 + (4 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%0 = LOAD_WORD(PhyAddr);\n")
+      "%load_word(%0, Addr)")
     .addImplicitOp(ET, out)
     .addImplicitOp(SP, in);
   f0r("STSPC", "stw %0, sp[1]",
       "uint32_t Addr = %1 + (1 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%store_word(%0, PhyAddr);\n")
+      "%store_word(%0, Addr)")
     .addImplicitOp(SPC, in)
     .addImplicitOp(SP, in);
   f0r("STSSR", "stw %0, sp[2]",
       "uint32_t Addr = %1 + (2 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%store_word(%0, PhyAddr);\n")
+      "%store_word(%0, Addr)")
     .addImplicitOp(SSR, in)
     .addImplicitOp(SP, in);
   f0r("STSED", "stw %0, sp[3]",
       "uint32_t Addr = %1 + (3 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%store_word(%0, PhyAddr);\n")
+      "%store_word(%0, Addr)")
     .addImplicitOp(SED, in)
     .addImplicitOp(SP, in);
   f0r("STET", "stw %0, sp[4]",
       "uint32_t Addr = %1 + (4 << 2);\n"
-      "uint32_t PhyAddr = PHYSICAL_ADDR(Addr);\n"
-      "if (!CHECK_ADDR_WORD(PhyAddr)) {\n"
-      "  %exception(ET_LOAD_STORE, Addr)\n"
-      "}\n"
-      "%store_word(%0, PhyAddr);\n")
+      "%store_word(%0, Addr)")
     .addImplicitOp(ET, in)
     .addImplicitOp(SP, in);
   f0r("FREET", "freet",
