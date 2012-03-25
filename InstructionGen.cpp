@@ -2158,7 +2158,7 @@ void add()
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n")
     .setYieldBefore();
-  f2r_in("OUT", "out %0, res[%1]",
+  f2r_in("OUT", "out res[%1], %0",
          "ResourceID resID(%1);\n"
          "if (Resource *res = checkResource(CORE, resID)) {\n"
          "  switch (res->out(THREAD, %0, TIME)) {\n"
