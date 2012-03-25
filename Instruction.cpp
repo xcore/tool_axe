@@ -353,7 +353,7 @@ void instructionDecode(Core &core, uint32_t shiftedAddress,
     return;
   }
   if (shiftedAddress == core.exceptionAddress) {
-    opcode = SYSCALL;
+    opcode = EXCEPTION;
     return;
   }
   uint16_t low = core.loadShort(shiftedAddress << 1);
