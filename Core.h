@@ -118,8 +118,7 @@ public:
   bool setExceptionAddress(uint32_t value);
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE syscall,
-                 OPCODE_TYPE exception, OPCODE_TYPE runJit);
+                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit);
 
   OPCODE_TYPE getDecodeOpcode() const { return decodeOpcode; }
 

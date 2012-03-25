@@ -390,8 +390,6 @@ void initInstructionCacheAux(Core &c)
   c.initCache(&Instruction_DECODE<tracing>,
               &Instruction_ILLEGAL_PC<tracing>,
               &Instruction_ILLEGAL_PC_THREAD<tracing>,
-              &Instruction_SYSCALL<tracing>,
-              &Instruction_EXCEPTION<tracing>,
               &Instruction_RUN_JIT<tracing>);
 }
 
