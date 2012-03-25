@@ -163,6 +163,7 @@ private:
   bool mayPauseOn:1;
   bool mayYield:1;
   bool mayDeschedule:1;
+  bool disableJit:1;
 public:
   Instruction(const std::string &n,
               unsigned s,
@@ -188,7 +189,8 @@ public:
     mayKCall(false),
     mayPauseOn(false),
     mayYield(false),
-    mayDeschedule(false)
+    mayDeschedule(false),
+    disableJit(false)
   {
   }
   const std::string &getName() const { return name; }
@@ -222,6 +224,7 @@ public:
   bool getMayPauseOn() const { return mayPauseOn; }
   bool getMayYield() const { return mayYield; }
   bool getMayDeschedule() const { return mayDeschedule; }
+  bool getDisableJit() const { return disableJit; }
   Instruction &addImplicitOp(ImplicitOp reg, OpType type) {
     assert(type != imm);
     implicitOps.push_back(reg);
@@ -283,6 +286,10 @@ public:
   }
   Instruction &setMayDeschedule() {
     mayDeschedule = true;
+    return *this;
+  }
+  Instruction &setDisableJit() {
+    disableJit = true;
     return *this;
   }
 };
@@ -1078,7 +1085,7 @@ static std::string getOperandDeclarationType(Instruction &inst, unsigned i)
 
 static void emitInstFunction(Instruction &inst, bool jit)
 {
-  if (inst.getCustom())
+  if (inst.getCustom() || (jit && inst.getDisableJit()))
     return;
   assert((inst.getSize() & 1) == 0 && "Unexpected instruction size");
   if (jit)
@@ -1302,7 +1309,7 @@ static void emitInstProperties(Instruction &inst)
   unsigned numOps = getNumOperandsIgnoreSpecial(inst);
   unsigned numImplicit = getNumImplicitOperandsIgnoreSpecial(inst);
   std::cout << "{ ";
-  if (inst.getCustom())
+  if (inst.getCustom() || inst.getDisableJit())
     std::cout << '0';
   else
     std::cout << '"' << getInstFunctionName(inst) << '"';
@@ -2721,10 +2728,12 @@ void add()
     "  }\n"
     "  break;\n"
     "}\n")
-    .addImplicitOp(LR, in);
+    .addImplicitOp(LR, in)
+    .setDisableJit();
   pseudoInst("EXCEPTION", "",
              "SyscallHandler::doException(THREAD);\n"
-             "throw (ExitException(1));\n");
+             "throw (ExitException(1));\n")
+    .setDisableJit();
   pseudoInst("RUN_JIT", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
 }
