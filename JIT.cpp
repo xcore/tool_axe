@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <map>
+#include <vector>
 
 struct JITFunctionInfo {
   explicit JITFunctionInfo(uint32_t a) :
@@ -368,6 +369,41 @@ static void deleteFunctionBody(LLVMValueRef f)
   }
 }
 
+static bool
+getFragmentToCompile(Core &core, uint32_t startAddress,
+                     std::vector<InstructionOpcode> &opcode,
+                     std::vector<Operands> &operands, 
+                     bool &endOfBlock, uint32_t &nextAddress)
+{
+  uint32_t address = startAddress;
+
+  opcode.clear();
+  operands.clear();
+  endOfBlock = false;
+  nextAddress = address;
+
+  InstructionOpcode opc;
+  Operands ops;
+  InstructionProperties *properties;
+  do {
+    if (!getInstruction(core, address, opc, ops)) {
+      endOfBlock = true;
+      break;
+    }
+    instructionTransform(opc, ops, core, address >> 1);
+    properties = &instructionProperties[opc];
+    nextAddress = address + properties->size;
+    if (properties->mayBranch())
+      endOfBlock = true;
+    if (!properties->function)
+      break;
+    opcode.push_back(opc);
+    operands.push_back(ops);
+    address = nextAddress;
+  } while (!properties->mayBranch());
+  return !opcode.empty();
+}
+
 /// Try and compile a fragment starting at the specified address. Returns
 /// true if successful setting \a nextAddress to the first instruction after
 /// the fragment. If unsuccessful returns false and sets \a nextAddress to the
@@ -375,12 +411,10 @@ static void deleteFunctionBody(LLVMValueRef f)
 /// next address is in a new basic block.
 bool JITImpl::
 compileOneFragment(Core &core, uint32_t startAddress,
-                   bool &endOfBlock, uint32_t &nextAddress)
+                   bool &endOfBlock, uint32_t &addressAfterFragment)
 {
   assert(initialized);
   resetPerFunctionState();
-
-  uint32_t address = startAddress;
 
   std::map<uint32_t,JITFunctionInfo*>::iterator infoIt =
     jitFunctionMap.find(startAddress >> 1);
@@ -391,22 +425,12 @@ compileOneFragment(Core &core, uint32_t startAddress,
     return false;
   }
 
-  endOfBlock = false;
-  nextAddress = address;
+  std::vector<InstructionOpcode> opcode;
+  std::vector<Operands> operands;
+  if (!getFragmentToCompile(core, startAddress, opcode, operands, endOfBlock,
+                            addressAfterFragment))
+    return false;
 
-  InstructionOpcode opc;
-  Operands operands;
-  if (!getInstruction(core, address, opc, operands)) {
-    endOfBlock = true;
-    return false;
-  }
-  instructionTransform(opc, operands, core, address >> 1);
-  InstructionProperties *properties = &instructionProperties[opc];
-  nextAddress = address + properties->size;
-  // Check if we can JIT the instruction.
-  if (!properties->function) {
-    return false;
-  }
   LLVMValueRef f;
   if (info) {
     f = info->value;
@@ -414,8 +438,8 @@ compileOneFragment(Core &core, uint32_t startAddress,
     info->isStub = false;
     deleteFunctionBody(f);
   } else {
-    info = new JITFunctionInfo(address >> 1);
-    jitFunctionMap.insert(std::make_pair(address >> 1, info));
+    info = new JITFunctionInfo(startAddress >> 1);
+    jitFunctionMap.insert(std::make_pair(startAddress >> 1, info));
     // Create function to contain the code we are about to add.
     info->value = f = LLVMAddFunction(module, "", jitFunctionType);
     LLVMSetFunctionCallConv(f, LLVMFastCallConv);
@@ -423,13 +447,19 @@ compileOneFragment(Core &core, uint32_t startAddress,
   threadParam = LLVMGetParam(f, 0);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
-  do {
+  uint32_t address = startAddress;
+  bool needsReturn = true;
+  for (unsigned i = 0, e = opcode.size(); i != e; ++i) {
+    InstructionOpcode opc = opcode[i];
+    const Operands &ops = operands[i];
+    InstructionProperties *properties = &instructionProperties[opc];
+    uint32_t nextAddress = address + properties->size;
+
     // Lookup function to call.
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
     assert(callee && "Function for instruction not found in module");
     LLVMTypeRef calleeType = LLVMGetElementType(LLVMTypeOf(callee));
     unsigned numArgs = properties->getNumExplicitOperands() + 2;
-    nextAddress = address + properties->size;
     assert(LLVMCountParamTypes(calleeType) == numArgs);
     LLVMTypeRef paramTypes[8];
     assert(numArgs <= 8);
@@ -440,8 +470,8 @@ compileOneFragment(Core &core, uint32_t startAddress,
     args[1] = LLVMConstInt(paramTypes[1], nextAddress >> 1, false);
     for (unsigned i = 2; i < numArgs; i++) {
       uint32_t value =
-      properties->getNumExplicitOperands() <= 3 ? operands.ops[i - 2] :
-                                                  operands.lops[i - 2];
+      properties->getNumExplicitOperands() <= 3 ? ops.ops[i - 2] :
+      ops.lops[i - 2];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
@@ -461,25 +491,14 @@ compileOneFragment(Core &core, uint32_t startAddress,
       core.invalidationInfo[(address >> 1) + 1] =
       Core::INVALIDATE_CURRENT_AND_PREVIOUS;
     }
-    // See if we can JIT the next instruction.
-    if (properties->mayBranch())
-      break;
-    // Increment address.
-    address = nextAddress;
-    if (!getInstruction(core, address, opc, operands)) {
-      endOfBlock = true;
-      break;
+    if (properties->mayBranch() && properties->function &&
+        emitJumpToNextFragment(opcode.back(), operands.back(), nextAddress >> 1,
+                               info)) {
+      needsReturn = false;
     }
-    instructionTransform(opc, operands, core, address >> 1);
-    properties = &instructionProperties[opc];
-    nextAddress = address + properties->size;
-    if (properties->mayBranch())
-      endOfBlock = true;
-  } while (properties->function);
-  if (properties->mayBranch() && properties->function &&
-      emitJumpToNextFragment(opc, operands, nextAddress >> 1, info)) {
-    // Nothing
-  } else {
+    address = nextAddress;
+  }
+  if (needsReturn) {
     LLVMValueRef args[] = {
       threadParam
     };
