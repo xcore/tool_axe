@@ -12,16 +12,11 @@
 #define STORE_WORD(value, addr) CORE.storeWord(value, addr)
 #define STORE_SHORT(value, addr) CORE.storeShort(value, addr)
 #define STORE_BYTE(value, addr) CORE.storeByte(value, addr)
-#define ADDR(addr) CORE.physicalAddress(addr)
-#define PHYSICAL_ADDR(addr) CORE.physicalAddress(addr)
-#define VIRTUAL_ADDR(addr) CORE.virtualAddress(addr)
-#define CHECK_ADDR(addr) CORE.isValidAddress(addr)
 #define CHECK_ADDR_BYTE(addr) CHECK_ADDR(addr)
 #define CHECK_ADDR_SHORT(addr) (!((addr) & 1) && CHECK_ADDR(addr))
 #define CHECK_ADDR_WORD(addr) (!((addr) & 3) && CHECK_ADDR(addr))
-#define FROM_PC(addr) CORE.virtualAddress((addr) << 1)
-#define TO_PC(addr) (CORE.physicalAddress(addr) >> 1)
-#define CHECK_PC(addr) ((addr) < (CORE.ram_size << 1))
+#define FROM_PC(addr) VIRTUAL_ADDR((addr) << 1)
+#define TO_PC(addr) (PHYSICAL_ADDR(addr) >> 1)
 #define TIME THREAD.time
 
 #endif //_InstructionMacrosCommon_h_

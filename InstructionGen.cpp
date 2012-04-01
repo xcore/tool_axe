@@ -1096,6 +1096,8 @@ static void emitInstFunction(Instruction &inst, bool jit)
   std::cout << "Thread &thread";
   if (jit) {
     std::cout << ", uint32_t nextPc";
+    std::cout << ", const uint32_t ramBase";
+    std::cout << ", const uint32_t ramSize";
     for (unsigned i = 0, e = inst.getNumExplicitOperands(); i != e; ++i) {
       std::cout << ", uint32_t field" << i;
     }

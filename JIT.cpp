@@ -497,6 +497,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startAddress,
     LLVMSetFunctionCallConv(f, LLVMFastCallConv);
   }
   threadParam = LLVMGetParam(f, 0);
+  LLVMValueRef ramBase = LLVMConstInt(LLVMInt32Type(), core.ram_base, false);
+  LLVMValueRef ramSize = LLVMConstInt(LLVMInt32Type(), core.ram_size, false);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   uint32_t address = startAddress;
@@ -511,19 +513,23 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startAddress,
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
     assert(callee && "Function for instruction not found in module");
     LLVMTypeRef calleeType = LLVMGetElementType(LLVMTypeOf(callee));
-    unsigned numArgs = properties->getNumExplicitOperands() + 2;
+    const unsigned fixedArgs = 4;
+    const unsigned maxOperands = 6;
+    unsigned numArgs = properties->getNumExplicitOperands() + fixedArgs;
     assert(LLVMCountParamTypes(calleeType) == numArgs);
-    LLVMTypeRef paramTypes[8];
-    assert(numArgs <= 8);
+    LLVMTypeRef paramTypes[fixedArgs + maxOperands];
+    assert(numArgs <= (fixedArgs + maxOperands));
     LLVMGetParamTypes(calleeType, paramTypes);
     // Build call.
-    LLVMValueRef args[8];
+    LLVMValueRef args[fixedArgs + maxOperands];
     args[0] = threadParam;
     args[1] = LLVMConstInt(paramTypes[1], nextAddress >> 1, false);
-    for (unsigned i = 2; i < numArgs; i++) {
+    args[2] = ramBase;
+    args[3] = ramSize;
+    for (unsigned i = fixedArgs; i < numArgs; i++) {
       uint32_t value =
-      properties->getNumExplicitOperands() <= 3 ? ops.ops[i - 2] :
-      ops.lops[i - 2];
+      properties->getNumExplicitOperands() <= 3 ? ops.ops[i - fixedArgs] :
+      ops.lops[i - fixedArgs];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");

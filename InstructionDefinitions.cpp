@@ -39,6 +39,10 @@ extern "C" void jitUpdateExecutionFrequency(Thread &t) {
 
 #define THREAD thread
 #define CORE THREAD.getParent()
+#define PHYSICAL_ADDR(addr) ((addr) - ramBase)
+#define VIRTUAL_ADDR(addr) ((addr) + ramBase)
+#define CHECK_ADDR(addr) (uint32_t(addr) < ramSize)
+#define CHECK_PC(addr) ((addr) < (ramSize << 1))
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (field ## n)
