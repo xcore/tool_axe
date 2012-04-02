@@ -122,8 +122,8 @@ char *SyscallHandlerImpl::getString(Thread &thread, uint32_t address)
   address = state.physicalAddress(address);
   // Check the string is null terminated
   uint32_t end = address;
-  for (; end < state.ram_size && state.loadByte(end); end++) {}
-  if (end >= state.ram_size) {
+  for (; end < state.getRamSize() && state.loadByte(end); end++) {}
+  if (end >= state.getRamSize()) {
     return 0;
   }
   return (char *)&state.byte(address);
@@ -137,10 +137,10 @@ getBuffer(Thread &thread, uint32_t address, uint32_t size)
   Core &state = thread.getParent();
   // Perform address translation
   address = state.physicalAddress(address);
-  if (address > state.ram_size) {
+  if (address > state.getRamSize()) {
     return 0;
   }
-  if (address + size > state.ram_size) {
+  if (address + size > state.getRamSize()) {
     return 0;
   }
   return (void *)&state.byte(address);
@@ -385,7 +385,7 @@ doSyscall(Thread &thread, int &retval)
       Core &state = thread.getParent();
       if (TimeAddr != 0) {
         TimeAddr = state.physicalAddress(TimeAddr);
-        if (TimeAddr > state.ram_size || (TimeAddr & 3)) {
+        if (TimeAddr > state.getRamSize() || (TimeAddr & 3)) {
           // Invalid address
           thread.regs[R0] = (uint32_t)-1;
           return SyscallHandler::CONTINUE;

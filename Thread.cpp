@@ -292,7 +292,7 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define PHYSICAL_ADDR(addr) CORE.physicalAddress(addr)
 #define VIRTUAL_ADDR(addr) CORE.virtualAddress(addr)
 #define CHECK_ADDR(addr) CORE.isValidAddress(addr)
-#define CHECK_PC(addr) ((addr) < (CORE.ram_size << 1))
+#define CHECK_PC(addr) (((addr) >> (CORE.ramSizeLog2 - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (CORE.operands[THREAD.pc].ops[(n)])

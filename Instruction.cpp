@@ -347,7 +347,7 @@ static unsigned bitpValue(unsigned Value)
 void instructionDecode(Core &core, uint32_t shiftedAddress,
                        InstructionOpcode &opcode, Operands &operands)
 {
-  assert(shiftedAddress < (core.ram_size >> 1));
+  assert(shiftedAddress < core.getRamSizeShorts());
   if (shiftedAddress == core.syscallAddress) {
     opcode = SYSCALL;
     return;
@@ -1416,7 +1416,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid, InstructionOpcode
 #define OP(n) (operands.ops[n])
 #define LOP(n) (operands.lops[n])
 #define PC pc
-#define CHECK_PC(addr) ((addr) < (core.ram_size << 1))
+#define CHECK_PC(addr) ((addr) < core.getRamSizeShorts())
 
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,

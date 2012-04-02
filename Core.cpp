@@ -35,7 +35,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   operands(new Operands[RamSize >> 1]),
   invalidationInfo(new unsigned char[RamSize >> 1]),
   executionFrequency(new executionFrequency_t[RamSize >> 1]),
-  ram_size(RamSize),
+  ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ram_base(RamBase),
   syscallAddress(~0),
   exceptionAddress(~0)
@@ -217,7 +217,7 @@ Resource *Core::getResourceByID(ResourceID ID)
 bool Core::setSyscallAddress(uint32_t value)
 {
   uint32_t addr = physicalAddress(value) >> 1;
-  if (addr >= (ram_size << 1))
+  if (addr >= getRamSizeShorts())
     return false;
   syscallAddress = addr;
   return true;
@@ -226,7 +226,7 @@ bool Core::setSyscallAddress(uint32_t value)
 bool Core::setExceptionAddress(uint32_t value)
 {
   uint32_t addr = physicalAddress(value) >> 1;
-  if (addr >= (ram_size << 1))
+  if (addr >= getRamSizeShorts())
     return false;
   exceptionAddress = addr;
   return true;
@@ -236,7 +236,7 @@ void Core::
 initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
           OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit)
 {
-  const uint32_t ramSizeShorts = ram_size >> 1;
+  const uint32_t ramSizeShorts = getRamSizeShorts();
   // Initialise instruction cache.
   for (unsigned i = 0; i < ramSizeShorts; i++) {
     opcode[i] = decode;
@@ -343,7 +343,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
 
 void Core::runJIT(uint32_t shiftedAddress)
 {
-  if (shiftedAddress >= (ram_size >> 1))
+  if (shiftedAddress >= getRamSizeShorts())
     return;
   executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
   JIT::compileBlock(*this, shiftedAddress << 1);

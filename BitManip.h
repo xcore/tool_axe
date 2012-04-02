@@ -69,4 +69,9 @@ inline uint32_t zeroExtend(uint32_t value, uint32_t amount)
   return (value << (32 - amount)) >> (32 - amount);
 }
 
+inline bool isPowerOf2(uint32_t value)
+{
+  return value != 0 && (value & (value - 1)) == 0;
+}
+
 #endif // _BitManip_h_

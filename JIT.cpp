@@ -498,7 +498,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startAddress,
   }
   threadParam = LLVMGetParam(f, 0);
   LLVMValueRef ramBase = LLVMConstInt(LLVMInt32Type(), core.ram_base, false);
-  LLVMValueRef ramSize = LLVMConstInt(LLVMInt32Type(), core.ram_size, false);
+  LLVMValueRef ramSizeLog2 = LLVMConstInt(LLVMInt32Type(), core.ramSizeLog2,
+                                          false);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   uint32_t address = startAddress;
@@ -525,7 +526,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startAddress,
     args[0] = threadParam;
     args[1] = LLVMConstInt(paramTypes[1], nextAddress >> 1, false);
     args[2] = ramBase;
-    args[3] = ramSize;
+    args[3] = ramSizeLog2;
     for (unsigned i = fixedArgs; i < numArgs; i++) {
       uint32_t value =
       properties->getNumExplicitOperands() <= 3 ? ops.ops[i - fixedArgs] :

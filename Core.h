@@ -104,7 +104,7 @@ public:
   unsigned char *invalidationInfo;
   executionFrequency_t *executionFrequency;
 
-  const uint32_t ram_size;
+  const uint32_t ramSizeLog2;
   const uint32_t ram_base;
   uint32_t vector_base;
 
@@ -123,6 +123,9 @@ public:
   OPCODE_TYPE getDecodeOpcode() const { return decodeOpcode; }
 
   void runJIT(uint32_t shiftedAddress);
+
+  uint32_t getRamSize() const { return 1 << ramSizeLog2; }
+  uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
     const executionFrequency_t threshold = 128;
@@ -154,7 +157,7 @@ public:
   
   bool isValidAddress(uint32_t address) const
   {
-    return address < ram_size;
+    return (address >> ramSizeLog2) == 0;
   }
 
   uint8_t *mem() {
@@ -230,11 +233,11 @@ public:
   ChanEndpoint *getChanendDest(ResourceID ID);
 
   unsigned getRunJitAddr() const {
-    return ((ram_size >> 1) - 1) + RUN_JIT_ADDR_OFFSET;
+    return (getRamSizeShorts() - 1) + RUN_JIT_ADDR_OFFSET;
   }
 
   unsigned getIllegalPCThreadAddr() const {
-    return ((ram_size >> 1) - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
+    return (getRamSizeShorts() - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
   }
 
   void finalize();

@@ -185,7 +185,7 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     std::exit(1);
   }
   uint32_t ram_base = core.ram_base;
-  uint32_t ram_size = core.ram_size;
+  uint32_t ram_size = core.getRamSize();
   for (unsigned i = 0; i < num_phdrs; i++) {
     GElf_Phdr phdr;
     if (gelf_getphdr(e, i, &phdr) == NULL) {
@@ -285,6 +285,10 @@ createCoreFromConfig(xmlNode *config)
   xmlNode *ram = findChild(memoryController, "Ram");
   ram_base = readNumberAttribute(ram, "base");
   ram_size = readNumberAttribute(ram, "size");
+  if (!isPowerOf2(ram_size)) {
+    std::cerr << "Error: ram size is not a power of two\n";
+    std::exit(1);
+  }
   std::auto_ptr<Core> core(new Core(ram_size, ram_base));
   core->setCoreNumber(readNumberAttribute(config, "number"));
   if (xmlAttr *codeReference = findAttribute(config, "codeReference")) {
@@ -508,7 +512,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
     std::map<Core*,uint32_t>::iterator match;
     if ((match = entryPoints.find(core)) != entryPoints.end()) {
       uint32_t entryPc = core->physicalAddress(match->second) >> 1;
-      if (entryPc< core->ram_size << 1) {
+      if (entryPc < core->getRamSizeShorts()) {
         core->getThread(0).pc = entryPc;
       } else {
         std::cout << "Warning: invalid ELF entry point 0x";
