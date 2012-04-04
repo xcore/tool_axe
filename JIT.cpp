@@ -175,7 +175,7 @@ static bool
 getInstruction(Core &core, uint32_t address, InstructionOpcode &opc,
                Operands &operands)
 {
-  if (!core.isValidAddress(address))
+  if (!core.isValidAddress(address + core.ram_base))
     return false;
   instructionDecode(core, address >> 1, opc, operands);
   return true;

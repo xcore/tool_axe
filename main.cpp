@@ -289,6 +289,10 @@ createCoreFromConfig(xmlNode *config)
     std::cerr << "Error: ram size is not a power of two\n";
     std::exit(1);
   }
+  if ((ram_base % ram_size) != 0) {
+    std::cerr << "Error: ram base is not a multiple of ram size\n";
+    std::exit(1);
+  }
   std::auto_ptr<Core> core(new Core(ram_size, ram_base));
   core->setCoreNumber(readNumberAttribute(config, "number"));
   if (xmlAttr *codeReference = findAttribute(config, "codeReference")) {

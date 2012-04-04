@@ -359,7 +359,7 @@ void instructionDecode(Core &core, uint32_t shiftedAddress,
   uint16_t low = core.loadShort(shiftedAddress << 1);
   uint16_t high = 0;
   bool highValid;
-  if (core.isValidAddress((shiftedAddress + 1) << 1)) {
+  if (core.isValidAddress(core.fromPc(shiftedAddress + 1))) {
     high = core.loadShort((shiftedAddress + 1) << 1);
     highValid = true;
   } else {

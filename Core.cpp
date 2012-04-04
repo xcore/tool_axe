@@ -37,6 +37,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   executionFrequency(new executionFrequency_t[RamSize >> 1]),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ram_base(RamBase),
+  ramBaseMultiple(RamBase / RamSize),
   syscallAddress(~0),
   exceptionAddress(~0)
 {

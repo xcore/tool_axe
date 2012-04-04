@@ -34,14 +34,14 @@ uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   t.regs[ET] = et;
   t.regs[ED] = ed;
 
-  uint32_t newPc = t.getParent().physicalAddress(t.regs[KEP]);
+  uint32_t newPc = t.regs[KEP];
   if (et == ET_KCALL)
     newPc += 64;
   if ((newPc & 1) || !t.getParent().isValidAddress(newPc)) {
     std::cout << "Error: unable to handle exception (invalid kep)\n";
     std::abort();
   }
-  return newPc >> 1;
+  return t.getParent().toPc(newPc);
 }
 
 Resource *checkResource(Core &state, ResourceID id)

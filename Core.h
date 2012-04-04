@@ -106,6 +106,7 @@ public:
 
   const uint32_t ramSizeLog2;
   const uint32_t ram_base;
+  const uint32_t ramBaseMultiple;
   uint32_t vector_base;
 
   uint32_t syscallAddress;
@@ -157,7 +158,15 @@ public:
   
   bool isValidAddress(uint32_t address) const
   {
-    return (address >> ramSizeLog2) == 0;
+    return (address >> ramSizeLog2) == ramBaseMultiple;
+  }
+
+  uint32_t toPc(uint32_t address) const {
+    return (address - ram_base) >> 1;
+  }
+
+  uint32_t fromPc(uint32_t pc) const {
+    return (pc << 1) + ram_base;
   }
 
   uint8_t *mem() {
