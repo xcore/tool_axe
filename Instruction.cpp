@@ -356,11 +356,12 @@ void instructionDecode(Core &core, uint32_t pc, InstructionOpcode &opcode,
     opcode = EXCEPTION;
     return;
   }
-  uint16_t low = core.loadShort(pc << 1);
+  uint32_t address = core.fromPc(pc);
+  uint16_t low = core.loadShort(address);
   uint16_t high = 0;
   bool highValid;
-  if (core.isValidAddress(core.fromPc(pc + 1))) {
-    high = core.loadShort((pc + 1) << 1);
+  if (core.isValidAddress(address + 2)) {
+    high = core.loadShort(address + 2);
     highValid = true;
   } else {
     highValid = false;

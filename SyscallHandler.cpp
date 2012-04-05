@@ -115,18 +115,19 @@ SyscallHandlerImpl::SyscallHandlerImpl() :
 
 /// Returns a pointer to a string in memory at the given address.
 /// Returns 0 if the address is invalid or the string is not null terminated.
-char *SyscallHandlerImpl::getString(Thread &thread, uint32_t address)
+char *SyscallHandlerImpl::getString(Thread &thread, uint32_t startAddress)
 {
-  Core &state = thread.getParent();
-  // Perform address translation
-  address = state.physicalAddress(address);
+  Core &core = thread.getParent();
+  if (!core.isValidAddress(startAddress))
+    return 0;
   // Check the string is null terminated
-  uint32_t end = address;
-  for (; end < state.getRamSize() && state.loadByte(end); end++) {}
-  if (end >= state.getRamSize()) {
+  uint32_t address = startAddress;
+  uint32_t end = core.getRamSize() + core.ram_base;
+  for (; address < end && core.loadByte(address); address++) {}
+  if (address >= end) {
     return 0;
   }
-  return (char *)&state.byte(address);
+  return (char *)&core.byte(address);
 }
 
 /// Returns a pointer to a buffer in memory of the given size.
@@ -134,16 +135,10 @@ char *SyscallHandlerImpl::getString(Thread &thread, uint32_t address)
 void *SyscallHandlerImpl::
 getBuffer(Thread &thread, uint32_t address, uint32_t size)
 {
-  Core &state = thread.getParent();
-  // Perform address translation
-  address = state.physicalAddress(address);
-  if (address > state.getRamSize()) {
+  Core &core = thread.getParent();
+  if (!core.isValidAddress(address) || !core.isValidAddress(address + size))
     return 0;
-  }
-  if (address + size > state.getRamSize()) {
-    return 0;
-  }
-  return (void *)&state.byte(address);
+  return (void *)&core.byte(address);
 }
 
 /// Either returns an unused number for a file descriptor or -1 if there are no
@@ -382,15 +377,14 @@ doSyscall(Thread &thread, int &retval)
     {
       uint32_t TimeAddr = thread.regs[R1];
       uint32_t Time = (uint32_t)std::time(0);
-      Core &state = thread.getParent();
+      Core &core = thread.getParent();
       if (TimeAddr != 0) {
-        TimeAddr = state.physicalAddress(TimeAddr);
-        if (TimeAddr > state.getRamSize() || (TimeAddr & 3)) {
+        if (!core.isValidAddress(TimeAddr) || (TimeAddr & 3)) {
           // Invalid address
           thread.regs[R0] = (uint32_t)-1;
           return SyscallHandler::CONTINUE;
         }
-        state.storeWord(Time, TimeAddr);
+        core.storeWord(Time, TimeAddr);
       }
       thread.regs[R0] = Time;
       return SyscallHandler::CONTINUE;

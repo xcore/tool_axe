@@ -199,12 +199,13 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     	std::cerr << "Invalid offet in ELF program header" << i << std::endl;
     	std::exit(1);
     }
-    uint32_t offset = phdr.p_paddr - core.ram_base;
-    if (offset > ram_size || offset + phdr.p_filesz > ram_size || offset + phdr.p_memsz > ram_size) {
-      std::cerr << "Error data from ELF program header " << i << " does not fit in memory" << std::endl;
+    if (!core.isValidAddress(phdr.p_paddr) ||
+        !core.isValidAddress(phdr.p_paddr + phdr.p_memsz)) {
+      std::cerr << "Error data from ELF program header " << i;
+      std::cerr << " does not fit in memory" << std::endl;
       std::exit(1);
     }
-    core.writeMemory(offset, &buf[phdr.p_offset], phdr.p_filesz);
+    core.writeMemory(phdr.p_paddr, &buf[phdr.p_offset], phdr.p_filesz);
   }
 
   readSymbols(e, ram_base, ram_base + ram_size, SI);

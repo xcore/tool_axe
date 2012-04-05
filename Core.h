@@ -61,6 +61,7 @@ private:
   unsigned *resourceNum;
   static bool allocatable[LAST_STD_RES_TYPE + 1];
   uint32_t * const memory;
+  uint32_t * memoryOffset;
   unsigned coreNumber;
   Node *parent;
   std::string codeReference;
@@ -72,7 +73,7 @@ private:
 
   bool invalidateWord(uint32_t address) {
     uint16_t info;
-    std::memcpy(&info, &invalidationInfo[address >> 1], sizeof(info));
+    std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
     if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
       return false;
     invalidateWordSlowPath(address);
@@ -80,14 +81,14 @@ private:
   }
 
   bool invalidateShort(uint32_t address) {
-    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
+    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
       return false;
     invalidateSlowPath(address >> 1);
     return true;
   }
 
   bool invalidateByte(uint32_t address) {
-    if (invalidationInfo[address >> 1] == INVALIDATE_NONE)
+    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
       return false;
     invalidateSlowPath(address >> 1);
     return true;
@@ -101,6 +102,7 @@ private:
   OPCODE_TYPE *opcode;
   Operands *operands;
   unsigned char *invalidationInfo;
+  unsigned char *invalidationInfoOffset;
   executionFrequency_t *executionFrequency;
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
@@ -187,13 +189,22 @@ private:
     return reinterpret_cast<uint8_t*>(memory);
   }
 
+  uint8_t *memOffset() {
+    return reinterpret_cast<uint8_t*>(memoryOffset);
+  }
+
+  const uint8_t *memOffset() const {
+    return reinterpret_cast<uint8_t*>(memoryOffset);
+  }
+
 public:
   uint32_t loadWord(uint32_t address) const
   {
     if (HOST_LITTLE_ENDIAN) {
-      return *reinterpret_cast<const uint32_t*>((mem() + address));
+      return *reinterpret_cast<const uint32_t*>((memOffset() + address));
     } else {
-      return bswap32(*reinterpret_cast<const uint32_t*>((mem() + address)));
+      return
+        bswap32(*reinterpret_cast<const uint32_t*>((memOffset() + address)));
     }
   }
 
@@ -204,34 +215,34 @@ public:
 
   uint8_t loadByte(uint32_t address) const
   {
-    return mem()[address];
+    return memOffset()[address];
   }
 
   uint8_t &byte(uint32_t address)
   {
-    return mem()[address];
+    return memOffset()[address];
   }
 
   bool storeWord(uint32_t value, uint32_t address)
   {
     if (HOST_LITTLE_ENDIAN) {
-      *reinterpret_cast<uint32_t*>((mem() + address)) = value;
+      *reinterpret_cast<uint32_t*>((memOffset() + address)) = value;
     } else {
-      *reinterpret_cast<uint32_t*>((mem() + address)) = bswap32(value);
+      *reinterpret_cast<uint32_t*>((memOffset() + address)) = bswap32(value);
     }
     return invalidateWord(address);
   }
 
   bool storeShort(int16_t value, uint32_t address)
   {
-    mem()[address] = static_cast<uint8_t>(value);
-    mem()[address + 1] = static_cast<uint8_t>(value >> 8);
+    memOffset()[address] = static_cast<uint8_t>(value);
+    memOffset()[address + 1] = static_cast<uint8_t>(value >> 8);
     return invalidateShort(address);
   }
 
   bool storeByte(uint8_t value, uint32_t address)
   {
-    mem()[address] = value;
+    memOffset()[address] = value;
     return invalidateByte(address);
   }
 

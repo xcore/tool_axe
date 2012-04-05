@@ -41,6 +41,9 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   syscallAddress(~0),
   exceptionAddress(~0)
 {
+  memoryOffset = memory - (RamBase / 4);
+  invalidationInfoOffset = invalidationInfo - (RamBase / 2);
+
   resource[RES_TYPE_PORT] = 0;
   resourceNum[RES_TYPE_PORT] = 0;
   
@@ -182,7 +185,7 @@ Resource *Core::allocResource(Thread &current, ResourceType type)
 
 void Core::writeMemory(uint32_t address, void *src, size_t size)
 {
-  std::memcpy(&mem()[address], src, size);
+  std::memcpy(&memOffset()[address], src, size);
 }
 
 const Port *Core::getPortByID(ResourceID ID) const
@@ -327,11 +330,11 @@ std::string Core::getCoreName() const
 
 void Core::invalidateWordSlowPath(uint32_t shiftedAddress)
 {
-  if (invalidationInfo[shiftedAddress + 1] == INVALIDATE_NONE) {
+  if (invalidationInfoOffset[shiftedAddress + 1] == INVALIDATE_NONE) {
     invalidateSlowPath(shiftedAddress);
     return;
   }
-  invalidationInfo[shiftedAddress + 1] = INVALIDATE_CURRENT_AND_PREVIOUS;
+  invalidationInfoOffset[shiftedAddress + 1] = INVALIDATE_CURRENT_AND_PREVIOUS;
   invalidateSlowPath(shiftedAddress + 1);
 }
 
@@ -339,11 +342,12 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
 {
   unsigned char info;
   do {
-    info = invalidationInfo[shiftedAddress];
-    if (!JIT::invalidate(*this, shiftedAddress))
-      opcode[shiftedAddress] = decodeOpcode;
-    executionFrequency[shiftedAddress] = 0;
-    invalidationInfo[shiftedAddress--] = INVALIDATE_NONE;
+    info = invalidationInfoOffset[shiftedAddress];
+    uint32_t pc = shiftedAddress - (ram_base/2);
+    if (!JIT::invalidate(*this, pc))
+      opcode[pc] = decodeOpcode;
+    executionFrequency[pc] = 0;
+    invalidationInfoOffset[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
 }
 

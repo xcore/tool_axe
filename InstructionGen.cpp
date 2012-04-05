@@ -860,11 +860,10 @@ emitStore(const std::string &argString, LoadStoreType type)
   emitException("ET_LOAD_STORE, StoreAddr");
   std::cout << "  }\n";
   
-  std::cout << "  uint32_t StorePhyAddr = PHYSICAL_ADDR(StoreAddr);\n";
   std::cout << "  if (STORE_" << getLoadStoreTypeName(type);
   std::cout << "(";
   emitNested(value);
-  std::cout << ", StorePhyAddr)) {\n";
+  std::cout << ", StoreAddr)) {\n";
   std::cout << "    retval = JIT_RETURN_END_TRACE;\n";
   std::cout << "  }\n";
 
@@ -889,11 +888,9 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << "(LoadAddr)) {\n";
   emitException("ET_LOAD_STORE, LoadAddr");
   std::cout << "  }\n";
-  
-  std::cout << "  uint32_t LoadPhyAddr = PHYSICAL_ADDR(LoadAddr);\n";
   emitNested(dest);
   std::cout << " = LOAD_" << getLoadStoreTypeName(type);
-  std::cout << "(LoadPhyAddr)\n;";
+  std::cout << "(LoadAddr)\n;";
 
   std::cout << "}\n";
 }
