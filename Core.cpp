@@ -18,6 +18,12 @@
 
 
 Core::Core(uint32_t RamSize, uint32_t RamBase) :
+  executionFrequency(new executionFrequency_t[RamSize >> 1]),
+  opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
+  operands(new Operands[RamSize >> 1]),
+  ramSizeLog2(31 - countLeadingZeros(RamSize)),
+  ram_base(RamBase),
+  ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
   sync(new Synchroniser[NUM_SYNCS]),
   lock(new Lock[NUM_LOCKS]),
@@ -31,13 +37,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   memory(new uint32_t[RamSize >> 2]),
   coreNumber(0),
   parent(0),
-  opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
-  operands(new Operands[RamSize >> 1]),
   invalidationInfo(new unsigned char[RamSize >> 1]),
-  executionFrequency(new executionFrequency_t[RamSize >> 1]),
-  ramSizeLog2(31 - countLeadingZeros(RamSize)),
-  ram_base(RamBase),
-  ramBaseMultiple(RamBase / RamSize),
   syscallAddress(~0),
   exceptionAddress(~0)
 {

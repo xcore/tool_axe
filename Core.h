@@ -48,7 +48,21 @@ public:
 private:
   typedef int executionFrequency_t;
   static const executionFrequency_t MIN_EXECUTION_FREQUENCY = INT_MIN;
-
+  executionFrequency_t *executionFrequency;
+  uint32_t * memoryOffset;
+  unsigned char *invalidationInfoOffset;
+  // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
+  // pseudo instruction just past the end of memory. This saves
+  // us from having to check for illegal pc values when incrementing the pc from
+  // the previous instruction. Addition pseudo instructions come after this and
+  // are use for communicating illegal states.
+  OPCODE_TYPE *opcode;
+  Operands *operands;
+public:
+  const uint32_t ramSizeLog2;
+  const uint32_t ram_base;
+  const uint32_t ramBaseMultiple;
+private:
   Thread * const thread;
   Synchroniser * const sync;
   Lock * const lock;
@@ -61,7 +75,6 @@ private:
   unsigned *resourceNum;
   static bool allocatable[LAST_STD_RES_TYPE + 1];
   uint32_t * const memory;
-  uint32_t * memoryOffset;
   unsigned coreNumber;
   Node *parent;
   std::string codeReference;
@@ -94,22 +107,10 @@ private:
     return true;
   }
 private:
-  // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
-  // pseudo instruction just past the end of memory. This saves
-  // us from having to check for illegal pc values when incrementing the pc from
-  // the previous instruction. Addition pseudo instructions come after this and
-  // are use for communicating illegal states.
-  OPCODE_TYPE *opcode;
-  Operands *operands;
   unsigned char *invalidationInfo;
-  unsigned char *invalidationInfoOffset;
-  executionFrequency_t *executionFrequency;
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
 public:
-  const uint32_t ramSizeLog2;
-  const uint32_t ram_base;
-  const uint32_t ramBaseMultiple;
   uint32_t vector_base;
 
   uint32_t syscallAddress;
