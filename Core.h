@@ -92,7 +92,7 @@ private:
     invalidateSlowPath(address >> 1);
     return true;
   }
-public:
+private:
   // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
   // pseudo instruction just past the end of memory. This saves
   // us from having to check for illegal pc values when incrementing the pc from
@@ -100,10 +100,10 @@ public:
   // are use for communicating illegal states.
   OPCODE_TYPE *opcode;
   Operands *operands;
-  // TODO merge these arrays.
   unsigned char *invalidationInfo;
   executionFrequency_t *executionFrequency;
 
+public:
   const uint32_t ramSizeLog2;
   const uint32_t ram_base;
   const uint32_t ramBaseMultiple;
@@ -115,13 +115,18 @@ public:
   Core(uint32_t RamSize, uint32_t RamBase);
   ~Core();
 
+  void clearOpcode(uint32_t pc);
+  void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size);
+  void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size);
+
+  const Operands &getOperands(uint32_t pc) const { return operands[pc]; }
+  const OPCODE_TYPE *getOpcodeArray() const { return opcode; }
+
   bool setSyscallAddress(uint32_t value);
   bool setExceptionAddress(uint32_t value);
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit);
-
-  OPCODE_TYPE getDecodeOpcode() const { return decodeOpcode; }
 
   void runJIT(uint32_t shiftedAddress);
 

@@ -349,3 +349,25 @@ void Core::runJIT(uint32_t shiftedAddress)
   executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
   JIT::compileBlock(*this, shiftedAddress << 1);
 }
+
+void Core::clearOpcode(uint32_t pc)
+{
+  opcode[pc] = decodeOpcode;
+}
+
+void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size)
+{
+  opcode[pc] = opc;
+  if (invalidationInfo[pc] == INVALIDATE_NONE)
+    invalidationInfo[pc] = INVALIDATE_CURRENT;
+  assert((size % 2) == 0);
+  for (unsigned i = 1; i < size / 2; i++) {
+    invalidationInfo[pc + i] = INVALIDATE_CURRENT_AND_PREVIOUS;
+  }
+}
+
+void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size)
+{
+  setOpcode(pc, opc, size);
+  operands[pc] = ops;
+}

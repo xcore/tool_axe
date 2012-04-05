@@ -295,8 +295,8 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define CHECK_PC(addr) (((addr) >> (CORE.ramSizeLog2 - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
-#define OP(n) (CORE.operands[THREAD.pc].ops[(n)])
-#define LOP(n) (CORE.operands[THREAD.pc].lops[(n)])
+#define OP(n) (CORE.getOperands(THREAD.pc).ops[(n)])
+#define LOP(n) (CORE.getOperands(THREAD.pc).lops[(n)])
 #define TRACE(...) \
 do { \
 if (tracing) { \
@@ -349,23 +349,17 @@ JITReturn Instruction_RUN_JIT(Thread &thread) {
 template<bool tracing>
 JITReturn Instruction_DECODE(Thread &thread) {
   InstructionOpcode opc;
-  instructionDecode(CORE, THREAD.pc, opc, CORE.operands[THREAD.pc]);
-  instructionTransform(opc, CORE.operands[THREAD.pc], CORE, THREAD.pc);
-  if (CORE.invalidationInfo[THREAD.pc] == Core::INVALIDATE_NONE) {
-    CORE.invalidationInfo[THREAD.pc] = Core::INVALIDATE_CURRENT;
-  }
-  if (instructionProperties[opc].size == 4) {
-    CORE.invalidationInfo[THREAD.pc + 1] = Core::INVALIDATE_CURRENT_AND_PREVIOUS;
-  } else {
-    assert(instructionProperties[opc].size == 2);
-  }
+  Operands ops;
+  instructionDecode(CORE, THREAD.pc, opc, ops);
+  instructionTransform(opc, ops, CORE, THREAD.pc);
   static OPCODE_TYPE opcodeMap[] = {
 #define EMIT_INSTRUCTION_LIST
 #define DO_INSTRUCTION(inst) & Instruction_ ## inst <tracing>,
 #include "InstructionGenOutput.inc"
 #undef EMIT_INSTRUCTION_LIST
   };
-  CORE.opcode[THREAD.pc] = opcodeMap[opc];
+  CORE.setOpcode(THREAD.pc, opcodeMap[opc], ops,
+                 instructionProperties[opc].size);
   return JIT_RETURN_END_TRACE;
 }
 
@@ -380,7 +374,7 @@ JITReturn Instruction_DECODE(Thread &thread) {
 
 void Thread::run(ticks_t time)
 {
-  OPCODE_TYPE *opcode = getParent().opcode;
+  const OPCODE_TYPE *opcode = getParent().getOpcodeArray();
 
   while (1) {
     if ((*opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)

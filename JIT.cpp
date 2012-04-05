@@ -536,20 +536,6 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startAddress,
     LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
     calls.push_back(call);
     checkReturnValue(call, f, *properties);
-    // Update invalidation info.
-    if (calls.size() == 1) {
-      if (core.invalidationInfo[address >> 1] == Core::INVALIDATE_NONE) {
-        core.invalidationInfo[address >> 1] = Core::INVALIDATE_CURRENT;
-      }
-    } else {
-      core.invalidationInfo[address >> 1] =
-      Core::INVALIDATE_CURRENT_AND_PREVIOUS;
-    }
-    if (properties->size != 2) {
-      assert(properties->size == 4 && "Unexpected instruction size");
-      core.invalidationInfo[(address >> 1) + 1] =
-      Core::INVALIDATE_CURRENT_AND_PREVIOUS;
-    }
     if (properties->mayBranch() && properties->function &&
         emitJumpToNextFragment(opc, ops, coreInfo, nextAddress >> 1,
                                info)) {
@@ -594,7 +580,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startAddress,
       LLVMRecompileAndRelinkFunction(executionEngine, f));
   info->isStub = false;
   info->func = compiledFunction;
-  core.opcode[startAddress >> 1] = getFunctionThunk(*info);
+  core.setOpcode(startAddress >> 1, getFunctionThunk(*info),
+                 address - startAddress);
   return true;
 }
 
@@ -646,7 +633,7 @@ bool JITImpl::invalidate(Core &core, uint32_t shiftedAddress)
   for (std::set<JITFunctionInfo*>::iterator it = toInvalidate.begin(),
        e = toInvalidate.end(); it != e; ++it) {
     uint32_t shiftedAddress = (*it)->shiftedAddress;
-    core.opcode[shiftedAddress] = core.getDecodeOpcode();
+    core.clearOpcode(shiftedAddress);
     coreInfo->unreachableFunctions.push_back(shiftedAddress);
   }
   return true;
