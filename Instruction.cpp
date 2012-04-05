@@ -344,23 +344,23 @@ static unsigned bitpValue(unsigned Value)
   return bitpValues[Value];
 }
 
-void instructionDecode(Core &core, uint32_t shiftedAddress,
-                       InstructionOpcode &opcode, Operands &operands)
+void instructionDecode(Core &core, uint32_t pc, InstructionOpcode &opcode,
+                       Operands &operands)
 {
-  assert(shiftedAddress < core.getRamSizeShorts());
-  if (shiftedAddress == core.syscallAddress) {
+  assert(core.isValidPc(pc));
+  if (pc == core.syscallAddress) {
     opcode = SYSCALL;
     return;
   }
-  if (shiftedAddress == core.exceptionAddress) {
+  if (pc == core.exceptionAddress) {
     opcode = EXCEPTION;
     return;
   }
-  uint16_t low = core.loadShort(shiftedAddress << 1);
+  uint16_t low = core.loadShort(pc << 1);
   uint16_t high = 0;
   bool highValid;
-  if (core.isValidAddress(core.fromPc(shiftedAddress + 1))) {
-    high = core.loadShort((shiftedAddress + 1) << 1);
+  if (core.isValidAddress(core.fromPc(pc + 1))) {
+    high = core.loadShort((pc + 1) << 1);
     highValid = true;
   } else {
     highValid = false;
@@ -372,8 +372,8 @@ void instructionDecode(Core &core, uint32_t shiftedAddress,
 #define EOPR 0x1f /* 0b11111 */
 
 void
-instructionDecode(uint16_t low, uint16_t high, bool highValid, InstructionOpcode &opcode,
-       Operands &operands) {
+instructionDecode(uint16_t low, uint16_t high, bool highValid,
+                  InstructionOpcode &opcode, Operands &operands) {
   /* bits 15:11 */
   unsigned opc = bitRange(low, 15, 11);
   switch (opc) {
@@ -1416,7 +1416,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid, InstructionOpcode
 #define OP(n) (operands.ops[n])
 #define LOP(n) (operands.lops[n])
 #define PC pc
-#define CHECK_PC(addr) ((addr) < core.getRamSizeShorts())
+#define CHECK_PC(addr) (core.isValidPc(addr))
 
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,

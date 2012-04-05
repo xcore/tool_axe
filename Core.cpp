@@ -218,7 +218,7 @@ Resource *Core::getResourceByID(ResourceID ID)
 bool Core::setSyscallAddress(uint32_t value)
 {
   uint32_t addr = physicalAddress(value) >> 1;
-  if (addr >= getRamSizeShorts())
+  if (!isValidPc(addr))
     return false;
   syscallAddress = addr;
   return true;
@@ -227,7 +227,7 @@ bool Core::setSyscallAddress(uint32_t value)
 bool Core::setExceptionAddress(uint32_t value)
 {
   uint32_t addr = physicalAddress(value) >> 1;
-  if (addr >= getRamSizeShorts())
+  if (!isValidPc(addr))
     return false;
   exceptionAddress = addr;
   return true;
@@ -342,12 +342,12 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
 }
 
-void Core::runJIT(uint32_t shiftedAddress)
+void Core::runJIT(uint32_t jitPc)
 {
-  if (shiftedAddress >= getRamSizeShorts())
+  if (!isValidPc(jitPc))
     return;
-  executionFrequency[shiftedAddress] = MIN_EXECUTION_FREQUENCY;
-  JIT::compileBlock(*this, shiftedAddress << 1);
+  executionFrequency[jitPc] = MIN_EXECUTION_FREQUENCY;
+  JIT::compileBlock(*this, jitPc);
 }
 
 void Core::clearOpcode(uint32_t pc)

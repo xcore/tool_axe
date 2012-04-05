@@ -102,6 +102,7 @@ private:
   Operands *operands;
   unsigned char *invalidationInfo;
   executionFrequency_t *executionFrequency;
+  uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
 public:
   const uint32_t ramSizeLog2;
@@ -128,10 +129,9 @@ public:
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit);
 
-  void runJIT(uint32_t shiftedAddress);
+  void runJIT(uint32_t jitPc);
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
-  uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
     const executionFrequency_t threshold = 128;
@@ -164,6 +164,10 @@ public:
   bool isValidAddress(uint32_t address) const
   {
     return (address >> ramSizeLog2) == ramBaseMultiple;
+  }
+
+  bool isValidPc(uint32_t address) const {
+    return address < getRamSizeShorts();
   }
 
   uint32_t toPc(uint32_t address) const {

@@ -13,8 +13,8 @@ class Thread;
 class Core;
 
 namespace JIT {
-  void compileBlock(Core &c, uint32_t address);
-  bool invalidate(Core &c, uint32_t shiftedAddress);
+  void compileBlock(Core &c, uint32_t pc);
+  bool invalidate(Core &c, uint32_t pc);
 };
 
 #endif // _JIT_h_

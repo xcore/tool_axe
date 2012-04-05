@@ -516,7 +516,7 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
     std::map<Core*,uint32_t>::iterator match;
     if ((match = entryPoints.find(core)) != entryPoints.end()) {
       uint32_t entryPc = core->physicalAddress(match->second) >> 1;
-      if (entryPc < core->getRamSizeShorts()) {
+      if (core->isValidPc(entryPc)) {
         core->getThread(0).pc = entryPc;
       } else {
         std::cout << "Warning: invalid ELF entry point 0x";
