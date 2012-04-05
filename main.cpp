@@ -204,7 +204,7 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
       std::cerr << "Error data from ELF program header " << i << " does not fit in memory" << std::endl;
       std::exit(1);
     }
-    std::memcpy(core.mem() + offset, &buf[phdr.p_offset], phdr.p_filesz);
+    core.writeMemory(offset, &buf[phdr.p_offset], phdr.p_filesz);
   }
 
   readSymbols(e, ram_base, ram_base + ram_size, SI);

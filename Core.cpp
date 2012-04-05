@@ -180,6 +180,11 @@ Resource *Core::allocResource(Thread &current, ResourceType type)
   return 0;
 }
 
+void Core::writeMemory(uint32_t address, void *src, size_t size)
+{
+  std::memcpy(&mem()[address], src, size);
+}
+
 const Port *Core::getPortByID(ResourceID ID) const
 {
   assert(ID.type() == RES_TYPE_PORT);

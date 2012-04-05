@@ -178,6 +178,7 @@ public:
     return (pc << 1) + ram_base;
   }
 
+private:
   uint8_t *mem() {
     return reinterpret_cast<uint8_t*>(memory);
   }
@@ -186,6 +187,7 @@ public:
     return reinterpret_cast<uint8_t*>(memory);
   }
 
+public:
   uint32_t loadWord(uint32_t address) const
   {
     if (HOST_LITTLE_ENDIAN) {
@@ -232,6 +234,8 @@ public:
     mem()[address] = value;
     return invalidateByte(address);
   }
+
+  void writeMemory(uint32_t address, void *src, size_t size);
 
   Resource *allocResource(Thread &current, ResourceType type);
 
