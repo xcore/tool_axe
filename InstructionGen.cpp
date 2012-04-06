@@ -859,11 +859,14 @@ emitStore(const std::string &argString, LoadStoreType type)
   std::cout << "(StoreAddr)) {\n";
   emitException("ET_LOAD_STORE, StoreAddr");
   std::cout << "  }\n";
-  
-  std::cout << "  if (STORE_" << getLoadStoreTypeName(type);
+
+  std::cout << "  STORE_" << getLoadStoreTypeName(type);
   std::cout << "(";
   emitNested(value);
-  std::cout << ", StoreAddr)) {\n";
+  std::cout << ", StoreAddr);\n";
+
+  std::cout << "  if (INVALIDATE_" << getLoadStoreTypeName(type);
+  std::cout << "(StoreAddr)) {\n";
   std::cout << "    retval = JIT_RETURN_END_TRACE;\n";
   std::cout << "  }\n";
 

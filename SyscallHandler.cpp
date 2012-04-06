@@ -385,6 +385,7 @@ doSyscall(Thread &thread, int &retval)
           return SyscallHandler::CONTINUE;
         }
         core.storeWord(Time, TimeAddr);
+        core.invalidateWord(TimeAddr);
       }
       thread.regs[R0] = Time;
       return SyscallHandler::CONTINUE;

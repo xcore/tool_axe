@@ -83,29 +83,6 @@ private:
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
   void invalidateSlowPath(uint32_t shiftedAddress);
-
-  bool invalidateWord(uint32_t address) {
-    uint16_t info;
-    std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
-    if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
-      return false;
-    invalidateWordSlowPath(address);
-    return true;
-  }
-
-  bool invalidateShort(uint32_t address) {
-    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
-      return false;
-    invalidateSlowPath(address >> 1);
-    return true;
-  }
-
-  bool invalidateByte(uint32_t address) {
-    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
-      return false;
-    invalidateSlowPath(address >> 1);
-    return true;
-  }
 private:
   unsigned char *invalidationInfo;
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
@@ -219,32 +196,52 @@ public:
     return memOffset()[address];
   }
 
+  bool invalidateWord(uint32_t address) {
+    uint16_t info;
+    std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
+    if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
+      return false;
+    invalidateWordSlowPath(address);
+    return true;
+  }
+
+  bool invalidateShort(uint32_t address) {
+    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
+  bool invalidateByte(uint32_t address) {
+    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
   uint8_t &byte(uint32_t address)
   {
     return memOffset()[address];
   }
 
-  bool storeWord(uint32_t value, uint32_t address)
+  void storeWord(uint32_t value, uint32_t address)
   {
     if (HOST_LITTLE_ENDIAN) {
       *reinterpret_cast<uint32_t*>((memOffset() + address)) = value;
     } else {
       *reinterpret_cast<uint32_t*>((memOffset() + address)) = bswap32(value);
     }
-    return invalidateWord(address);
   }
 
-  bool storeShort(int16_t value, uint32_t address)
+  void storeShort(int16_t value, uint32_t address)
   {
     memOffset()[address] = static_cast<uint8_t>(value);
     memOffset()[address + 1] = static_cast<uint8_t>(value >> 8);
-    return invalidateShort(address);
   }
 
-  bool storeByte(uint8_t value, uint32_t address)
+  void storeByte(uint8_t value, uint32_t address)
   {
     memOffset()[address] = value;
-    return invalidateByte(address);
   }
 
   void writeMemory(uint32_t address, void *src, size_t size);
