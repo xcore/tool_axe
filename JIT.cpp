@@ -56,13 +56,17 @@ JITCoreInfo::~JITCoreInfo()
 
 class JITImpl {
   bool initialized;
+  struct Functions {
+    LLVMValueRef jitStubImpl;
+    LLVMValueRef jitGetPc;
+    LLVMValueRef jitUpdateExecutionFrequency;
+    void init(LLVMModuleRef mod);
+  };
+  Functions functions;
   LLVMModuleRef module;
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
-  LLVMValueRef jitStubImplFunction;
-  LLVMValueRef jitGetPcFunction;
-  LLVMValueRef jitUpdateExecutionFrequencyFunction;
   LLVMPassManagerRef FPM;
 
   std::map<const Core*,JITCoreInfo*> jitCoreMap;
@@ -112,6 +116,22 @@ JITImpl::~JITImpl()
   }
 }
 
+void JITImpl::Functions::init(LLVMModuleRef module)
+{
+  struct {
+    const char *name;
+    LLVMValueRef *ref;
+  } initInfo[] = {
+    { "jitStubImpl", &jitStubImpl },
+    { "jitGetPc", &jitGetPc },
+    { "jitUpdateExecutionFrequency", &jitUpdateExecutionFrequency },
+  };
+  for (unsigned i = 0; i < ARRAY_SIZE(initInfo); i++) {
+    *initInfo[i].ref = LLVMGetNamedFunction(module, initInfo[i].name);
+    assert(*initInfo[i].ref && "function not found in module");
+  }
+}
+
 void JITImpl::init()
 {
   if (initialized)
@@ -135,15 +155,8 @@ void JITImpl::init()
   builder = LLVMCreateBuilder();
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
-  jitStubImplFunction = LLVMGetNamedFunction(module, "jitStubImpl");
-  assert(jitStubImplFunction && "jitStubImpl() not found in module");
-  jitGetPcFunction = LLVMGetNamedFunction(module, "jitGetPc");
-  assert(jitGetPcFunction && "jitGetPc() not found in module");
-  jitUpdateExecutionFrequencyFunction =
-    LLVMGetNamedFunction(module, "jitUpdateExecutionFrequency");
-  assert(jitUpdateExecutionFrequencyFunction &&
-         "jitUpdateExecutionFrequency() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
+  functions.init(module);
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
   LLVMAddBasicAliasAnalysisPass(FPM);
@@ -329,7 +342,7 @@ getJITFunctionOrStubImpl(JITCoreInfo &coreInfo, uint32_t pc)
     LLVMGetParam(f, 0)
   };
   LLVMValueRef call =
-    LLVMBuildCall(builder, jitStubImplFunction, args, 1, "");
+    LLVMBuildCall(builder, functions.jitStubImpl, args, 1, "");
   LLVMBuildRet(builder, call);
   if (DEBUG_JIT) {
     LLVMDumpValue(f);
@@ -391,7 +404,8 @@ emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
     LLVMValueRef args[] = {
       threadParam
     };
-    LLVMValueRef nextPc = LLVMBuildCall(builder, jitGetPcFunction, args, 1, "");
+    LLVMValueRef nextPc = LLVMBuildCall(builder, functions.jitGetPc, args, 1,
+                                        "");
     calls.push_back(nextPc);
     for (;it != successors.end(); ++it) {
       LLVMValueRef cmp =
@@ -545,7 +559,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
       threadParam
     };
     LLVMValueRef call =
-      LLVMBuildCall(builder, jitUpdateExecutionFrequencyFunction, args, 1, "");
+      LLVMBuildCall(builder, functions.jitUpdateExecutionFrequency, args, 1,
+                    "");
     calls.push_back(call);
     // Build return.
     LLVMBuildRet(builder,
