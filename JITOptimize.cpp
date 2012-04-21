@@ -142,36 +142,57 @@ getRegister(const InstructionProperties &properties, const Operands &ops,
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
-static void
-updateRegDefinitions(InstructionOpcode opc, const Operands &ops,
-                     unsigned nextOffset, unsigned *regDefs)
-{
-  const InstructionProperties &properties = instructionProperties[opc];
-  for (unsigned i = 0, e = properties.getNumOperands(); i != e; ++i) {
-    if (!isDef(properties.getOperandType(i)))
-      continue;
-    regDefs[getRegister(properties, ops, i)] = nextOffset;
-  }
-}
-
 static unsigned
 getFlagsForCheck(const MemoryAccess &access)
 {
   unsigned flags = 0;
-  flags |= MemoryCheck::CheckAlignment;
+  if (access.getSize() > 1)
+    flags |= MemoryCheck::CheckAlignment;
   flags |= MemoryCheck::CheckAddress;
   if (access.getIsStore())
     flags |= MemoryCheck::CheckInvalidation;
   return flags;
 }
 
+struct MemoryCheckState {
+  // Index of the first instruction where the value in the specified register
+  // is available.
+  unsigned regDefs[Register::NUM_REGISTERS];
+  unsigned char minAlignment[Register::NUM_REGISTERS];
+
+  MemoryCheckState() {
+    std::memset(regDefs, 0, sizeof(regDefs));
+    std::memset(minAlignment, 1, sizeof(minAlignment));
+  }
+
+  void update(InstructionOpcode opc, const Operands &ops,
+              unsigned nextOffset);
+  void setMinAlignment(Register::Reg reg, unsigned char value) {
+    minAlignment[reg] = value;
+  }
+  unsigned char getMinAlignment(Register::Reg reg) const {
+    return minAlignment[reg];
+  }
+};
+
+void MemoryCheckState::
+update(InstructionOpcode opc, const Operands &ops, unsigned nextOffset)
+{
+  const InstructionProperties &properties = instructionProperties[opc];
+  for (unsigned i = 0, e = properties.getNumOperands(); i != e; ++i) {
+    if (!isDef(properties.getOperandType(i)))
+      continue;
+    Register::Reg reg = getRegister(properties, ops, i);
+    regDefs[reg] = nextOffset;
+    minAlignment[reg] = 1;
+  }
+}
+
 void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                        std::vector<Operands> &operands,
                        std::queue<std::pair<uint32_t,MemoryCheck*> > &checks)
 {
-  // Index of the first instruction where the value in the specified register
-  // is available.
-  unsigned regDefs[Register::NUM_REGISTERS] = {0};
+  MemoryCheckState state;
 
   std::vector<MemoryCheckCandidate> candidates;
   // Gather expressions for memory accesses.
@@ -184,17 +205,33 @@ void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
       getInstructionMemoryAccess(opc, ops, access);
       assert(access.getOffsetImm() % access.getSize() == 0);
       // Compute the first offset where all registers are available.
-      unsigned first = regDefs[access.getBaseReg()];
+      unsigned first = state.regDefs[access.getBaseReg()];
       if (access.getScale())
-        first = std::min(first, regDefs[access.getOffsetReg()]);
+        first = std::min(first, state.regDefs[access.getOffsetReg()]);
+      unsigned flags = getFlagsForCheck(access);
+      bool updateBaseRegAlign = false;
+      if (flags & MemoryCheck::CheckAlignment) {
+        assert(access.getScale() == 0 ||
+               (access.getScale() % access.getSize()) == 0);
+        assert((access.getOffsetImm() % access.getSize()) == 0);
+        unsigned size = access.getSize();
+        if ((state.getMinAlignment(access.getBaseReg()) % size) == 0) {
+          flags &= ~MemoryCheck::CheckAlignment;
+        } else {
+          updateBaseRegAlign = true;
+        }
+      }
       MemoryCheck *check =
         new MemoryCheck(access.getSize(), access.getBaseReg(),
                         access.getScale(), access.getOffsetReg(),
-                        access.getOffsetImm(), getFlagsForCheck(access));
+                        access.getOffsetImm(), flags);
       candidates.push_back(MemoryCheckCandidate(first, i, check));
+      if (updateBaseRegAlign) {
+        state.setMinAlignment(access.getBaseReg(), access.getSize());
+      }
     }
     // Update regDefs.
-    updateRegDefinitions(opc, ops, i + 1, regDefs);
+    state.update(opc, ops, i + 1);
   }
   if (candidates.empty())
     return;
