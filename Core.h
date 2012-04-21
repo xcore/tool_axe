@@ -38,7 +38,8 @@ class Core {
 public:
   enum {
     RUN_JIT_ADDR_OFFSET = 2,
-    ILLEGAL_PC_THREAD_ADDR_OFFSET = 3
+    INTERPRET_ONE_ADDR_OFFSET = 3,
+    ILLEGAL_PC_THREAD_ADDR_OFFSET = 4
   };
   enum {
     INVALIDATE_NONE,
@@ -107,7 +108,8 @@ public:
   bool setExceptionAddress(uint32_t value);
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit);
+                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit,
+                 OPCODE_TYPE interpretOne);
 
   void runJIT(uint32_t jitPc);
 
@@ -196,24 +198,42 @@ public:
     return memOffset()[address];
   }
 
-  bool invalidateWord(uint32_t address) {
+  bool invalidateWordCheck(uint32_t address) {
     uint16_t info;
     std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
     if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
+      return false;
+    return true;
+  }
+
+  bool invalidateWord(uint32_t address) {
+    if (!invalidateWordCheck(address))
       return false;
     invalidateWordSlowPath(address);
     return true;
   }
 
-  bool invalidateShort(uint32_t address) {
+  bool invalidateShortCheck(uint32_t address) {
     if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+      return false;
+    return true;
+  }
+
+  bool invalidateShort(uint32_t address) {
+    if (!invalidateShortCheck(address))
       return false;
     invalidateSlowPath(address >> 1);
     return true;
   }
 
-  bool invalidateByte(uint32_t address) {
+  bool invalidateByteCheck(uint32_t address) {
     if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+      return false;
+    return true;
+  }
+
+  bool invalidateByte(uint32_t address) {
+    if (!invalidateByteCheck(address))
       return false;
     invalidateSlowPath(address >> 1);
     return true;
@@ -265,6 +285,10 @@ public:
 
   unsigned getRunJitAddr() const {
     return (getRamSizeShorts() - 1) + RUN_JIT_ADDR_OFFSET;
+  }
+
+  unsigned getInterpretOneAddr() const {
+    return (getRamSizeShorts() - 1) + INTERPRET_ONE_ADDR_OFFSET;
   }
 
   unsigned getIllegalPCThreadAddr() const {

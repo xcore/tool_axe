@@ -23,6 +23,7 @@ struct InstructionProperties {
     MAY_YIELD = 1 << 1,
     MAY_DESCHEDULE = 1 << 2,
     MAY_END_TRACE = 1 << 3,
+    MEM_CHECK_OPT_ENABLED = 1 << 4
   };
   const char *function;
   OperandProperties::OpType *ops;
@@ -35,8 +36,18 @@ struct InstructionProperties {
   bool mayYield() const { return flags & MAY_YIELD; }
   bool mayDeschedule() const { return flags & MAY_DESCHEDULE; }
   bool mayEndTrace() const { return flags & MAY_END_TRACE; }
+  bool memCheckHoistingOptEnabled() const {
+    return flags & MEM_CHECK_OPT_ENABLED;
+  }
+  unsigned getNumOperands() const { return numOperands; }
   unsigned getNumExplicitOperands() const {
     return numOperands - numImplicitOperands;
+  }
+  OperandProperties::OpType getOperandType(unsigned i) const {
+    return ops[i];
+  }
+  Register::Reg getImplicitOperand(unsigned i) const {
+    return implicitOps[i];
   }
 };
 

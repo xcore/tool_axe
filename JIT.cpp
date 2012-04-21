@@ -21,6 +21,7 @@
 #include "InstructionBitcode.h"
 #include "LLVMExtra.h"
 #include "InstructionProperties.h"
+#include "JITOptimize.h"
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
@@ -60,6 +61,12 @@ class JITImpl {
     LLVMValueRef jitStubImpl;
     LLVMValueRef jitGetPc;
     LLVMValueRef jitUpdateExecutionFrequency;
+    LLVMValueRef jitComputeAddress;
+    LLVMValueRef jitCheckAddress;
+    LLVMValueRef jitInvalidateByteCheck;
+    LLVMValueRef jitInvalidateShortCheck;
+    LLVMValueRef jitInvalidateWordCheck;
+    LLVMValueRef jitInterpretOne;
     void init(LLVMModuleRef mod);
   };
   Functions functions;
@@ -74,17 +81,24 @@ class JITImpl {
   std::vector<LLVMBasicBlockRef> earlyReturnIncomingBlocks;
 
   LLVMValueRef threadParam;
+  LLVMValueRef ramSizeLog2Param;
   LLVMBasicBlockRef earlyReturnBB;
+  LLVMBasicBlockRef interpretOneBB;
+  LLVMBasicBlockRef endTraceBB;
   LLVMValueRef earlyReturnPhi;
   std::vector<LLVMValueRef> calls;
 
   void init();
+  LLVMValueRef getCurrentFunction();
   void resetPerFunctionState();
   void reclaimUnreachableFunctions(JITCoreInfo &coreInfo);
   void reclaimUnreachableFunctions();
-  void checkReturnValue(LLVMValueRef call, LLVMValueRef f,
-                        InstructionProperties &properties);
+  void emitCondEarlyReturn(LLVMValueRef cond, LLVMValueRef retval);
+  void checkReturnValue(LLVMValueRef call, InstructionProperties &properties);
+  void emitCondBrToBlock(LLVMValueRef cond, LLVMBasicBlockRef trueBB);
   void ensureEarlyReturnBB(LLVMTypeRef phiType);
+  LLVMValueRef emitCallToBeInlined(LLVMValueRef fn, LLVMValueRef *args,
+                                   unsigned numArgs);
   JITCoreInfo *getJITCoreInfo(const Core &);
   JITCoreInfo *getOrCreateJITCoreInfo(const Core &);
   JITFunctionInfo *getJITFunctionOrStubImpl(JITCoreInfo &coreInfo, uint32_t pc);
@@ -92,6 +106,10 @@ class JITImpl {
                                     JITFunctionInfo *caller);
   bool compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t pc,
                           bool &endOfBlock, uint32_t &nextPc);
+  LLVMBasicBlockRef getOrCreateMemoryCheckBailoutBlock(unsigned index);
+  void emitMemoryChecks(unsigned index,
+                        std::queue<std::pair<uint32_t,MemoryCheck*> > &checks);
+  LLVMValueRef getJitInvalidateFunction(unsigned size);
   void emitJumpToNextFragment(JITCoreInfo &coreInfo, uint32_t targetPc,
                               JITFunctionInfo *caller);
   bool emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
@@ -125,6 +143,12 @@ void JITImpl::Functions::init(LLVMModuleRef module)
     { "jitStubImpl", &jitStubImpl },
     { "jitGetPc", &jitGetPc },
     { "jitUpdateExecutionFrequency", &jitUpdateExecutionFrequency },
+    { "jitComputeAddress", &jitComputeAddress },
+    { "jitCheckAddress", &jitCheckAddress },
+    { "jitInvalidateByteCheck", &jitInvalidateByteCheck },
+    { "jitInvalidateShortCheck", &jitInvalidateShortCheck },
+    { "jitInvalidateWordCheck", &jitInvalidateWordCheck },
+    { "jitInterpretOne", &jitInterpretOne },
   };
   for (unsigned i = 0; i < ARRAY_SIZE(initInfo); i++) {
     *initInfo[i].ref = LLVMGetNamedFunction(module, initInfo[i].name);
@@ -173,10 +197,18 @@ void JITImpl::init()
   initialized = true;
 }
 
+LLVMValueRef JITImpl::getCurrentFunction()
+{
+  return LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+}
+
 void JITImpl::resetPerFunctionState()
 {
   threadParam = 0;
+  ramSizeLog2Param = 0;
   earlyReturnBB = 0;
+  interpretOneBB = 0;
+  endTraceBB = 0;
   earlyReturnIncomingValues.clear();
   earlyReturnIncomingBlocks.clear();
   calls.clear();
@@ -225,21 +257,23 @@ static bool mayReturnEarly(InstructionProperties &properties)
          properties.mayDeschedule();
 }
 
+void JITImpl::emitCondEarlyReturn(LLVMValueRef cond, LLVMValueRef retval)
+{
+  ensureEarlyReturnBB(LLVMGetReturnType((jitFunctionType)));
+  earlyReturnIncomingValues.push_back(retval);
+  earlyReturnIncomingBlocks.push_back(LLVMGetInsertBlock(builder));
+  emitCondBrToBlock(cond, earlyReturnBB);
+}
+
 void
-JITImpl::checkReturnValue(LLVMValueRef call, LLVMValueRef f,
-                          InstructionProperties &properties)
+JITImpl::checkReturnValue(LLVMValueRef call, InstructionProperties &properties)
 {
   if (!mayReturnEarly(properties))
     return;
   LLVMValueRef cmp =
     LLVMBuildICmp(builder, LLVMIntNE, call,
                   LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_CONTINUE), "");
-  LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(f, "");
-  ensureEarlyReturnBB(LLVMTypeOf(call));
-  LLVMBuildCondBr(builder, cmp, earlyReturnBB, afterBB);
-  earlyReturnIncomingBlocks.push_back(LLVMGetInsertBlock(builder));
-  earlyReturnIncomingValues.push_back(call);
-  LLVMPositionBuilderAtEnd(builder, afterBB);
+  emitCondEarlyReturn(cmp, call);
 }
 
 void JITImpl::ensureEarlyReturnBB(LLVMTypeRef phiType)
@@ -256,6 +290,14 @@ void JITImpl::ensureEarlyReturnBB(LLVMTypeRef phiType)
   LLVMBuildRet(builder, earlyReturnPhi);
   // Restore insert point.
   LLVMPositionBuilderAtEnd(builder, savedBB);
+}
+
+LLVMValueRef JITImpl::
+emitCallToBeInlined(LLVMValueRef fn, LLVMValueRef *args, unsigned numArgs)
+{
+  LLVMValueRef call = LLVMBuildCall(builder, fn, args, numArgs, "");
+  calls.push_back(call);
+  return call;
 }
 
 void JITImpl::compileBlock(Core &core, uint32_t pc)
@@ -404,9 +446,7 @@ emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
     LLVMValueRef args[] = {
       threadParam
     };
-    LLVMValueRef nextPc = LLVMBuildCall(builder, functions.jitGetPc, args, 1,
-                                        "");
-    calls.push_back(nextPc);
+    LLVMValueRef nextPc = emitCallToBeInlined(functions.jitGetPc, args, 1);
     for (;it != successors.end(); ++it) {
       LLVMValueRef cmp =
         LLVMBuildICmp(builder, LLVMIntEQ, nextPc,
@@ -494,6 +534,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
                             endOfBlock, pcAfterFragment)) {
     return false;
   }
+  std::queue<std::pair<uint32_t,MemoryCheck*> > checks;
+  placeMemoryChecks(opcode, operands, checks);
 
   LLVMValueRef f;
   if (info) {
@@ -510,8 +552,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
   }
   threadParam = LLVMGetParam(f, 0);
   LLVMValueRef ramBase = LLVMConstInt(LLVMInt32Type(), core.ram_base, false);
-  LLVMValueRef ramSizeLog2 = LLVMConstInt(LLVMInt32Type(), core.ramSizeLog2,
-                                          false);
+  ramSizeLog2Param = LLVMConstInt(LLVMInt32Type(), core.ramSizeLog2, false);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   uint32_t pc = startPc;
@@ -521,6 +562,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     const Operands &ops = operands[i];
     InstructionProperties *properties = &instructionProperties[opc];
     uint32_t nextPc = pc + properties->size / 2;
+    emitMemoryChecks(i, checks);
 
     // Lookup function to call.
     LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
@@ -538,30 +580,27 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     args[0] = threadParam;
     args[1] = LLVMConstInt(paramTypes[1], nextPc, false);
     args[2] = ramBase;
-    args[3] = ramSizeLog2;
+    args[3] = ramSizeLog2Param;
     for (unsigned i = fixedArgs; i < numArgs; i++) {
       uint32_t value =
       properties->getNumExplicitOperands() <= 3 ? ops.ops[i - fixedArgs] :
       ops.lops[i - fixedArgs];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
-    LLVMValueRef call = LLVMBuildCall(builder, callee, args, numArgs, "");
-    calls.push_back(call);
-    checkReturnValue(call, f, *properties);
+    LLVMValueRef call = emitCallToBeInlined(callee, args, numArgs);
+    checkReturnValue(call, *properties);
     if (properties->mayBranch() && properties->function &&
         emitJumpToNextFragment(opc, ops, coreInfo, nextPc, info)) {
       needsReturn = false;
     }
     pc = nextPc;
   }
+  assert(checks.empty() && "Not all checks emitted");
   if (needsReturn) {
     LLVMValueRef args[] = {
       threadParam
     };
-    LLVMValueRef call =
-      LLVMBuildCall(builder, functions.jitUpdateExecutionFrequency, args, 1,
-                    "");
-    calls.push_back(call);
+    emitCallToBeInlined(functions.jitUpdateExecutionFrequency, args, 1);
     // Build return.
     LLVMBuildRet(builder,
                  LLVMConstInt(LLVMGetReturnType(jitFunctionType),
@@ -594,6 +633,128 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
   info->func = compiledFunction;
   core.setOpcode(startPc, getFunctionThunk(*info), (pc - startPc) * 2);
   return true;
+}
+
+void JITImpl::emitCondBrToBlock(LLVMValueRef cond, LLVMBasicBlockRef trueBB)
+{
+  LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(getCurrentFunction(), "");
+  LLVMBuildCondBr(builder, cond, trueBB, afterBB);
+  LLVMPositionBuilderAtEnd(builder, afterBB);
+}
+
+LLVMBasicBlockRef JITImpl::getOrCreateMemoryCheckBailoutBlock(unsigned index)
+{
+  if (index == 0) {
+    if (interpretOneBB) {
+      return interpretOneBB;
+    }
+  } else if (endTraceBB) {
+    return endTraceBB;
+  }
+  LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
+  LLVMBasicBlockRef bailoutBB = LLVMAppendBasicBlock(getCurrentFunction(), "");
+  LLVMPositionBuilderAtEnd(builder, bailoutBB);
+  if (index == 0) {
+    LLVMValueRef args[] = {
+      threadParam
+    };
+    LLVMValueRef call = emitCallToBeInlined(functions.jitInterpretOne, args, 1);
+    LLVMBuildRet(builder, call);
+    interpretOneBB = bailoutBB;
+  } else {
+    ensureEarlyReturnBB(LLVMGetReturnType(jitFunctionType));
+    earlyReturnIncomingValues.push_back(
+      LLVMConstInt(LLVMGetReturnType(jitFunctionType),
+                   JIT_RETURN_END_TRACE, false));
+    earlyReturnIncomingBlocks.push_back(LLVMGetInsertBlock(builder));
+    LLVMBuildBr(builder, earlyReturnBB);
+    endTraceBB = bailoutBB;
+  }
+  LLVMPositionBuilderAtEnd(builder, savedInsertPoint);
+  return bailoutBB;
+}
+
+void JITImpl::
+emitMemoryChecks(unsigned index,
+                 std::queue<std::pair<uint32_t,MemoryCheck*> > &checks)
+{
+  while (!checks.empty() && checks.front().first == index) {
+    MemoryCheck *check = checks.front().second;
+    checks.pop();
+    LLVMBasicBlockRef bailoutBB = getOrCreateMemoryCheckBailoutBlock(index);
+    // Compute address.
+    LLVMValueRef address;
+    {
+      LLVMTypeRef paramTypes[5];
+      LLVMGetParamTypes(LLVMGetElementType(LLVMTypeOf(functions.jitComputeAddress)),
+                        paramTypes);
+      LLVMValueRef args[] = {
+        threadParam,
+        LLVMConstInt(paramTypes[1], check->getBaseReg(), false),
+        LLVMConstInt(paramTypes[2], check->getScale(), false),
+        LLVMConstInt(paramTypes[3], check->getOffsetReg(), false),
+        LLVMConstInt(paramTypes[4], check->getOffsetImm(), false)
+      };
+      address = emitCallToBeInlined(functions.jitComputeAddress, args, 5);
+    }
+    // Check alignment.
+    if (check->getFlags() & MemoryCheck::CheckAlignment &&
+        check->getSize() > 1) {
+      LLVMValueRef rem =
+        LLVMBuildURem(
+          builder, address,
+          LLVMConstInt(LLVMTypeOf(address), check->getSize(), false), "");
+      LLVMValueRef cmp =
+        LLVMBuildICmp(builder, LLVMIntNE, rem,
+                      LLVMConstInt(LLVMTypeOf(address), 0, false), "");
+      emitCondBrToBlock(cmp, bailoutBB);
+    }
+
+    // Check address valid.
+    if (check->getFlags() & MemoryCheck::CheckAddress) {
+      LLVMValueRef args[] = {
+        threadParam,
+        ramSizeLog2Param,
+        address
+      };
+      LLVMValueRef isValid = emitCallToBeInlined(functions.jitCheckAddress,
+                                                 args, 3);
+      LLVMValueRef cmp =
+        LLVMBuildICmp(builder, LLVMIntEQ, isValid,
+                      LLVMConstInt(LLVMTypeOf(isValid), 0, false), "");
+      emitCondBrToBlock(cmp, bailoutBB);
+    }
+
+    // Check invalidation info.
+    if (check->getFlags() & MemoryCheck::CheckInvalidation) {
+      LLVMValueRef args[] = {
+        threadParam,
+        address
+      };
+      LLVMValueRef cacheInvalidated =
+        emitCallToBeInlined(getJitInvalidateFunction(check->getSize()), args,
+                            2);
+      LLVMValueRef cmp =
+      LLVMBuildICmp(builder, LLVMIntNE, cacheInvalidated,
+                    LLVMConstInt(LLVMTypeOf(cacheInvalidated), 0, false), "");
+      emitCondBrToBlock(cmp, bailoutBB);
+    }
+    delete check;
+  }
+}
+
+LLVMValueRef JITImpl::getJitInvalidateFunction(unsigned size)
+{
+  switch (size) {
+  default:
+    assert(0 && "Unexpected size");
+  case 1:
+    return functions.jitInvalidateByteCheck;
+  case 2:
+    return functions.jitInvalidateShortCheck;
+  case 4:
+    return functions.jitInvalidateWordCheck;
+  }
 }
 
 JITInstructionFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)

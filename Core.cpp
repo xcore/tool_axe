@@ -243,7 +243,8 @@ bool Core::setExceptionAddress(uint32_t value)
 
 void Core::
 initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-          OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit)
+          OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit,
+          OPCODE_TYPE interpretOne)
 {
   const uint32_t ramSizeShorts = getRamSizeShorts();
   // Initialise instruction cache.
@@ -252,6 +253,7 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   }
   opcode[ramSizeShorts] = illegalPC;
   opcode[getRunJitAddr()] = runJit;
+  opcode[getInterpretOneAddr()] = interpretOne;
   opcode[getIllegalPCThreadAddr()] = illegalPCThread;
   decodeOpcode = decode;
 }

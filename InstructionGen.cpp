@@ -164,6 +164,7 @@ private:
   bool mayYield:1;
   bool mayDeschedule:1;
   bool disableJit:1;
+  bool enableMemCheckOpt:1;
 public:
   Instruction(const std::string &n,
               unsigned s,
@@ -190,7 +191,8 @@ public:
     mayPauseOn(false),
     mayYield(false),
     mayDeschedule(false),
-    disableJit(false)
+    disableJit(false),
+    enableMemCheckOpt(false)
   {
   }
   const std::string &getName() const { return name; }
@@ -218,6 +220,7 @@ public:
   }
   bool getMayStore() const { return mayStore; }
   bool getMayLoad() const { return mayLoad; }
+  bool getMayAccessMemory() const { return mayLoad || mayStore; }
   bool getUsesPc() const { return usesPc; }
   bool getMayExcept() const { return mayExcept; }
   bool getMayKCall() const { return mayKCall; }
@@ -225,6 +228,7 @@ public:
   bool getMayYield() const { return mayYield; }
   bool getMayDeschedule() const { return mayDeschedule; }
   bool getDisableJit() const { return disableJit; }
+  bool getEnableMemCheckOpt() const { return enableMemCheckOpt; }
   Instruction &addImplicitOp(ImplicitOp reg, OpType type) {
     assert(type != imm);
     implicitOps.push_back(reg);
@@ -292,6 +296,10 @@ public:
     disableJit = true;
     return *this;
   }
+  Instruction &setEnableMemCheckOpt() {
+    enableMemCheckOpt = true;
+    return *this;
+  }
 };
 
 class InstructionRefs {
@@ -304,6 +312,7 @@ public:
   InstructionRefs &setYieldBefore();
   InstructionRefs &setCanEvent();
   InstructionRefs &setUnimplemented();
+  InstructionRefs &setEnableMemCheckOpt();
 };
 
 InstructionRefs &InstructionRefs::
@@ -362,6 +371,16 @@ setUnimplemented()
   for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
        it != e; ++it) {
     (*it)->setUnimplemented();
+  }
+  return *this;
+}
+
+InstructionRefs &InstructionRefs::
+setEnableMemCheckOpt()
+{
+  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
+       it != e; ++it) {
+    (*it)->setEnableMemCheckOpt();
   }
   return *this;
 }
@@ -656,6 +675,7 @@ public:
   void emitNormalReturn();
   void emitCheckEvents() const;
   void setInstruction(const Instruction &i) { inst = &i; }
+  void emitBare(const std::string &s);
 protected:
   virtual void emitBegin();
   virtual void emitRaw(const std::string &s);
@@ -668,7 +688,16 @@ protected:
   virtual void emitDeschedule();
   virtual void emitStore(const std::string &args, LoadStoreType type);
   virtual void emitLoad(const std::string &args, LoadStoreType type);
+private:
+  bool shouldEmitMemoryChecks() {
+    return !jit || !inst->getEnableMemCheckOpt();
+  }
 };
+
+void FunctionCodeEmitter::emitBare(const std::string &s)
+{
+  emitNested(s);
+}
 
 void FunctionCodeEmitter::emitCycles()
 {
@@ -744,7 +773,7 @@ void FunctionCodeEmitter::emitNormalReturn()
   emitCheckEvents();
   if (!jit)
     emitTraceEnd(*inst);
-  if (inst->getMayStore()) {
+  if (inst->getMayStore() && shouldEmitMemoryChecks()) {
     std::cout << "return retval;\n";
   } else {
     std::cout << "return JIT_RETURN_CONTINUE;\n";
@@ -753,6 +782,8 @@ void FunctionCodeEmitter::emitNormalReturn()
 
 void FunctionCodeEmitter::emitBegin()
 {
+  if (inst->getMayStore() && shouldEmitMemoryChecks())
+    std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
 }
 
 void FunctionCodeEmitter::emitRaw(const std::string &s)
@@ -855,20 +886,24 @@ emitStore(const std::string &argString, LoadStoreType type)
   emitNested(addr);
   std::cout << ";\n";
 
-  std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
-  std::cout << "(StoreAddr)) {\n";
-  emitException("ET_LOAD_STORE, StoreAddr");
-  std::cout << "  }\n";
+  if (shouldEmitMemoryChecks()) {
+    std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
+    std::cout << "(StoreAddr)) {\n";
+    emitException("ET_LOAD_STORE, StoreAddr");
+    std::cout << "  }\n";
+  }
 
   std::cout << "  STORE_" << getLoadStoreTypeName(type);
   std::cout << "(";
   emitNested(value);
   std::cout << ", StoreAddr);\n";
 
-  std::cout << "  if (INVALIDATE_" << getLoadStoreTypeName(type);
-  std::cout << "(StoreAddr)) {\n";
-  std::cout << "    retval = JIT_RETURN_END_TRACE;\n";
-  std::cout << "  }\n";
+  if (shouldEmitMemoryChecks()) {
+    std::cout << "  if (INVALIDATE_" << getLoadStoreTypeName(type);
+    std::cout << "(StoreAddr)) {\n";
+    std::cout << "    retval = JIT_RETURN_END_TRACE;\n";
+    std::cout << "  }\n";
+  }
 
   std::cout << "}\n";
 }
@@ -887,10 +922,13 @@ emitLoad(const std::string &argString, LoadStoreType type)
   emitNested(addr);
   std::cout << ";\n";
 
-  std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
-  std::cout << "(LoadAddr)) {\n";
-  emitException("ET_LOAD_STORE, LoadAddr");
-  std::cout << "  }\n";
+  if (shouldEmitMemoryChecks()) {
+    std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
+    std::cout << "(LoadAddr)) {\n";
+    emitException("ET_LOAD_STORE, LoadAddr");
+    std::cout << "  }\n";
+  }
+
   emitNested(dest);
   std::cout << " = LOAD_" << getLoadStoreTypeName(type);
   std::cout << "(LoadAddr)\n;";
@@ -904,7 +942,7 @@ emitCode(const Instruction &instruction,
 {
   FunctionCodeEmitter emitter(false);
   emitter.setInstruction(instruction);
-  emitter.emit(code);
+  emitter.emitBare(code);
 }
 
 class CodePropertyExtractor : public CodeEmitter {
@@ -931,12 +969,10 @@ protected:
   virtual void emitYield() { inst->setMayYield(); }
   virtual void emitDeschedule() { inst->setMayDeschedule(); }
   virtual void emitStore(const std::string &args, LoadStoreType type) {
-    inst->setMayExcept();
     inst->setMayStore();
     emitNested(args);
   }
   virtual void emitLoad(const std::string &args, LoadStoreType type) {
-    inst->setMayExcept();
     inst->setMayLoad();
     emitNested(args);
   }
@@ -1139,9 +1175,6 @@ static void emitInstFunction(Instruction &inst, bool jit)
       }
       std::cout << ";\n";
     }
-    if (inst.getMayStore()) {
-      std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
-    }
     if (!jit)
       emitTrace(inst);
     emitter.emit(inst.getCode());
@@ -1221,12 +1254,15 @@ static void emitInstFlags(Instruction &inst)
   if (inst.getMayBranch())
     emitInstFlag("MAY_BRANCH", emittedFlag);
   if (inst.getMayYield() || inst.getMayExcept() || inst.getMayKCall() ||
-      inst.getYieldBefore())
+      inst.getYieldBefore() ||
+      (inst.getMayAccessMemory() && !inst.getEnableMemCheckOpt()))
     emitInstFlag("MAY_YIELD", emittedFlag);
   if (inst.getMayDeschedule())
     emitInstFlag("MAY_DESCHEDULE", emittedFlag);
-  if (inst.getMayStore())
+  if (inst.getMayStore() && !inst.getEnableMemCheckOpt())
     emitInstFlag("MAY_END_TRACE", emittedFlag);
+  if (inst.getEnableMemCheckOpt())
+    emitInstFlag("MEM_CHECK_OPT_ENABLED", emittedFlag);
   if (!emittedFlag)
     std::cout << 0;
 }
@@ -1645,23 +1681,28 @@ void add()
   f2rus("SHR_32", "shr %0, %1, 32", "%0 = 0;");
   f3r("LDW", "ldw %0, %1[%2]",
       "uint32_t Addr = %1 + (%2 << 2);\n"
-      "%load_word(%0, Addr)");
+      "%load_word(%0, Addr)")
+    .setEnableMemCheckOpt();
   f2rus("LDW", "ldw %0, %1[%2]",
         "uint32_t Addr = %1 + %2;\n"
         "%load_word(%0, Addr)")
-    .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
+    .transform("%2 = %2 << 2;", "%2 = %2 >> 2;")
+    .setEnableMemCheckOpt();
   f3r("LD16S", "ld16s %0, %1[%2]",
       "uint32_t Addr = %1 + (%2 << 1);\n"
       "uint32_t Tmp;\n"
       "%load_short(Tmp, Addr)"
-      "%0 = signExtend(Tmp, 16);\n");
+      "%0 = signExtend(Tmp, 16);\n")
+    .setEnableMemCheckOpt();
   f3r("LD8U", "ld8u %0, %1[%2]",
       "uint32_t Addr = %1 + %2;\n"
-      "%load_byte(%0, Addr)");
+      "%load_byte(%0, Addr)")
+    .setEnableMemCheckOpt();
   f2rus_in("STW", "stw %0, %1[%2]",
            "uint32_t Addr = %1 + %2;\n"
            "%store_word(%0, Addr)")
-    .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
+    .transform("%2 = %2 << 2;", "%2 = %2 >> 2;")
+    .setEnableMemCheckOpt();
   // TSETR needs special handling as one operands is not a register on the
   // current thread.
   inst("TSETR_3r", 2, ops(imm, in, in), "set t[%2]:r%0, %1",
@@ -1682,13 +1723,16 @@ void add()
   fl3r("LDA16B", "lda16 %0, %1[-%2]", "%0 = %1 - (%2 << 1);");
   fl3r_in("STW", "stw %0, %1[%2]",
           "uint32_t Addr = %1 + (%2 << 2);\n"
-          "%store_word(%0, Addr)");
+          "%store_word(%0, Addr)")
+    .setEnableMemCheckOpt();
   fl3r_in("ST16", "st16 %0, %1[%2]",
           "uint32_t Addr = %1 + (%2 << 1);\n"
-          "%store_short(%0, Addr)");
+          "%store_short(%0, Addr)")
+    .setEnableMemCheckOpt();
   fl3r_in("ST8", "st8 %0, %1[%2]",
           "uint32_t Addr = %1 + %2;\n"
-          "%store_byte(%0, Addr)");
+          "%store_byte(%0, Addr)")
+    .setEnableMemCheckOpt();
   fl3r("MUL", "mul %0, %1, %2", "%0 = %1 * %2;");
   fl3r("DIVS", "divs %0, %1, %2",
        "if (%2 == 0 ||\n"
@@ -1814,27 +1858,32 @@ void add()
            "uint32_t Addr = %2 + %1;\n"
            "%load_word(%0, Addr)")
     .addImplicitOp(DP, in)
-    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
+    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;")
+    .setEnableMemCheckOpt();
   fru6_out("LDWCP", "ldw %0, cp[%{cp}1]",
            "uint32_t Addr = %2 + %1;\n"
            "%load_word(%0, Addr)")
     .addImplicitOp(CP, in)
-  .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
+    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;")
+    .setEnableMemCheckOpt();
   fru6_out("LDWSP", "ldw %0, sp[%1]",
            "uint32_t Addr = %2 + %1;\n"
            "%load_word(%0, Addr)")
     .addImplicitOp(SP, in)
-    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
+    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;")
+    .setEnableMemCheckOpt();
   fru6_in("STWDP", "stw %0, dp[%{dp}1]",
           "uint32_t Addr = %2 + %1;\n"
           "%store_word(%0, Addr)")
     .addImplicitOp(DP, in)
-    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
+    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;")
+    .setEnableMemCheckOpt();
   fru6_in("STWSP", "stw %0, sp[%1]",
           "uint32_t Addr = %2 + %1;\n"
           "%store_word(%0, Addr)")
     .addImplicitOp(SP, in)
-    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
+    .transform("%1 = %1 << 2;", "%1 = %1 >> 2;")
+    .setEnableMemCheckOpt();
   fru6_out("LDAWSP", "ldaw %0, sp[%1]",
            "%0 = %2 + %1;")
     .addImplicitOp(SP, in)
@@ -1981,7 +2030,8 @@ void add()
        "%load_word(%1, Addr)")
     .addImplicitOp(R11, out)
     .addImplicitOp(CP, in)
-    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
+    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
+    .setEnableMemCheckOpt();
   // TODO could be optimised to %1 = ram_base + %0
   fu10("LDAPF", "ldap %1, %0", "%1 = FROM_PC(%pc) + %0;")
     .addImplicitOp(R11, out)
@@ -2737,6 +2787,7 @@ void add()
              "throw (ExitException(1));\n")
     .setDisableJit();
   pseudoInst("RUN_JIT", "", "").setCustom();
+  pseudoInst("INTERPRET_ONE", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();
 }
 

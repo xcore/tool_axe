@@ -61,6 +61,8 @@ add_executable(axe
   JIT.h
   JIT.cpp
   JITInstructionFunction.h
+  JITOptimize.h
+  JITOptimize.cpp
   Lock.cpp
   Lock.h
   LLVMExtra.h

@@ -37,6 +37,44 @@ extern "C" void jitUpdateExecutionFrequency(Thread &t) {
   t.getParent().updateExecutionFrequency(t.pc);
 }
 
+extern "C" uint32_t
+jitComputeAddress(const Thread &t, Register::Reg baseReg, unsigned scale,
+                  Register::Reg offsetReg, uint32_t immOffset)
+{
+  uint32_t address = t.regs[baseReg];
+  if (scale != 0)
+    address += scale * t.regs[offsetReg];
+  address += immOffset;
+  return address;
+}
+
+extern "C" bool
+jitCheckAddress(const Thread &t, uint32_t ramSizeLog2, uint32_t address)
+{
+  return (address >> ramSizeLog2) == t.getParent().ramBaseMultiple;
+}
+
+extern "C" bool jitInvalidateByteCheck(Thread &t, uint32_t address)
+{
+  return t.getParent().invalidateByteCheck(address);
+}
+
+extern "C" bool jitInvalidateShortCheck(Thread &t, uint32_t address)
+{
+  return t.getParent().invalidateShortCheck(address);
+}
+
+extern "C" bool jitInvalidateWordCheck(Thread &t, uint32_t address)
+{
+  return t.getParent().invalidateWordCheck(address);
+}
+
+extern "C" JITReturn jitInterpretOne(Thread &t) {
+  t.pendingPc = t.pc;
+  t.pc = t.getParent().getInterpretOneAddr();
+  return JIT_RETURN_END_TRACE;
+}
+
 #define THREAD thread
 #define CORE THREAD.getParent()
 #define PHYSICAL_ADDR(addr) ((addr) - ramBase)

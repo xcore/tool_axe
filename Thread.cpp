@@ -339,28 +339,49 @@ JITReturn Instruction_TSETMR_2r(Thread &thread) {
   return JIT_RETURN_CONTINUE;
 }
 
-template<bool tracing>
-JITReturn Instruction_RUN_JIT(Thread &thread) {
+template<bool tracing> JITReturn Instruction_RUN_JIT(Thread &thread) {
   CORE.runJIT(THREAD.pendingPc);
   THREAD.pc = THREAD.pendingPc;
   return JIT_RETURN_END_TRACE;
 }
 
-template<bool tracing>
-JITReturn Instruction_DECODE(Thread &thread) {
+template<bool tracing> JITReturn Instruction_DECODE(Thread &thread);
+
+template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread);
+
+static OPCODE_TYPE opcodeMap[] = {
+#define EMIT_INSTRUCTION_LIST
+#define DO_INSTRUCTION(inst) & Instruction_ ## inst <false>,
+#include "InstructionGenOutput.inc"
+#undef DO_INSTRUCTION
+#undef EMIT_INSTRUCTION_LIST
+};
+
+static OPCODE_TYPE opcodeMapTracing[] = {
+#define EMIT_INSTRUCTION_LIST
+#define DO_INSTRUCTION(inst) & Instruction_ ## inst <true>,
+#include "InstructionGenOutput.inc"
+#undef DO_INSTRUCTION
+#undef EMIT_INSTRUCTION_LIST
+};
+
+template<bool tracing> JITReturn Instruction_DECODE(Thread &thread) {
   InstructionOpcode opc;
   Operands ops;
   instructionDecode(CORE, THREAD.pc, opc, ops);
   instructionTransform(opc, ops, CORE, THREAD.pc);
-  static OPCODE_TYPE opcodeMap[] = {
-#define EMIT_INSTRUCTION_LIST
-#define DO_INSTRUCTION(inst) & Instruction_ ## inst <tracing>,
-#include "InstructionGenOutput.inc"
-#undef EMIT_INSTRUCTION_LIST
-  };
-  CORE.setOpcode(THREAD.pc, opcodeMap[opc], ops,
+  CORE.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
                  instructionProperties[opc].size);
   return JIT_RETURN_END_TRACE;
+}
+
+template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
+  THREAD.pc = THREAD.pendingPc;
+  InstructionOpcode opc;
+  Operands ops;
+  instructionDecode(CORE, THREAD.pc, opc, ops);
+  instructionTransform(opc, ops, CORE, THREAD.pc);
+  return (*opcodeMap[opc])(thread);
 }
 
 #undef THREAD
@@ -388,7 +409,8 @@ void initInstructionCacheAux(Core &c)
   c.initCache(&Instruction_DECODE<tracing>,
               &Instruction_ILLEGAL_PC<tracing>,
               &Instruction_ILLEGAL_PC_THREAD<tracing>,
-              &Instruction_RUN_JIT<tracing>);
+              &Instruction_RUN_JIT<tracing>,
+              &Instruction_INTERPRET_ONE<tracing>);
 }
 
 void initInstructionCache(Core &c)
