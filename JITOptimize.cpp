@@ -64,7 +64,7 @@ public:
   MemoryCheck *getMemoryCheck() { return check; }
 };
 
-static void
+static bool
 getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
                            MemoryAccess &access)
 {
@@ -74,11 +74,11 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
   case LDWCP_ru6:
   case LDWCP_lru6:
     access = MemoryAccess(Register::CP, 4, false).addImmOffset(ops.ops[1]);
-    return;
+    return true;
   case LDWCPL_u10:
   case LDWCPL_lu10:
     access = MemoryAccess(Register::CP, 4, false).addImmOffset(ops.ops[0]);
-    return;
+    return true;
   case STWDP_ru6:
   case STWDP_lru6:
     isStore = true;
@@ -86,7 +86,7 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
   case LDWDP_ru6:
   case LDWDP_lru6:
     access = MemoryAccess(Register::DP, 4, isStore).addImmOffset(ops.ops[1]);
-    return;
+    return true;
   case STWSP_ru6:
   case STWSP_lru6:
     isStore = true;
@@ -94,35 +94,47 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
   case LDWSP_ru6:
   case LDWSP_lru6:
     access = MemoryAccess(Register::SP, 4, isStore).addImmOffset(ops.ops[1]);
-    return;
+    return true;
   case ST8_l3r:
     isStore = true;
     // Fallthrough.
   case LD8U_3r:
     access = MemoryAccess(Register::Reg(ops.ops[1]), 1, isStore)
       .addRegisterOffset(1, Register::Reg(ops.ops[2]));
-    return;
+    return true;
   case ST16_l3r:
     isStore = true;
     // Fallthrough.
   case LD16S_3r:
     access = MemoryAccess(Register::Reg(ops.ops[1]), 2, isStore)
       .addRegisterOffset(2, Register::Reg(ops.ops[2]));
-    return;
+    return true;
   case STW_l3r:
     isStore = true;
     // Fallthrough.
   case LDW_3r:
     access = MemoryAccess(Register::Reg(ops.ops[1]), 4, isStore)
       .addRegisterOffset(4, Register::Reg(ops.ops[2]));
-    return;
+    return true;
   case STW_2rus:
     isStore = true;
     // Fallthrough.
   case LDW_2rus:
     access = MemoryAccess(Register::Reg(ops.ops[1]), 4, isStore)
       .addImmOffset(ops.ops[2]);
-    return;
+    return true;
+  case ENTSP_u6:
+  case ENTSP_lu6:
+    if (ops.ops[0] == 0)
+      return false;
+    access = MemoryAccess(Register::SP, 4, true);
+    return true;
+  case RETSP_u6:
+  case RETSP_lu6:
+    if (ops.ops[0] == 0)
+      return false;
+    access = MemoryAccess(Register::SP, 4, false).addImmOffset(ops.ops[0]);
+    return true;
   }
 }
 
@@ -200,9 +212,9 @@ void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
     InstructionOpcode opc = opcode[i];
     const Operands &ops = operands[i];
     InstructionProperties &properties = instructionProperties[opc];
-    if (properties.memCheckHoistingOptEnabled()) {
-      MemoryAccess access;
-      getInstructionMemoryAccess(opc, ops, access);
+    MemoryAccess access;
+    if (properties.memCheckHoistingOptEnabled() &&
+        getInstructionMemoryAccess(opc, ops, access)) {
       assert(access.getOffsetImm() % access.getSize() == 0);
       // Compute the first offset where all registers are available.
       unsigned first = state.regDefs[access.getBaseReg()];

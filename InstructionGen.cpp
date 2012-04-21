@@ -1950,7 +1950,8 @@ void add()
       "}\n")
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, in)
-    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
+    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
+    .setEnableMemCheckOpt();
   fu6("RETSP", "retsp %0",
       "uint32_t target;\n"
       "if (%0 > 0) {\n"
@@ -1969,6 +1970,7 @@ void add()
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, inout)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
+    .setEnableMemCheckOpt()
     // retsp always causes an fnop.
     .setCycles(2 * INSTRUCTION_CYCLES);
   fu6("KRESTSP", "krestsp %0",
