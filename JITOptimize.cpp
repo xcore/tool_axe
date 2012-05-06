@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iostream>
 #include <cassert>
+#include <cstring>
 
 // baseReg + offsetImm + scale * offsetReg
 class MemoryAccess {
