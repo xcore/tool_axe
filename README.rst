@@ -28,6 +28,7 @@ Dependencies
 * CMake
 * libelf
 * libxml2
+* LLVM
 * python (for running tests)
 
 Building
