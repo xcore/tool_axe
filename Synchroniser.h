@@ -21,17 +21,17 @@ private:
   /// Number of threads.
   unsigned NumThreads;
   /// List of threads. The master thread is always at the first index.
-  ThreadState *threads[NUM_THREADS];
+  Thread *threads[NUM_THREADS];
   /// Number of paused threads
   unsigned NumPaused;
   bool join;
   /// Returns the time of thread with the latest time.
   ticks_t MaxThreadTime() const;
-  SyncResult sync(ThreadState &thread, bool isMaster);
+  SyncResult sync(Thread &thread, bool isMaster);
 public:
   Synchroniser() : Resource(RES_TYPE_SYNC) {}
   
-  bool alloc(ThreadState &master)
+  bool alloc(Thread &master)
   {
     assert(!isInUse() && "Trying to allocate in use synchroniser");
     setInUse(true);
@@ -42,7 +42,7 @@ public:
     return true;
   }
   
-  void addChild(ThreadState &thread)
+  void addChild(Thread &thread)
   {
     assert(NumThreads + 1 <= NUM_THREADS && "Too many threads");
     threads[NumThreads++] = &thread;
@@ -65,14 +65,14 @@ public:
     return NumPaused;
   }
   
-  ThreadState &master()
+  Thread &master()
   {
     return *threads[0];
   }
   
-  SyncResult ssync(ThreadState &thread) { return sync(thread, false); }
-  SyncResult msync(ThreadState &thread) { return sync(thread, true); }
-  SyncResult mjoin(ThreadState &thread);
+  SyncResult ssync(Thread &thread) { return sync(thread, false); }
+  SyncResult msync(Thread &thread) { return sync(thread, true); }
+  SyncResult mjoin(Thread &thread);
 
   void cancel();
 };

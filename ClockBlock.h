@@ -40,17 +40,17 @@ private:
 public:
   ClockBlock();
   
-  bool setCInUse(ThreadState &thread, bool val, ticks_t time);
+  bool setCInUse(Thread &thread, bool val, ticks_t time);
 
-  bool setSource(ThreadState &thread, Port *p, ticks_t time);
+  bool setSource(Thread &thread, Port *p, ticks_t time);
 
-  void setSourceRefClock(ThreadState &thread, ticks_t time);
+  void setSourceRefClock(Thread &thread, ticks_t time);
 
   bool isFixedFrequency() const {
     return running && value.isClock();
   }
 
-  bool setData(ThreadState &thread, uint32_t newDivide, ticks_t time);
+  bool setData(Thread &thread, uint32_t newDivide, ticks_t time);
 
   EdgeIterator getEdgeIterator(ticks_t time) const {
     return value.getEdgeIterator(time);
@@ -77,10 +77,10 @@ public:
     return getValue().getValue(time) != 0;
   }
 
-  bool setReady(ThreadState &thread, Port *p, ticks_t time);
+  bool setReady(Thread &thread, Port *p, ticks_t time);
 
-  void start(ThreadState &thread, ticks_t time);
-  void stop(ThreadState &thread, ticks_t time);
+  void start(Thread &thread, ticks_t time);
+  void stop(Thread &thread, ticks_t time);
   void setReadyInValue(Signal value, ticks_t time);
   const Signal &getReadyInValue() const {
     return readyInValue;

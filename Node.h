@@ -34,6 +34,7 @@ public:
   typedef std::vector<Core *>::const_iterator const_core_iterator;
   Node(Type t) : jtagIndex(0), nodeID(0), parent(0), type(t), sswitch(this) {}
   ~Node();
+  void finalize();
   void addCore(std::auto_ptr<Core> cores);
   void setJtagIndex(unsigned value) { jtagIndex = value; }
   unsigned getJtagIndex() const { return jtagIndex; }

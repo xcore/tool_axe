@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -6,7 +6,12 @@
 #ifndef _Instruction_h_
 #define _Instruction_h_
 
+class Thread;
+
 #include "Config.h"
+#include <cstddef>
+
+class Core;
 
 /// Below are all the instructions supported by the interpreter.
 /// The instructions match those of the XCore except where noted below.
@@ -33,11 +38,9 @@ enum InstructionOpcode {
 #undef DO_INSTRUCTION
 };
 
-#ifdef DIRECT_THREADED
-typedef void * OPCODE_TYPE;
-#else
-typedef InstructionOpcode OPCODE_TYPE;
-#endif
+#include "JITInstructionFunction.h"
+
+typedef JITInstructionFunction_t OPCODE_TYPE;
 
 struct Operands {
   union {
@@ -46,8 +49,15 @@ struct Operands {
   };
 };
 
+void instructionDecode(Core &core, uint32_t pc, InstructionOpcode &opcode,
+                       Operands &operands);
+
 void
 instructionDecode(uint16_t low, uint16_t high, bool highValid,
                   InstructionOpcode &opcode, Operands &operands);
+
+void
+instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,
+                     uint32_t pc);
 
 #endif //_Instruction_h_

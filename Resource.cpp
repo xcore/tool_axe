@@ -8,6 +8,8 @@
 #include "Node.h"
 #include "SystemState.h"
 
+using namespace Register;
+
 const char *Resource::getResourceName(ResourceType type)
 {
   switch (type) {
@@ -24,7 +26,7 @@ const char *Resource::getResourceName(ResourceType type)
   }
 }
 
-void EventableResource::updateOwnerAux(ThreadState &t)
+void EventableResource::updateOwnerAux(Thread &t)
 {
   if (eventsEnabled) {
     if (interruptMode) {
@@ -50,19 +52,19 @@ void EventableResource::clearOwner()
   owner = 0;
 }
 
-void EventableResource::setVector(ThreadState &thread, uint32_t v)
+void EventableResource::setVector(Thread &thread, uint32_t v)
 {
   updateOwner(thread);
   vector = v;
 }
 
-void EventableResource::setEV(ThreadState &thread, uint32_t ev)
+void EventableResource::setEV(Thread &thread, uint32_t ev)
 {
   updateOwner(thread);
   EV = ev;
 }
 
-void EventableResource::setInterruptMode(ThreadState &thread, bool Enable)
+void EventableResource::setInterruptMode(Thread &thread, bool Enable)
 {
   updateOwner(thread);
   if (Enable == interruptMode)
@@ -107,7 +109,7 @@ void EventableResource::completeEvent()
   owner->pc = vector;
 }
 
-void EventableResource::eventableSetInUseOn(ThreadState &t)
+void EventableResource::eventableSetInUseOn(Thread &t)
 {
   if (isInUse())
     clearOwner();
@@ -127,7 +129,7 @@ void EventableResource::eventableSetInUseOff()
   Resource::setInUse(false);
 }
 
-void EventableResource::eventableSetInUse(ThreadState &t, bool val)
+void EventableResource::eventableSetInUse(Thread &t, bool val)
 {
   if (val)
     eventableSetInUseOn(t);
@@ -135,14 +137,14 @@ void EventableResource::eventableSetInUse(ThreadState &t, bool val)
     eventableSetInUseOff();
 }
 
-uint32_t EventableResource::getTruncatedEV(ThreadState &thread) const
+uint32_t EventableResource::getTruncatedEV(Thread &thread) const
 {
   if (EV == getID())
     return EV;
   return (EV & 0xffff) | thread.getParent().ram_base;
 }
 
-void EventableResource::eventDisable(ThreadState &thread)
+void EventableResource::eventDisable(Thread &thread)
 {
   if (eventsEnabled) {
     if (interruptMode) {
@@ -155,7 +157,7 @@ void EventableResource::eventDisable(ThreadState &thread)
   updateOwner(thread);
 }
 
-void EventableResource::eventEnable(ThreadState &thread)
+void EventableResource::eventEnable(Thread &thread)
 {
   updateOwner(thread);
   if (!eventsEnabled) {

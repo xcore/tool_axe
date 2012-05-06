@@ -56,7 +56,6 @@ typedef uint64_t ticks_t;
 #define EXPENSIVE_CHECKS 0
 
 #ifdef __GNUC__
-#define DIRECT_THREADED
 #define UNUSED(x) x __attribute__((__unused__))
 #endif // __GNUC__
 

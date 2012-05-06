@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -6,37 +6,63 @@
 #ifndef _Core_h_
 #define _Core_h_
 
-#include <stdint.h>
-#include <ostream>
-#include <algorithm>
+#include "Config.h"
 #include <iterator>
 #include <cstring>
-#include "BitManip.h"
-#include "Config.h"
 #include "Resource.h"
-#include "Lock.h"
-#include "Synchroniser.h"
-#include "Chanend.h"
-#include "ClockBlock.h"
-#include "Port.h"
 #include "Thread.h"
-#include "ThreadState.h"
-#include "Timer.h"
+#include "Port.h"
 #include "Instruction.h"
-#include "Trace.h"
-#include "RunnableQueue.h"
+#include "BitManip.h"
 #include <string>
+#include <climits>
+
+class Lock;
+class Synchroniser;
+class Chanend;
+class ChanEndpoint;
+class ClockBlock;
+class Port;
+class Timer;
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 class Node;
 
+enum ProcessorState {
+  PS_RAM_BASE = 0x00b,
+  PS_VECTOR_BASE = 0x10b
+};
+
 class Core {
 public:
   enum {
-    ILLEGAL_PC_THREAD_ADDR_OFFSET = 2,
-    NO_THREADS_ADDR_OFFSET = 3,
+    RUN_JIT_ADDR_OFFSET = 2,
+    INTERPRET_ONE_ADDR_OFFSET = 3,
+    ILLEGAL_PC_THREAD_ADDR_OFFSET = 4
   };
+  enum {
+    INVALIDATE_NONE,
+    INVALIDATE_CURRENT,
+    INVALIDATE_CURRENT_AND_PREVIOUS
+  };
+private:
+  typedef int executionFrequency_t;
+  static const executionFrequency_t MIN_EXECUTION_FREQUENCY = INT_MIN;
+  executionFrequency_t *executionFrequency;
+  uint32_t * memoryOffset;
+  unsigned char *invalidationInfoOffset;
+  // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
+  // pseudo instruction just past the end of memory. This saves
+  // us from having to check for illegal pc values when incrementing the pc from
+  // the previous instruction. Addition pseudo instructions come after this and
+  // are use for communicating illegal states.
+  OPCODE_TYPE *opcode;
+  Operands *operands;
+public:
+  const uint32_t ramSizeLog2;
+  const uint32_t ram_base;
+  const uint32_t ramBaseMultiple;
 private:
   Thread * const thread;
   Synchroniser * const sync;
@@ -53,125 +79,55 @@ private:
   unsigned coreNumber;
   Node *parent;
   std::string codeReference;
+  OPCODE_TYPE decodeOpcode;
 
   bool hasMatchingNodeID(ResourceID ID);
+  void invalidateWordSlowPath(uint32_t address);
+  void invalidateSlowPath(uint32_t shiftedAddress);
+private:
+  unsigned char *invalidationInfo;
+  uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
+
 public:
-  // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
-  // pseudo instruction just past the end of memory. This saves
-  // us from having to check for illegal pc values when incrementing the pc from
-  // the previous instruction. Addition pseudo instructions come after this and
-  // are use for communicating illegal states.
-  OPCODE_TYPE *opcode;
-  Operands *operands;
-
-  const uint32_t ram_size;
-  const uint32_t ram_base;
   uint32_t vector_base;
-  
-  Core(uint32_t RamSize, uint32_t RamBase) :
-    thread(new Thread[NUM_THREADS]),
-    sync(new Synchroniser[NUM_SYNCS]),
-    lock(new Lock[NUM_LOCKS]),
-    chanend(new Chanend[NUM_CHANENDS]),
-    timer(new Timer[NUM_TIMERS]),
-    clkBlk(new ClockBlock[NUM_CLKBLKS]),
-    port(new Port*[33]),
-    portNum(new unsigned[33]),
-    resource(new Resource**[LAST_STD_RES_TYPE + 1]),
-    resourceNum(new unsigned[LAST_STD_RES_TYPE + 1]),
-    memory(new uint32_t[RamSize >> 2]),
-    coreNumber(0),
-    parent(0),
-    opcode(new OPCODE_TYPE[(RamSize >> 1) + NO_THREADS_ADDR_OFFSET]),
-    operands(new Operands[RamSize >> 1]),
-    ram_size(RamSize),
-    ram_base(RamBase)
-  {
-    resource[RES_TYPE_PORT] = 0;
-    resourceNum[RES_TYPE_PORT] = 0;
 
-    resource[RES_TYPE_TIMER] = new Resource*[NUM_TIMERS];
-    for (unsigned i = 0; i < NUM_TIMERS; i++) {
-      resource[RES_TYPE_TIMER][i] = &timer[i];
-    }
-    resourceNum[RES_TYPE_TIMER] = NUM_TIMERS;
+  uint32_t syscallAddress;
+  uint32_t exceptionAddress;
 
-    resource[RES_TYPE_CHANEND] = new Resource*[NUM_CHANENDS];
-    for (unsigned i = 0; i < NUM_CHANENDS; i++) {
-      resource[RES_TYPE_CHANEND][i] = &chanend[i];
-    }
-    resourceNum[RES_TYPE_CHANEND] = NUM_CHANENDS;
+  Core(uint32_t RamSize, uint32_t RamBase);
+  ~Core();
 
-    resource[RES_TYPE_SYNC] = new Resource*[NUM_SYNCS];
-    for (unsigned i = 0; i < NUM_SYNCS; i++) {
-      resource[RES_TYPE_SYNC][i] = &sync[i];
-    }
-    resourceNum[RES_TYPE_SYNC] = NUM_SYNCS;
+  void clearOpcode(uint32_t pc);
+  void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size);
+  void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size);
 
-    resource[RES_TYPE_THREAD] = new Resource*[NUM_THREADS];
-    for (unsigned i = 0; i < NUM_THREADS; i++) {
-      thread[i].getState().setParent(*this);
-      resource[RES_TYPE_THREAD][i] = &thread[i];
-    }
-    resourceNum[RES_TYPE_THREAD] = NUM_THREADS;
-    
-    resource[RES_TYPE_LOCK] = new Resource*[NUM_LOCKS];
-    for (unsigned i = 0; i < NUM_LOCKS; i++) {
-      resource[RES_TYPE_LOCK][i] = &lock[i];
-    }
-    resourceNum[RES_TYPE_LOCK] = NUM_LOCKS;
+  const Operands &getOperands(uint32_t pc) const { return operands[pc]; }
+  const OPCODE_TYPE *getOpcodeArray() const { return opcode; }
 
-    resource[RES_TYPE_CLKBLK] = new Resource*[NUM_CLKBLKS];
-    for (unsigned i = 0; i < RES_TYPE_CLKBLK; i++) {
-      resource[RES_TYPE_CLKBLK][i] = &clkBlk[i];
-    }
-    resourceNum[RES_TYPE_CLKBLK] = NUM_CLKBLKS;
-
-    for (int i = RES_TYPE_TIMER; i <= LAST_STD_RES_TYPE; i++) {
-      for (unsigned j = 0; j < resourceNum[i]; j++) {
-        resource[i][j]->setNum(j);
-      }
-    }
-
-    std::memset(port, 0, sizeof(port[0]) * 33);
-    std::memset(portNum, 0, sizeof(portNum[0]) * 33);
-    const unsigned portSpec[][2] = {
-      {1, NUM_1BIT_PORTS},
-      {4, NUM_4BIT_PORTS},
-      {8, NUM_8BIT_PORTS},
-      {16, NUM_16BIT_PORTS},
-      {32, NUM_32BIT_PORTS},
-    };
-    for (unsigned i = 0; i < ARRAY_SIZE(portSpec); i++) {
-      unsigned width = portSpec[i][0];
-      unsigned num = portSpec[i][1];
-      port[width] = new Port[num];
-      for (unsigned j = 0; j < num; j++) {
-        port[width][j].setNum(j);
-        port[width][j].setWidth(width);
-        port[width][j].setClkInitial(&clkBlk[0]);
-      }
-      portNum[width] = num;
-    }
-    thread[0].alloc(0);
-  }
+  bool setSyscallAddress(uint32_t value);
+  bool setExceptionAddress(uint32_t value);
 
   void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE noThreads);
+                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit,
+                 OPCODE_TYPE interpretOne);
 
-  ~Core() {
-    delete[] opcode;
-    delete[] operands;
-    //delete[] thread;
-    //delete[] sync;
-    //delete[] lock;
-    //delete[] chanend;
-    //delete[] timer;
-    //delete[] resource;
-    //delete[] resourceNum;
-    delete[] memory;
+  void runJIT(uint32_t jitPc);
+
+  uint32_t getRamSize() const { return 1 << ramSizeLog2; }
+
+  bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
+    const executionFrequency_t threshold = 128;
+    if (++executionFrequency[shiftedAddress] > threshold) {
+      return true;
+    }
+    return false;
   }
-  
+
+  void updateExecutionFrequency(uint32_t shiftedAddress) {
+    if (updateExecutionFrequencyFromStub(shiftedAddress))
+      runJIT(shiftedAddress);
+  }
+
   uint32_t targetPc(unsigned pc) const
   {
     return ram_base + (pc << 1);
@@ -189,15 +145,46 @@ public:
   
   bool isValidAddress(uint32_t address) const
   {
-    return address < ram_size;
+    return (address >> ramSizeLog2) == ramBaseMultiple;
   }
 
+  bool isValidPc(uint32_t address) const {
+    return address < getRamSizeShorts();
+  }
+
+  uint32_t toPc(uint32_t address) const {
+    return (address - ram_base) >> 1;
+  }
+
+  uint32_t fromPc(uint32_t pc) const {
+    return (pc << 1) + ram_base;
+  }
+
+private:
+  uint8_t *mem() {
+    return reinterpret_cast<uint8_t*>(memory);
+  }
+
+  const uint8_t *mem() const {
+    return reinterpret_cast<uint8_t*>(memory);
+  }
+
+  uint8_t *memOffset() {
+    return reinterpret_cast<uint8_t*>(memoryOffset);
+  }
+
+  const uint8_t *memOffset() const {
+    return reinterpret_cast<uint8_t*>(memoryOffset);
+  }
+
+public:
   uint32_t loadWord(uint32_t address) const
   {
     if (HOST_LITTLE_ENDIAN) {
-      return memory[address >> 2];
+      return *reinterpret_cast<const uint32_t*>((memOffset() + address));
     } else {
-      return bswap32(memory[address >> 2]);
+      return
+        bswap32(*reinterpret_cast<const uint32_t*>((memOffset() + address)));
     }
   }
 
@@ -208,55 +195,80 @@ public:
 
   uint8_t loadByte(uint32_t address) const
   {
-    return ((uint8_t *)memory)[address];
+    return memOffset()[address];
   }
-  
+
+  bool invalidateWordCheck(uint32_t address) {
+    uint16_t info;
+    std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
+    if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
+      return false;
+    return true;
+  }
+
+  bool invalidateWord(uint32_t address) {
+    if (!invalidateWordCheck(address))
+      return false;
+    invalidateWordSlowPath(address);
+    return true;
+  }
+
+  bool invalidateShortCheck(uint32_t address) {
+    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+      return false;
+    return true;
+  }
+
+  bool invalidateShort(uint32_t address) {
+    if (!invalidateShortCheck(address))
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
+  bool invalidateByteCheck(uint32_t address) {
+    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+      return false;
+    return true;
+  }
+
+  bool invalidateByte(uint32_t address) {
+    if (!invalidateByteCheck(address))
+      return false;
+    invalidateSlowPath(address >> 1);
+    return true;
+  }
+
   uint8_t &byte(uint32_t address)
   {
-    return ((uint8_t *)memory)[address];
-  }
-  
-  uint8_t *mem()
-  {
-    return (uint8_t *)memory;
+    return memOffset()[address];
   }
 
   void storeWord(uint32_t value, uint32_t address)
   {
     if (HOST_LITTLE_ENDIAN) {
-      memory[address >> 2] = value;
+      *reinterpret_cast<uint32_t*>((memOffset() + address)) = value;
     } else {
-      memory[address >> 2] = bswap32(value);
+      *reinterpret_cast<uint32_t*>((memOffset() + address)) = bswap32(value);
     }
   }
 
   void storeShort(int16_t value, uint32_t address)
   {
-    storeByte((uint8_t)value, address);
-    storeByte((uint8_t)(value >> 8), address + 1);
+    memOffset()[address] = static_cast<uint8_t>(value);
+    memOffset()[address + 1] = static_cast<uint8_t>(value >> 8);
   }
 
   void storeByte(uint8_t value, uint32_t address)
   {
-    ((uint8_t *)memory)[address] = value;
-  }
-  
-  Resource *allocResource(ThreadState &current, ResourceType type)
-  {
-    if (type > LAST_STD_RES_TYPE || !allocatable[type])
-      return 0;
-    for (unsigned i = 0; i < resourceNum[type]; i++) {
-      if (!resource[type][i]->isInUse()) {
-        bool allocated = resource[type][i]->alloc(current);
-        assert(allocated);
-        (void)allocated; // Silence compiler.
-        return resource[type][i];
-      }
-    }
-    return 0;
+    memOffset()[address] = value;
   }
 
-  Thread *allocThread(ThreadState &current)
+  void writeMemory(uint32_t address, void *src, size_t size);
+
+  Resource *allocResource(Thread &current, ResourceType type);
+
+  Thread *allocThread(Thread &current)
   {
     return static_cast<Thread*>(allocResource(current, RES_TYPE_THREAD));
   }
@@ -271,16 +283,19 @@ public:
   bool getLocalChanendDest(ResourceID ID, ChanEndpoint *&result);
   ChanEndpoint *getChanendDest(ResourceID ID);
 
-  unsigned getIllegalPCThreadAddr() const
-  {
-    return ((ram_size >> 1) - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
-  }
-  
-  unsigned getNoThreadsAddr() const
-  {
-    return ((ram_size >> 1) - 1) + NO_THREADS_ADDR_OFFSET;
+  unsigned getRunJitAddr() const {
+    return (getRamSizeShorts() - 1) + RUN_JIT_ADDR_OFFSET;
   }
 
+  unsigned getInterpretOneAddr() const {
+    return (getRamSizeShorts() - 1) + INTERPRET_ONE_ADDR_OFFSET;
+  }
+
+  unsigned getIllegalPCThreadAddr() const {
+    return (getRamSizeShorts() - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
+  }
+
+  void finalize();
   void updateIDs();
 
   /// Set the parent of the current core. updateIDs() must be called to update

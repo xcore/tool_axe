@@ -19,9 +19,9 @@ private:
   typedef ring_buffer<Token, CHANEND_BUFFER_SIZE> TokenBuffer;
   TokenBuffer buf;
   /// Thread paused on an output instruction, 0 if none.
-  ThreadState *pausedOut;
+  Thread *pausedOut;
   /// Thread paused on an input instruction, 0 if none.
-  ThreadState *pausedIn;
+  Thread *pausedIn;
   /// Is the pausedIn thread waiting for a word? Only valid if pausedIn is set.
   bool waitForWord;
   /// Are we in the middle of sending a packet?
@@ -69,12 +69,12 @@ private:
   /// Input a token. You must check beforehand if there is data available.
   uint8_t poptoken(ticks_t time);
 
-  void setPausedIn(ThreadState &t, bool wordInput);
+  void setPausedIn(Thread &t, bool wordInput);
 
 public:
   Chanend() : EventableResource(RES_TYPE_CHANEND) {}
 
-  bool alloc(ThreadState &t)
+  bool alloc(Thread &t)
   {
     assert(!isInUse() && "Trying to allocate in use chanend");
     dest = 0;
@@ -97,28 +97,28 @@ public:
     return true;
   }
 
-  bool setData(ThreadState &thread, uint32_t value, ticks_t time);
+  bool setData(Thread &thread, uint32_t value, ticks_t time);
 
-  ResOpResult outt(ThreadState &thread, uint8_t value, ticks_t time);
-  ResOpResult outct(ThreadState &thread, uint8_t value, ticks_t time);
+  ResOpResult outt(Thread &thread, uint8_t value, ticks_t time);
+  ResOpResult outct(Thread &thread, uint8_t value, ticks_t time);
   
-  ResOpResult out(ThreadState &thread, uint32_t value, ticks_t time);
-  ResOpResult intoken(ThreadState &thread, ticks_t time, uint32_t &val);
-  ResOpResult inct(ThreadState &thread, ticks_t time, uint32_t &val);
-  ResOpResult chkct(ThreadState &thread, ticks_t time, uint32_t value);
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult intoken(Thread &thread, ticks_t time, uint32_t &val);
+  ResOpResult inct(Thread &thread, ticks_t time, uint32_t &val);
+  ResOpResult chkct(Thread &thread, ticks_t time, uint32_t value);
 
   /// Check if there is a token available for input. If a token is available
   /// the current thread's time is adjusted to be after the time at which the
   /// token was received and IsCt is set according whether it is a control token.
-  bool testct(ThreadState &thread, ticks_t time, bool &isCt);
+  bool testct(Thread &thread, ticks_t time, bool &isCt);
   /// Check if there is a word available for input. If a word is available
   /// the current thread's time is adjusted to be after the time at which the
   /// last token was received. Position is set to be the index of the first
   /// control token, starting at one, or 0 if there is no control token in the
   /// word.
-  bool testwct(ThreadState &thread, ticks_t time, unsigned &position);
+  bool testwct(Thread &thread, ticks_t time, unsigned &position);
 
-  ResOpResult in(ThreadState &thread, ticks_t time, uint32_t &val);
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &val);
 
   void run(ticks_t time);
 protected:

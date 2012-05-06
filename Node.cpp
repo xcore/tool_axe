@@ -14,6 +14,15 @@ Node::~Node()
   }
 }
 
+void Node::finalize()
+{
+  for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
+       it != e; ++it) {
+    (*it)->updateIDs();
+    (*it)->finalize();
+  }
+}
+
 void Node::addCore(std::auto_ptr<Core> c)
 {
   c->setParent(this);

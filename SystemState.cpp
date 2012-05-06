@@ -6,12 +6,21 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
+#include "Trace.h"
+
+using namespace Register;
 
 SystemState::~SystemState()
 {
-  for (std::vector<Node*>::iterator it = nodes.begin(), e = nodes.end();
-       it != e; ++it) {
+  for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
     delete *it;
+  }
+}
+
+void SystemState::finalize()
+{
+  for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
+    (*it)->finalize();
   }
 }
 
@@ -22,28 +31,8 @@ void SystemState::addNode(std::auto_ptr<Node> n)
   n.release();
 }
 
-ThreadState *SystemState::deschedule(ThreadState &current)
-{
-  assert(&current == currentThread);
-  //std::cout << "Deschedule " << current->id() << "\n";
-  current.waiting() = true;
-  currentThread = 0;
-  handleNonThreads();
-  if (scheduler.empty()) {
-    Tracer::get().noRunnableThreads(*this);
-    current.pc = current.getParent().getNoThreadsAddr();
-    current.waiting() = false;
-    currentThread = &current;
-    return &current;
-  }
-  ThreadState &next = static_cast<ThreadState&>(scheduler.front());
-  currentThread = &next;
-  scheduler.pop();
-  return &next;
-}
-
 void SystemState::
-completeEvent(ThreadState &t, EventableResource &res, bool interrupt)
+completeEvent(Thread &t, EventableResource &res, bool interrupt)
 {
   if (interrupt) {
     t.regs[SSR] = t.sr.to_ulong();
@@ -73,7 +62,7 @@ ChanEndpoint *SystemState::getChanendDest(ResourceID ID)
 {
   unsigned coreID = ID.node();
   // TODO build lookup map.
-  
+
   for (node_iterator outerIt = node_begin(), outerE = node_end();
        outerIt != outerE; ++outerIt) {
     Node &node = **outerIt;
@@ -90,4 +79,20 @@ ChanEndpoint *SystemState::getChanendDest(ResourceID ID)
     }
   }
   return 0;
+}
+
+int SystemState::run()
+{
+  try {
+    while (!scheduler.empty()) {
+      Runnable &runnable = scheduler.front();
+      currentRunnable = &runnable;
+      scheduler.pop();
+      runnable.run(runnable.wakeUpTime);
+    }
+  } catch (ExitException &ee) {
+    return ee.getStatus();
+  }
+  Tracer::get().noRunnableThreads(*this);
+  return 1;
 }

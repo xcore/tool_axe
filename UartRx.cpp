@@ -15,6 +15,7 @@
 #include "Node.h"
 #include "Core.h"
 #include <iostream>
+#include <cstdlib>
 
 const unsigned DEFAULT_BIT_RATE = 115200;
 
@@ -53,9 +54,7 @@ public:
   virtual void run(ticks_t time);
 };
 
-// TODO use more appropriate type than EVENTABLE_RESOURCE.
 UartRx::UartRx(RunnableQueue &s, ticks_t bt) :
-  Runnable(EVENTABLE_RESOURCE),
   scheduler(s),
   currentPinValue(0),
   bitTime(bt),
