@@ -32,6 +32,7 @@ void LLVMExtraAddDeadCodeEliminationPass(LLVMPassManagerRef PM) {
   unwrap(PM)->add(createDeadCodeEliminationPass());
 }
 
+#if 0
 class JitDisassembler : public JITEventListener {
   LLVMDisasmContextRef DC;
 public:
@@ -59,10 +60,13 @@ public:
     }
   }
 };
+#endif
 
 void
 LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
                                  const char *triple) {
+#if 0
   static JitDisassembler disassembler(triple);
   unwrap(EE)->RegisterJITEventListener(&disassembler);
+#endif
 }
