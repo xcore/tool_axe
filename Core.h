@@ -209,7 +209,7 @@ public:
   bool invalidateWord(uint32_t address) {
     if (!invalidateWordCheck(address))
       return false;
-    invalidateWordSlowPath(address);
+    invalidateWordSlowPath(address >> 1);
     return true;
   }
 
