@@ -74,6 +74,7 @@ enum SyscallType {
   OSCALL_REMOVE = 11,
   OSCALL_SYSTEM = 12,
   OSCALL_EXCEPTION = 13,
+  OSCALL_IS_SIMULATION = 99
 };
 
 enum LseekType {
@@ -417,6 +418,9 @@ doSyscall(Thread &thread, int &retval)
       thread.regs[R0] = std::system(command);
       return SyscallHandler::CONTINUE;
     }
+  case OSCALL_IS_SIMULATION:
+    thread.regs[R0] = 1;
+    return SyscallHandler::CONTINUE;
   default:
     std::cout << "Error: unknown system call number: " << thread.regs[R0] << "\n";
     retval = 1;

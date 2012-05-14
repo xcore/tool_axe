@@ -1,0 +1,14 @@
+// RUN: xcc -target=XC-5 %s -o %t1.xe
+// RUN: axe %t1.xe
+
+.globl main
+
+.align 2
+main:
+  entsp 1
+  ldc r0, 99
+  bl _DoSyscall
+  eq r0, r0, 1
+  ecallf r0
+  ldc r0, 0
+  retsp 1
