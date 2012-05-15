@@ -31,98 +31,98 @@ add_executable(genHex
   )
 
 add_executable(axe
-  main.cpp
-  Core.h
-  Core.cpp
-  Runnable.h
-  RunnableQueue.h
-  RunnableQueue.cpp
-  Thread.h
-  Thread.cpp
-  SyscallHandler.h
-  SyscallHandler.cpp
-  Exceptions.h
-  Exceptions.cpp
-  XE.h
-  XE.cpp
-  SymbolInfo.h
-  SymbolInfo.cpp
-  Resource.h
-  Resource.cpp
-  ChanEndpoint.h
-  ChanEndpoint.cpp
+  AccessSecondIterator.h
+  BitManip.h
   Chanend.h
   Chanend.cpp
+  ChanEndpoint.h
+  ChanEndpoint.cpp
   ClockBlock.h
   ClockBlock.cpp
-  CRC.h
-  InstructionBitcode.h
-  InstructionBitcode.cpp
-  JIT.h
-  JIT.cpp
-  JITInstructionFunction.h
-  JITOptimize.h
-  JITOptimize.cpp
-  Lock.cpp
-  Lock.h
-  LLVMExtra.h
-  LLVMExtra.cpp
-  Signal.h
-  Synchroniser.cpp
-  Synchroniser.h
-  Timer.cpp
-  Timer.h
-  PortInterface.h
-  PortSplitter.h
-  PortSplitter.cpp
-  Port.h
-  Port.cpp
-  PortArg.h
-  PortArg.cpp
-  PortNames.h
-  PortNames.cpp
-  Register.h
-  Trace.h
-  Trace.cpp
-  BitManip.h
   Config.h
-  ScopedArray.h
-  ring_buffer.h
+  ConfigSchema.rng
+  Core.h
+  Core.cpp
+  CRC.h
+  Exceptions.h
+  Exceptions.cpp
   Instruction.h
   Instruction.cpp
+  InstructionBitcode.h
+  InstructionBitcode.cpp
   InstructionDefinitions.cpp
   InstructionHelpers.h
   InstructionHelpers.cpp
   InstructionMacrosCommon.h
   InstructionProperties.h
   InstructionProperties.cpp
-  TerminalColours.h
-  TerminalColours.cpp
+  JIT.h
+  JIT.cpp
+  JITInstructionFunction.h
+  JITOptimize.h
+  JITOptimize.cpp
+  LLVMExtra.h
+  LLVMExtra.cpp
+  Lock.cpp
+  Lock.h
+  main.cpp
   Node.h
   Node.cpp
-  SystemState.h
-  SystemState.cpp
-  Token.h
-  SSwitch.h
-  SSwitch.cpp
-  SSwitchCtrlRegs.h
-  SSwitchCtrlRegs.cpp
-  WaveformTracer.h
-  WaveformTracer.cpp
-  UartRx.h
-  UartRx.cpp
-  PeripheralRegistry.h
-  PeripheralRegistry.cpp
-  registerAllPeripherals.h
-  registerAllPeripherals.cpp
   Peripheral.h
   Peripheral.cpp
   PeripheralDescriptor.h
   PeripheralDescriptor.cpp
+  PeripheralRegistry.h
+  PeripheralRegistry.cpp
   Property.h
   Property.cpp
-  AccessSecondIterator.h
-  ConfigSchema.rng
+  Port.h
+  Port.cpp
+  PortArg.h
+  PortArg.cpp
+  PortInterface.h
+  PortNames.h
+  PortNames.cpp
+  PortSplitter.h
+  PortSplitter.cpp
+  Register.h
+  registerAllPeripherals.h
+  registerAllPeripherals.cpp
+  Resource.h
+  Resource.cpp
+  ring_buffer.h
+  Runnable.h
+  RunnableQueue.h
+  RunnableQueue.cpp
+  ScopedArray.h
+  Signal.h
+  SSwitch.h
+  SSwitch.cpp
+  SSwitchCtrlRegs.h
+  SSwitchCtrlRegs.cpp
+  SymbolInfo.h
+  SymbolInfo.cpp
+  Synchroniser.cpp
+  Synchroniser.h
+  SyscallHandler.h
+  SyscallHandler.cpp
+  SystemState.h
+  SystemState.cpp
+  TerminalColours.h
+  TerminalColours.cpp
+  Thread.h
+  Thread.cpp
+  Timer.cpp
+  Timer.h
+  Token.h
+  Trace.h
+  Trace.cpp
+  UartRx.h
+  UartRx.cpp
+  WaveformTracer.h
+  WaveformTracer.cpp
+  XE.h
+  XE.cpp
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc
   ${AXE_BINARY_DIR}/InstructionBitcode.inc
