@@ -71,6 +71,15 @@ static inline void maccu(uint32_t *hi, uint32_t *lo, uint32_t a, uint32_t b)
   *lo= result_lo;
 }
 
+static inline uint32_t clz(uint32_t value)
+{
+  uint32_t result;
+  asm("clz %0, %1"
+      : "=r"(result)
+      : "r"(value));
+  return result;
+}
+
 #define CRC32(a, b, c) crc32(&a, b, c)
 #define CRC8(a, b, c) crc8(&a, b, c)
 #define MACCS(hi, low, a, b) maccs(&hi, &lo, a, b)
@@ -134,6 +143,10 @@ int main() {
     MACCU(hi, lo, 0x40, 0x40000001);
     VERIFY(hi == 0x14 && lo == 0x3f);
   }
+
+  VERIFY(clz(0xffffffff) == 0);
+  VERIFY(clz(0x00030011) == 14);
+  VERIFY(clz(0) == 32);
 
   return 0;
 }

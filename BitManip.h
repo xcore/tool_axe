@@ -9,7 +9,7 @@
 inline uint32_t countLeadingZeros(uint32_t x)
 {
 #ifdef __GNUC__
-  return x == 0 ? 0 : __builtin_clz(x);
+  return x == 0 ? 32 : __builtin_clz(x);
 #else
   unsigned i = 0;
   for (i = 32; x; i--) {
