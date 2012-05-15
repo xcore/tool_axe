@@ -11,12 +11,14 @@
       <ref name="anyAttributes"/>
       <interleave>
         <ref name="Nodes"/>
+        <ref name="Connections"/>
         <ref name="JtagChain"/>
         <zeroOrMore>
           <element>
             <anyName>
               <except>
                 <name>Nodes</name>
+                <name>Connections</name>
                 <name>JtagChain</name>
               </except>
             </anyName>
@@ -45,6 +47,45 @@
           </element>
         </zeroOrMore>
       </interleave>
+    </element>
+  </define>
+
+  <define name="Connections">
+    <element name="Connections">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <zeroOrMore>
+          <ref name="SLink"/>
+        </zeroOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>SLink</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="SLink">
+    <element name="SLink">
+      <attribute name="end1"/>
+      <attribute name="end2"/>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>end1</name>
+              <name>end2</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <ref name="anyElements"/>
     </element>
   </define>
 
@@ -82,12 +123,14 @@
       <interleave>
         <oneOrMore>
           <ref name="Processor"/>
-        </oneOrMore>   
+        </oneOrMore>
+        <ref name="Switch"/>
         <zeroOrMore>
           <element>
             <anyName>
               <except>
                 <name>Processor</name>
+                <name>Switch</name>
               </except>
             </anyName>
             <ref name="anyContent"/>
@@ -133,23 +176,35 @@
     </element>
   </define>
 
+  <define name="Switch">
+    <element name="Switch">
+      <attribute name="sLinks">
+        <ref name="numberAnyBase"/>
+      </attribute>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>sLinks</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <ref name="anyElements"/>
+    </element>
+  </define>
+
+  <define name="anyElements">
+    <zeroOrMore>
+      <ref name="anyElement"/>
+    </zeroOrMore>
+  </define>
+
   <define name="anyElement">
     <element>
       <anyName/>
       <ref name="anyContent"/>
     </element>
-  </define>
-
-  <define name="anyContent">
-    <zeroOrMore>
-      <choice>
-        <attribute>
-          <anyName/>
-        </attribute>
-        <text/>
-        <ref name="anyElement"/>
-      </choice>
-    </zeroOrMore>
   </define>
 
   <define name="anyAttributes">
@@ -158,6 +213,11 @@
         <anyName/>
       </attribute>
     </zeroOrMore>
+  </define>
+
+  <define name="anyContent">
+    <ref name="anyElements"/>
+    <ref name="anyAttributes"/>
   </define>
 
   <define name="numberAnyBase">

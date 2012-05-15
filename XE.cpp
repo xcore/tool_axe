@@ -6,6 +6,7 @@
 #include "XE.h"
 #include <cstring>
 #include <iostream>
+#include <cassert>
 
 bool XESector::getData(char *buf) const
 {
@@ -27,6 +28,16 @@ bool XEElfSector::getElfData(char *buf) const
   getParent().s.seekg(offset + 12);
   getParent().s.read(buf, getElfSize());
   return getParent().s.good();
+}
+
+XECallOrGotoSector::
+XECallOrGotoSector(XE &xe, uint64_t off, uint16_t type, uint64_t len)
+: XESector(xe, off, type, len)
+{
+  assert(type == XE_SECTOR_CALL || type == XE_SECTOR_GOTO);
+  node = xe.ReadU16();
+  core = xe.ReadU16();
+  address = xe.ReadU64();
 }
 
 XE::XE(const char *filename)
@@ -119,6 +130,10 @@ bool XE::ReadHeader() {
   switch (type) {
   case XESector::XE_SECTOR_ELF:
     sectors.push_back(new XEElfSector(*this, off, length - padding));
+    break;
+  case XESector::XE_SECTOR_CALL:
+  case XESector::XE_SECTOR_GOTO:
+    sectors.push_back(new XECallOrGotoSector(*this, off, type, length - padding));
     break;
   case XESector::XE_SECTOR_LAST:
     return true;

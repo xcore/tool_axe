@@ -15,6 +15,36 @@
 class Core;
 class SystemState;
 
+class Node;
+
+class XLink {
+  friend class Node;
+  Node *destNode;
+  unsigned destXLinkNum;
+  bool enabled;
+  bool fiveWire;
+  uint8_t network;
+  uint8_t direction;
+  uint16_t interTokenDelay;
+  uint16_t interSymbolDelay;
+public:
+  XLink();
+  const XLink *getDestXLink() const;
+  void setEnabled(bool value) { enabled = value; }
+  bool isEnabled() const { return enabled; }
+  void setFiveWire(bool value) { fiveWire = value; }
+  bool isFiveWire() const { return fiveWire; }
+  void setNetwork(uint8_t value) { network = value; }
+  uint8_t getNetwork() const { return network; }
+  void setDirection(uint8_t value) { direction = value; }
+  uint8_t getDirection() const { return network; }
+  void setInterTokenDelay(uint16_t value) { interTokenDelay = value; }
+  uint16_t getInterTokenDelay() const { return interTokenDelay; }
+  void setInterSymbolDelay(uint16_t value) { interSymbolDelay = value; }
+  uint16_t getInterSymbolDelay() const { return interSymbolDelay; }
+  bool isConnected() const;
+};
+
 class Node {
 public:
   enum Type {
@@ -23,17 +53,24 @@ public:
   };
 private:
   std::vector<Core *> cores;
+  std::vector<XLink> xLinks;
+  std::vector<uint8_t> directions;
   unsigned jtagIndex;
   unsigned nodeID;
   SystemState *parent;
   Type type;
   SSwitch sswitch;
+  unsigned coreNumberBits;
+
+  void computeCoreNumberBits();
   unsigned getCoreNumberBits() const;
+  XLink *getXLinkForDirection(unsigned direction);
 public:
   typedef std::vector<Core *>::iterator core_iterator;
   typedef std::vector<Core *>::const_iterator const_core_iterator;
-  Node(Type t) : jtagIndex(0), nodeID(0), parent(0), type(t), sswitch(this) {}
+  Node(Type t, unsigned numXLinks);
   ~Node();
+  unsigned getNodeNumberBits() const;
   void finalize();
   void addCore(std::auto_ptr<Core> cores);
   void setJtagIndex(unsigned value) { jtagIndex = value; }
@@ -53,6 +90,13 @@ public:
   core_iterator core_end() { return cores.end(); }
   const_core_iterator core_begin() const { return cores.begin(); }
   const_core_iterator core_end() const { return cores.end(); }
+  unsigned getNumXLinks() const { return xLinks.size(); }
+  XLink &getXLink(unsigned num) { return xLinks[num]; }
+  const XLink &getXLink(unsigned num) const { return xLinks[num]; }
+  void connectXLink(unsigned num, Node *destNode, unsigned destNum);
+  ChanEndpoint *getChanendDest(ResourceID ID);
+  uint8_t getDirection(unsigned num) const { return directions[num]; }
+  void setDirection(unsigned num, uint8_t value) { directions[num] = value; }
 };
 
 #endif // _Node_h_

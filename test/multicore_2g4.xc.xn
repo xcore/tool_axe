@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Network xmlns="http://www.xmos.com"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://www.xmos.com http://www.xmos.com">
+
+  <Declarations>
+    <Declaration>core stdcore[8]</Declaration>
+  </Declarations>
+
+  <Packages>
+    <Package id="0" Type="XS1-G4B-FB512">
+      <Nodes>
+        <Node Id="0" InPackageId="0" Type="XS1-G4B" Oscillator="20MHz" SystemFrequency="400MHz">
+          <Core Number="0" Reference="stdcore[0]"/>
+          <Core Number="1" Reference="stdcore[1]"/>
+          <Core Number="2" Reference="stdcore[2]"/>
+          <Core Number="3" Reference="stdcore[3]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="0" Type="XS1-G4B-FB512">
+      <Nodes>
+        <Node Id="1" InPackageId="0" Type="XS1-G4B" Oscillator="20MHz" SystemFrequency="400MHz">
+          <Core Number="0" Reference="stdcore[4]"/>
+          <Core Number="1" Reference="stdcore[5]"/>
+          <Core Number="2" Reference="stdcore[6]"/>
+          <Core Number="3" Reference="stdcore[7]"/>
+        </Node>
+      </Nodes>
+    </Package>
+  </Packages>
+
+  <Links>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="0" Link="XLG"/>
+      <LinkEndpoint NodeId="1" Link="XLF"/>
+    </Link>
+  </Links>
+
+  <JTAGChain>
+     <JTAGDevice NodeId="0"/>
+     <JTAGDevice NodeId="1"/>
+  </JTAGChain>
+
+</Network>
+

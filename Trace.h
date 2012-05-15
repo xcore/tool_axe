@@ -134,6 +134,7 @@ public:
   void setTracingEnabled(bool enable) { tracingEnabled = enable; }
   bool getTracingEnabled() const { return tracingEnabled; }
   void setSymbolInfo(std::auto_ptr<SymbolInfo> &si);
+  SymbolInfo *getSymbolInfo() { return symInfo.get(); }
   void setColour(bool enable);
 
   template<typename T0>

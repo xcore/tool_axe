@@ -71,6 +71,7 @@ bool Chanend::openRoute()
 {
   if (inPacket)
     return true;
+  dest = getOwner().getParent().getChanendDest(destID);
   if (!dest) {
     // TODO if dest in unset should give a link error exception.
     junkPacket = true;
@@ -86,11 +87,11 @@ bool Chanend::setData(Thread &thread, uint32_t value, ticks_t time)
   updateOwner(thread);
   if (inPacket)
     return false;
-  ResourceID destID(value);
-  if (destID.type() != RES_TYPE_CHANEND &&
-      destID.type() != RES_TYPE_CONFIG)
+  ResourceID id(value);
+  if (id.type() != RES_TYPE_CHANEND &&
+      id.type() != RES_TYPE_CONFIG)
     return false;
-  dest = thread.getParent().getChanendDest(destID);
+  destID = value;
   return true;
 }
 
@@ -159,6 +160,7 @@ outct(Thread &thread, uint8_t value, ticks_t time)
   dest->receiveCtrlToken(time, value);
   if (value == CT_END || value == CT_PAUSE) {
     inPacket = false;
+    dest = 0;
   }
   return CONTINUE;
 }

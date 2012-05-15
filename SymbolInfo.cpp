@@ -92,7 +92,11 @@ SymbolInfo::~SymbolInfo()
 
 void SymbolInfo::add(const Core *core, std::auto_ptr<CoreSymbolInfo> info)
 {
-  coreMap.insert(std::make_pair(core, info.release()));
+  CoreSymbolInfo *&entry = coreMap[core];
+  if (entry) {
+    delete entry;
+  }
+  entry = info.release();
 }
 
 CoreSymbolInfo *SymbolInfo::getCoreSymbolInfo(const Core *core) const

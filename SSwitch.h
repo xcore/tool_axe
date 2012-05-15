@@ -8,17 +8,9 @@
 
 #include "Token.h"
 #include "ChanEndpoint.h"
+#include "SSwitchCtrlRegs.h"
 
 class Node;
-
-class SSwitchCtrlRegs {
-private:
-  uint32_t scratchReg;
-public:
-  SSwitchCtrlRegs();
-  bool read(uint16_t num, uint32_t &result);
-  bool write(uint16_t num, uint32_t value);
-};
 
 class SSwitch : public ChanEndpoint {
 private:
@@ -48,6 +40,7 @@ private:
   void handleRequest(ticks_t time, const Request &request);
 public:
   SSwitch(Node *parent);
+  void initRegisters() { regs.initRegisters(); }
   virtual void notifyDestClaimed(ticks_t time);
 
   virtual void notifyDestCanAcceptTokens(ticks_t time, unsigned tokens);

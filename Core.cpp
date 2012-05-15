@@ -258,22 +258,26 @@ initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
   decodeOpcode = decode;
 }
 
+void Core::resetCaches()
+{
+  uint32_t ramEnd = ram_base + (1 << ramSizeLog2);
+  for (unsigned address = ram_base; address < ramEnd; address += 4) {
+    invalidateWord(address);    
+  }
+}
+
 bool Core::getLocalChanendDest(ResourceID ID, ChanEndpoint *&result)
 {
   assert(ID.isChanendOrConfig());
   if (ID.isConfig()) {
     switch (ID.num()) {
-      case RES_CONFIG_SSCTRL:
-        if (parent->hasMatchingNodeID(ID)) {
-          result = parent->getSSwitch();
-          return true;
-        }
-        break;
-      case RES_CONFIG_PSCTRL:
-        // TODO.
-        assert(0);
-        result = 0;
-        return true;
+    case RES_CONFIG_SSCTRL:
+      return false;
+    case RES_CONFIG_PSCTRL:
+      // TODO.
+      assert(0);
+      result = 0;
+      return true;
     }
   } else {
     if (ID.node() == getCoreID()) {
@@ -298,7 +302,7 @@ ChanEndpoint *Core::getChanendDest(ResourceID ID)
   // Try to lookup locally first.
   if (getLocalChanendDest(ID, result))
     return result;
-  return parent->getParent()->getChanendDest(ID);
+  return parent->getChanendDest(ID);
 }
 
 void Core::finalize()

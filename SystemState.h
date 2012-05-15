@@ -91,7 +91,6 @@ public:
     return pendingEvent.set;
   }
 
-  ChanEndpoint *getChanendDest(ResourceID ID);
   node_iterator node_begin() { return nodes.begin(); }
   node_iterator node_end() { return nodes.end(); }
   const_node_iterator node_begin() const { return nodes.begin(); }

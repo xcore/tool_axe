@@ -152,7 +152,7 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     std::cerr << "Error reading elf data from \"" << filename << "\"" << std::endl;
     std::exit(1);
   }
-  
+
   if (elf_version(EV_CURRENT) == EV_NONE) {
     std::cerr << "ELF library intialisation failed: "
               << elf_errmsg(-1) << std::endl;
@@ -184,6 +184,7 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     std::cerr << "No ELF program headers" << std::endl;
     std::exit(1);
   }
+  core.resetCaches();
   uint32_t ram_base = core.ram_base;
   uint32_t ram_size = core.getRamSize();
   for (unsigned i = 0; i < num_phdrs; i++) {
@@ -209,7 +210,7 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
   }
 
   readSymbols(e, ram_base, ram_base + ram_size, SI);
-  
+
   elf_end(e);
 }
 
@@ -312,7 +313,13 @@ createNodeFromConfig(xmlNode *config,
     std::cerr << "Unknown jtagId 0x" << std::hex << jtagID << std::dec << '\n';
     std::exit(1);
   }
-  std::auto_ptr<Node> node(new Node(nodeType));
+  long numXLinks = 0;
+  if (xmlNode *switchNode = findChild(config, "Switch")) {
+    if (findAttribute(switchNode, "sLinks")) {
+      numXLinks = readNumberAttribute(switchNode, "sLinks");
+    }
+  }
+  std::auto_ptr<Node> node(new Node(nodeType, numXLinks));
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
   for (xmlNode *child = config->children; child; child = child->next) {
@@ -321,8 +328,32 @@ createNodeFromConfig(xmlNode *config,
       continue;
     node->addCore(createCoreFromConfig(child));
   }
-  node->setNodeID(nodeID);
   return node;
+}
+
+static bool parseXLinkEnd(xmlAttr *attr, long &node, long &xlink)
+{
+  const char *s = (char*)attr->children->content;
+  errno = 0;
+  char *endp;
+  node = std::strtol(s, &endp, 0);
+  if (errno != 0 || *endp != ',')
+    return false;
+  xlink = std::strtol(endp + 1, &endp, 0);
+  if (errno != 0 || *endp != '\0')
+    return false;
+  return true;
+}
+
+static Node *
+lookupNodeChecked(const std::map<long,Node*> &nodeNumberMap, unsigned nodeID)
+{
+  std::map<long,Node*>::const_iterator it = nodeNumberMap.find(nodeID);
+  if (it == nodeNumberMap.end()) {
+    std::cerr << "No node matching id " << nodeID << std::endl;
+    std::exit(1);
+  }
+  return it->second;
 }
 
 static inline std::auto_ptr<SystemState>
@@ -370,6 +401,33 @@ createSystemFromConfig(const char *filename, const XESector *configSector)
       continue;
     systemState->addNode(createNodeFromConfig(child, nodeNumberMap));
   }
+  xmlNode *connections = findChild(system, "Connections");
+  for (xmlNode *child = connections->children; child; child = child->next) {
+    if (child->type != XML_ELEMENT_NODE ||
+        strcmp("SLink", (char*)child->name) != 0)
+      continue;
+    long nodeID1, link1, nodeID2, link2;
+    if (!parseXLinkEnd(findAttribute(child, "end1"), nodeID1, link1)) {
+      std::cerr << "Failed to parse \"end1\" attribute" << std::endl;
+      std::exit(1);
+    }
+    if (!parseXLinkEnd(findAttribute(child, "end2"), nodeID2, link2)) {
+      std::cerr << "Failed to parse \"end2\" attribute" << std::endl;
+      std::exit(1);
+    }
+    Node *node1 = lookupNodeChecked(nodeNumberMap, nodeID1);
+    if (link1 >= node1->getNumXLinks()) {
+      std::cerr << "Invalid sLink number " << link1 << std::endl;
+      std::exit(1);
+    }
+    Node *node2 = lookupNodeChecked(nodeNumberMap, nodeID2);
+    if (link2 >= node2->getNumXLinks()) {
+      std::cerr << "Invalid sLink number " << link2 << std::endl;
+      std::exit(1);
+    }
+    node1->connectXLink(link1, node2, link2);
+    node2->connectXLink(link2, node1, link1);
+  }
   xmlNode *jtag = findChild(system, "JtagChain");
   unsigned jtagIndex = 0;
   for (xmlNode *child = jtag->children; child; child = child->next) {
@@ -377,12 +435,7 @@ createSystemFromConfig(const char *filename, const XESector *configSector)
         strcmp("Node", (char*)child->name) != 0)
       continue;
     long nodeID = readNumberAttribute(child, "id");
-    std::map<long,Node*>::iterator it = nodeNumberMap.find(nodeID);
-    if (it == nodeNumberMap.end()) {
-      std::cerr << "No node matching id " << nodeID << std::endl;
-      std::exit(1);
-    }
-    it->second->setJtagIndex(jtagIndex++);
+    lookupNodeChecked(nodeNumberMap, nodeID)->setJtagIndex(jtagIndex++);
   }
   systemState->finalize();
   xmlFreeDoc(doc);
@@ -416,11 +469,9 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
 }
 
 static inline std::auto_ptr<SystemState>
-readXE(const char *filename, SymbolInfo &SI,
-       std::set<Core*> &coresWithImage, std::map<Core*,uint32_t> &entryPoints)
+readXE(XE &xe, const char *filename)
 {
   // Load the file into memory.
-  XE xe(filename);
   if (!xe) {
     std::cerr << "Error opening \"" << filename << "\"" << std::endl;
     std::exit(1);
@@ -428,93 +479,23 @@ readXE(const char *filename, SymbolInfo &SI,
   // TODO handle XEs / XBs without a config sector.
   const XESector *configSector = xe.getConfigSector();
   if (!configSector) {
-    std::cerr << "Error: No config file found in \"" << filename << "\"" << std::endl;
+    std::cerr << "Error: No config file found in \"";
+    std::cerr << filename << "\"" << std::endl;
     std::exit(1);
   }
   std::auto_ptr<SystemState> system =
     createSystemFromConfig(filename, configSector);
-  std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
-  addToCoreMap(coreMap, *system);
-  for (std::vector<const XESector *>::const_reverse_iterator
-       it = xe.getSectors().rbegin(), end = xe.getSectors().rend(); it != end;
-       ++it) {
-    switch((*it)->getType()) {
-    case XESector::XE_SECTOR_ELF:
-      {
-        const XEElfSector *elfSector = static_cast<const XEElfSector*>(*it);
-        unsigned jtagIndex = elfSector->getNode();
-        unsigned coreNum = elfSector->getCore();
-        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
-        if (!core) {
-          std::cerr << "Error: cannot find node " << jtagIndex
-                    << ", core " << coreNum << std::endl;
-          std::exit(1);
-        }
-        if (coresWithImage.count(core))
-          continue;
-        std::auto_ptr<CoreSymbolInfo> CSI;
-        readElf(filename, elfSector, *core, CSI, entryPoints);
-        SI.add(core, CSI);
-        coresWithImage.insert(core);
-        break;
-      }
-    }
-  }
-  xe.close();
   return system;
 }
 
-typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
-  PeripheralDescriptorWithPropertiesVector;
-
-int
-loop(const char *filename, const LoopbackPorts &loopbackPorts,
-     const std::string &vcdFile,
-     const PeripheralDescriptorWithPropertiesVector &peripherals)
+static int runCores(SystemState &sys, const std::set<Core*> &cores,
+                     const std::map<Core*,uint32_t> &entryPoints)
 {
-  std::auto_ptr<SymbolInfo> SI(new SymbolInfo);
-  std::set<Core*> coresWithImage;
-  std::map<Core*,uint32_t> entryPoints;
-  std::auto_ptr<SystemState> statePtr = readXE(filename, *SI, coresWithImage,
-                                               entryPoints);
-  SystemState &sys = *statePtr;
-
-  if (!connectLoopbackPorts(sys, loopbackPorts)) {
-    std::exit(1);
-  }
-
-  for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
-       e = peripherals.end(); it != e; ++it) {
-    it->first->createInstance(sys, it->second);
-  }
-
-  std::auto_ptr<WaveformTracer> waveformTracer;
-  // TODO update to handle multiple cores.
-  if (!vcdFile.empty()) {
-    waveformTracer.reset(new WaveformTracer(vcdFile));
-    connectWaveformTracer(sys, *waveformTracer);
-  }
-
-  for (std::set<Core*>::iterator it = coresWithImage.begin(),
-       e = coresWithImage.end(); it != e; ++it) {
+  for (std::set<Core*>::iterator it = cores.begin(), e = cores.end(); it != e;
+       ++it) {
     Core *core = *it;
     sys.schedule(core->getThread(0));
-
-    // Patch in syscall instruction at the syscall address.
-    if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(core, "_DoSyscall")) {
-      if (!core->setSyscallAddress(syscallSym->value)) {
-        std::cout << "Warning: invalid _DoSyscall address "
-        << std::hex << syscallSym->value << std::dec << "\n";
-      }
-    }
-    // Patch in exception instruction at the exception address
-    if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(core, "_DoException")) {
-      if (!core->setExceptionAddress(doExceptionSym->value)) {
-        std::cout << "Warning: invalid _DoException address "
-        << std::hex << doExceptionSym->value << std::dec << "\n";
-      }
-    }
-    std::map<Core*,uint32_t>::iterator match;
+    std::map<Core*,uint32_t>::const_iterator match;
     if ((match = entryPoints.find(core)) != entryPoints.end()) {
       uint32_t entryPc = core->physicalAddress(match->second) >> 1;
       if (core->isValidPc(entryPc)) {
@@ -525,10 +506,154 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
       }
     }
   }
-  SyscallHandler::setCoreCount(coresWithImage.size());
-
-  Tracer::get().setSymbolInfo(SI);
+  SyscallHandler::setDoneSyscallsRequired(cores.size());
   return sys.run();
+}
+
+typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
+  PeripheralDescriptorWithPropertiesVector;
+
+int
+loop(const char *filename, const LoopbackPorts &loopbackPorts,
+     const std::string &vcdFile,
+     const PeripheralDescriptorWithPropertiesVector &peripherals)
+{
+  XE xe(filename);
+  std::auto_ptr<SystemState> statePtr = readXE(xe, filename);
+  SystemState &sys = *statePtr;
+  
+  if (!connectLoopbackPorts(sys, loopbackPorts)) {
+    std::exit(1);
+  }
+  
+  for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
+       e = peripherals.end(); it != e; ++it) {
+    it->first->createInstance(sys, it->second);
+  }
+  
+  std::auto_ptr<WaveformTracer> waveformTracer;
+  // TODO update to handle multiple cores.
+  if (!vcdFile.empty()) {
+    waveformTracer.reset(new WaveformTracer(vcdFile));
+    connectWaveformTracer(sys, *waveformTracer);
+  }
+
+  std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
+  addToCoreMap(coreMap, *statePtr);
+
+  std::auto_ptr<SymbolInfo> SIAutoPtr(new SymbolInfo);
+  Tracer::get().setSymbolInfo(SIAutoPtr);
+  SymbolInfo *SI = Tracer::get().getSymbolInfo();
+
+  std::map<Core*,uint32_t> entryPoints;
+  std::set<Core*> gotoSectors;
+  std::set<Core*> callSectors;
+  for (std::vector<const XESector *>::const_iterator
+       it = xe.getSectors().begin(), end = xe.getSectors().end(); it != end;
+       ++it) {
+    switch((*it)->getType()) {
+    case XESector::XE_SECTOR_ELF:
+      {
+        const XEElfSector *elfSector = static_cast<const XEElfSector*>(*it);
+        unsigned jtagIndex = elfSector->getNode();
+        unsigned coreNum = elfSector->getCore();
+        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
+        if (!core) {
+          std::cerr << "Error: cannot find node " << jtagIndex
+          << ", core " << coreNum << std::endl;
+          std::exit(1);
+        }
+        if (gotoSectors.count(core)) {
+          // Shouldn't happen.
+          return runCores(sys, gotoSectors, entryPoints);
+        }
+        if (callSectors.count(core)) {
+          int status = runCores(sys, callSectors, entryPoints);
+          if (status != 0)
+            return status;
+          callSectors.clear();
+        }
+        std::auto_ptr<CoreSymbolInfo> CSI;
+        readElf(filename, elfSector, *core, CSI, entryPoints);
+        SI->add(core, CSI);
+        // TODO check old instructions are cleared.
+
+        // Patch in syscall instruction at the syscall address.
+        if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(core, "_DoSyscall")) {
+          if (!core->setSyscallAddress(syscallSym->value)) {
+            std::cout << "Warning: invalid _DoSyscall address "
+            << std::hex << syscallSym->value << std::dec << "\n";
+          }
+        }
+        // Patch in exception instruction at the exception address
+        if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(core, "_DoException")) {
+          if (!core->setExceptionAddress(doExceptionSym->value)) {
+            std::cout << "Warning: invalid _DoException address "
+            << std::hex << doExceptionSym->value << std::dec << "\n";
+          }
+        }
+      }
+      break;
+    case XESector::XE_SECTOR_CALL:
+      {
+        const XECallOrGotoSector *callSector =
+        static_cast<const XECallOrGotoSector*>(*it);
+        if (!gotoSectors.empty()) {
+          // Shouldn't happen.
+          return runCores(sys, gotoSectors, entryPoints);
+        }
+        unsigned jtagIndex = callSector->getNode();
+        unsigned coreNum = callSector->getCore();
+        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
+        if (!core) {
+          std::cerr << "Error: cannot find node " << jtagIndex
+          << ", core " << coreNum << std::endl;
+          std::exit(1);
+        }
+        if (!callSectors.insert(core).second) {
+          int status = runCores(sys, callSectors, entryPoints);
+          if (status != 0)
+            return status;
+          callSectors.clear();
+          callSectors.insert(core);
+        }
+      }
+      break;
+    case XESector::XE_SECTOR_GOTO:
+      {
+        const XECallOrGotoSector *gotoSector =
+          static_cast<const XECallOrGotoSector*>(*it);
+        if (!callSectors.empty()) {
+          // Handle calls.
+          int status = runCores(sys, callSectors, entryPoints);
+          if (status != 0)
+            return status;
+          callSectors.clear();
+        }
+        unsigned jtagIndex = gotoSector->getNode();
+        unsigned coreNum = gotoSector->getCore();
+        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
+        if (!core) {
+          std::cerr << "Error: cannot find node " << jtagIndex
+          << ", core " << coreNum << std::endl;
+          std::exit(1);
+        }
+        if (!gotoSectors.insert(core).second) {
+          // Shouldn't happen.
+          return runCores(sys, gotoSectors, entryPoints);
+        }
+      }
+      break;
+    }
+  }
+  if (!gotoSectors.empty()) {
+    return runCores(sys, gotoSectors, entryPoints);
+  }
+  if (!callSectors.empty()) {
+    // Shouldn't happen.
+    return runCores(sys, callSectors, entryPoints);
+  }
+  return 0;
 }
 
 static void loopbackOption(const char *a, const char *b, LoopbackPorts &loopbackPorts)

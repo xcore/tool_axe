@@ -18,6 +18,8 @@ public:
     XE_SECTOR_BINARY = 1,
     XE_SECTOR_ELF = 2,
     XE_SECTOR_CONFIG = 3,
+    XE_SECTOR_GOTO = 5,
+    XE_SECTOR_CALL = 6,
     XE_SECTOR_LAST = 0x5555,
   };
 private:
@@ -50,6 +52,18 @@ public:
   uint64_t getElfSize() const { return getLength() - 12; }
 };
 
+class XECallOrGotoSector : public XESector {
+private:
+  uint16_t node;
+  uint16_t core;
+  uint64_t address;
+public:
+  XECallOrGotoSector(XE &xe, uint64_t off, uint16_t t, uint64_t len);
+  uint16_t getNode() const { return node; };
+  uint16_t getCore() const { return core; };
+  uint64_t getAddress() const { return address; };  
+};
+
 class XE {
 public:
   XE(const char *filename);
@@ -59,7 +73,7 @@ public:
   bool operator!() const {
     return error;
   }
-  
+
   void close() {
     s.close();
   }
@@ -78,6 +92,7 @@ private:
 
   friend class XESector;
   friend class XEElfSector;
+  friend class XECallOrGotoSector;
 };
 
 #endif //_XE_h_

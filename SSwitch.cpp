@@ -10,31 +10,9 @@
 #include "Trace.h"
 #include <cassert>
 
-SSwitchCtrlRegs::SSwitchCtrlRegs() : scratchReg(0)
-{
-  
-}
-
-bool SSwitchCtrlRegs::read(uint16_t num, uint32_t &result)
-{
-  if (num != 3) {
-    return false;
-  }
-  result = scratchReg;
-  return true;
-}
-
-bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
-{
-  if (num != 3) {
-    return false;
-  }
-  scratchReg = value;
-  return true;  
-}
-
 SSwitch::SSwitch(Node *p) :
   parent(p),
+  regs(p),
   recievedTokens(0),
   junkIncomingTokens(0),
   sendingResponse(false),
@@ -131,7 +109,7 @@ void SSwitch::handleRequest(ticks_t time, const Request &request)
         Tracer::get().SSwitchNack(*parent, destID);
     }
   }
-  ChanEndpoint *dest = parent->getParent()->getChanendDest(destID);
+  ChanEndpoint *dest = parent->getChanendDest(destID);
   if (!dest)
     return;
   bool junkPacket = false;

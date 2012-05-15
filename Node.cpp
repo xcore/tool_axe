@@ -6,6 +6,48 @@
 #include "Node.h"
 #include "Core.h"
 
+XLink::XLink() :
+  destNode(0),
+  destXLinkNum(0),
+  enabled(false),
+  fiveWire(false),
+  network(0),
+  direction(0),
+  // TODO find out defaults.
+  interTokenDelay(0),
+  interSymbolDelay(0)
+{
+  
+}
+
+const XLink *XLink::getDestXLink() const
+{
+  if (!destNode)
+    return 0;
+  return &destNode->getXLink(destXLinkNum);
+}
+
+bool XLink::isConnected() const
+{
+  if (!isEnabled())
+    return false;
+  const XLink *otherEnd = getDestXLink();
+  if (!otherEnd || !otherEnd->isEnabled())
+    return false;
+  return isFiveWire() == otherEnd->isFiveWire();
+}
+
+Node::Node(Type t, unsigned numXLinks) :
+  jtagIndex(0),
+  nodeID(0),
+  parent(0),
+  type(t),
+  sswitch(this),
+  coreNumberBits(0)
+{
+  xLinks.resize(numXLinks);
+}
+
 Node::~Node()
 {
   for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
@@ -16,11 +58,19 @@ Node::~Node()
 
 void Node::finalize()
 {
+  computeCoreNumberBits();
+  directions.resize(getNodeNumberBits());
+  if (type == XS1_G) {
+    for (unsigned i = 0, e = directions.size(); i != e; ++i) {
+      directions[i] = i;
+    }
+  }
   for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
        it != e; ++it) {
     (*it)->updateIDs();
     (*it)->finalize();
   }
+  sswitch.initRegisters();
 }
 
 void Node::addCore(std::auto_ptr<Core> c)
@@ -49,12 +99,22 @@ static unsigned getMinimumBits(unsigned values)
   return 32 - countLeadingZeros(values - 1);
 }
 
+void Node::computeCoreNumberBits()
+{
+  coreNumberBits = getMinimumBits(cores.size());
+  if (getType() == Node::XS1_G && coreNumberBits < 8)
+    coreNumberBits = 8;
+}
+
+
 unsigned Node::getCoreNumberBits() const
 {
-  unsigned bits = getMinimumBits(cores.size());
-  if (getType() == Node::XS1_G && bits < 8)
-    bits = 8;
-  return bits;
+  return coreNumberBits;
+}
+
+unsigned Node::getNodeNumberBits() const
+{
+  return 16 - coreNumberBits;
 }
 
 uint32_t Node::getCoreID(unsigned coreNum) const
@@ -87,4 +147,60 @@ bool Node::hasMatchingNodeID(ResourceID ID)
     case Node::XS1_L:
       return ID.node() == nodeID;
   }
+}
+
+void Node::connectXLink(unsigned num, Node *destNode, unsigned destNum)
+{
+  xLinks[num].destNode = destNode;
+  xLinks[num].destXLinkNum = destNum;
+}
+
+XLink *Node::getXLinkForDirection(unsigned direction)
+{
+  for (unsigned i = 0, e = xLinks.size(); i != e; ++i) {
+    XLink &xLink = xLinks[i];
+    if (xLink.isEnabled() && xLinks[i].getDirection() == direction)
+      return &xLink;
+  }
+  return 0;
+}
+
+ChanEndpoint *Node::getChanendDest(ResourceID ID)
+{
+  Node *node = this;
+  // Use Brent's algorithm to detect cycles.
+  Node *tortoise = node;
+  unsigned hops = 0;
+  unsigned leapCount = 8;
+  while (1) {
+    unsigned destNode = ID.node() >> node->getCoreNumberBits();
+    unsigned diff = destNode ^ node->getNodeID();
+    if (diff == 0)
+      break;
+    // Lookup direction
+    unsigned bit = countLeadingZeros(diff) + getNodeNumberBits() - 32;
+    unsigned direction = directions[bit];
+    // Lookup Xlink.
+    XLink *xLink = getXLinkForDirection(direction);
+    if (!xLink || !xLink->isConnected())
+      return 0;
+    node = xLink->destNode;
+    ++hops;
+    // Junk message if a cycle is detected.
+    if (node == tortoise)
+      return 0;
+    if (hops == leapCount) {
+      leapCount <<= 1;
+      tortoise = node;
+    }
+  }
+  if (ID.isConfig() && ID.num() == RES_CONFIG_SSCTRL) {
+    return &node->sswitch;
+  }
+  unsigned destCore = ID.node() & makeMask(node->getCoreNumberBits());
+  if (destCore >= node->cores.size())
+    return 0;
+  ChanEndpoint *dest = 0;
+  node->getCores()[destCore]->getLocalChanendDest(ID, dest);
+  return dest;
 }

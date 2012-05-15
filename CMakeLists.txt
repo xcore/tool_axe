@@ -105,6 +105,8 @@ add_executable(axe
   Token.h
   SSwitch.h
   SSwitch.cpp
+  SSwitchCtrlRegs.h
+  SSwitchCtrlRegs.cpp
   WaveformTracer.h
   WaveformTracer.cpp
   UartRx.h

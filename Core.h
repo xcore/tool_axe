@@ -111,6 +111,8 @@ public:
                  OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit,
                  OPCODE_TYPE interpretOne);
 
+  void resetCaches();
+
   void runJIT(uint32_t jitPc);
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }

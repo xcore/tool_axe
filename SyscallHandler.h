@@ -13,7 +13,7 @@ public:
     DESCHEDULE,
     EXIT
   };
-  static void setCoreCount(unsigned number);
+  static void setDoneSyscallsRequired(unsigned number);
   static SycallOutcome doSyscall(Thread &thread, int &retval);
   static void doException(const Thread &thread);
 };

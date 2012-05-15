@@ -38,8 +38,7 @@ class SyscallHandlerImpl {
 private:
   const scoped_array<int> fds;
   bool tracing;
-  unsigned coreCount;
-  unsigned doneCount;
+  unsigned doneSyscallsRequired;
   char *getString(Thread &thread, uint32_t address);
   void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
   int getNewFd();
@@ -52,7 +51,7 @@ private:
 public:
   SyscallHandlerImpl();
 
-  void setCoreCount(unsigned count) { coreCount = count; }
+  void setDoneSyscallsRequired(unsigned count) { doneSyscallsRequired = count; }
   SyscallHandler::SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);
 
@@ -102,7 +101,7 @@ enum OpenFlags {
 const unsigned MAX_FDS = 512;
 
 SyscallHandlerImpl::SyscallHandlerImpl() :
-  fds(new int[MAX_FDS]), tracing(false), coreCount(1), doneCount(0)
+  fds(new int[MAX_FDS]), tracing(false), doneSyscallsRequired(1)
 {
   // Duplicate the standard file descriptors.
   fds[0] = dup(STDIN_FILENO);
@@ -261,8 +260,7 @@ doSyscall(Thread &thread, int &retval)
     return SyscallHandler::EXIT;
   case OSCALL_DONE:
     TRACE("done");
-    doneCount++;
-    if (doneCount == coreCount) {
+    if (--doneSyscallsRequired == 0) {
       retval = 0;
       return SyscallHandler::EXIT;
     }
@@ -430,9 +428,9 @@ doSyscall(Thread &thread, int &retval)
 
 SyscallHandlerImpl SyscallHandlerImpl::instance;
 
-void SyscallHandler::setCoreCount(unsigned number)
+void SyscallHandler::setDoneSyscallsRequired(unsigned number)
 {
-  SyscallHandlerImpl::instance.setCoreCount(number);
+  SyscallHandlerImpl::instance.setDoneSyscallsRequired(number);
 }
 
 SyscallHandler::SycallOutcome SyscallHandler::
