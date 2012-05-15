@@ -25,7 +25,7 @@ if (LLVM_FOUND)
   )
 
   execute_process(
-    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs all
+    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs scalaropts engine bitreader
     OUTPUT_VARIABLE LLVM_LIBRARIES
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
