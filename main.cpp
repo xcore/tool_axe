@@ -510,6 +510,28 @@ static int runCores(SystemState &sys, const std::set<Core*> &cores,
   return sys.run();
 }
 
+static bool
+checkPeripheralPorts(SystemState &sys, const PeripheralDescriptor *descriptor,
+                     const Properties &properties)
+{
+  for (PeripheralDescriptor::const_iterator it = descriptor->properties_begin(),
+       e = descriptor->properties_end(); it != e; ++it) {
+    if (it->getType() != PropertyDescriptor::PORT)
+      continue;
+    const Property *property = properties.get(it->getName());
+    if (!property)
+      continue;
+    const PortArg &portArg = property->getAsPort();
+    if (!portArg.lookup(sys)) {
+      std::cerr << "Error: Invalid port ";
+      portArg.dump(std::cerr);
+      std::cerr << '\n';
+      return false;
+    }
+  }
+  return true;
+}
+
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
   PeripheralDescriptorWithPropertiesVector;
 
@@ -525,12 +547,15 @@ loop(const char *filename, const LoopbackPorts &loopbackPorts,
   if (!connectLoopbackPorts(sys, loopbackPorts)) {
     std::exit(1);
   }
-  
+
   for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
        e = peripherals.end(); it != e; ++it) {
+    if (!checkPeripheralPorts(sys, it->first, it->second)) {
+      std::exit(1);
+    }
     it->first->createInstance(sys, it->second);
   }
-  
+
   std::auto_ptr<WaveformTracer> waveformTracer;
   // TODO update to handle multiple cores.
   if (!vcdFile.empty()) {
