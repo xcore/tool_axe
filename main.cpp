@@ -768,6 +768,11 @@ parseProperties(const std::string &str, const PeripheralDescriptor *periph,
       std::exit(1);
     }
   }
+}
+
+static void checkRequiredProperties(const PeripheralDescriptor *periph,
+                                    const Properties &properties)
+{
   // Check required properties have been set.
   for (PeripheralDescriptor::const_iterator it = periph->properties_begin(),
        e = periph->properties_end(); it != e; ++it) {
@@ -826,6 +831,7 @@ main(int argc, char **argv) {
       if (i + 1 < argc && argv[i + 1][0] != '-') {
         parseProperties(argv[++i], pd, peripherals.back().second);
       }
+      checkRequiredProperties(pd, peripherals.back().second);
     } else {
       if (file) {
         printUsage(argv[0]);

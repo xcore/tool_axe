@@ -15,7 +15,6 @@
 #include "Node.h"
 #include "Core.h"
 #include <iostream>
-#include <cstdlib>
 
 const unsigned DEFAULT_BIT_RATE = 115200;
 
@@ -164,13 +163,6 @@ createUartRx(SystemState &system, const Properties &properties)
   UartRx *p = new UartRx(system.getScheduler(), bitTime) ;
   PortArg portArg = properties.get("port")->getAsPort();
   Port *port = portArg.lookup(system);
-  if (!port) {
-    // TODO check this in generic code.
-    std::cerr << "Error: Invalid port ";
-    portArg.dump(std::cerr);
-    std::cerr << '\n';
-    std::exit(1);
-  }
   port->setLoopback(p);
   return p;
 }
