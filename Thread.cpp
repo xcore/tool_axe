@@ -142,7 +142,9 @@ enum {
   SETC_RDY_HANDSHAKE = 0x3017,
   SETC_PORT_DATAPORT = 0x5007,
   SETC_PORT_CLOCKPORT = 0x500f,
-  SETC_PORT_READYPORT = 0x5017
+  SETC_PORT_READYPORT = 0x5017,
+  SETC_INV_NOINVERT = 0x6007,
+  SETC_INV_INVERT = 0x600f
 };
 
 static void internalError(const Thread &thread, const char *file, int line) {
@@ -281,6 +283,12 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
       static_cast<Port*>(res)->clearBuf(*this, time);
       break;
     }
+  case SETC_INV_NOINVERT:
+    // Do nothing for now. TODO
+    break;
+  case SETC_INV_INVERT:
+    internalError(*this, __FILE__, __LINE__);
+    break;
   }
   return true;
 }

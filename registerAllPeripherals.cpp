@@ -6,9 +6,11 @@
 #include "registerAllPeripherals.h"
 #include "PeripheralRegistry.h"
 #include "UartRx.h"
+#include "SPIFlash.h"
 #include "PeripheralDescriptor.h"
 
 void registerAllPeripherals()
 {
   PeripheralRegistry::add(getPeripheralDescriptorUartRx());
+  PeripheralRegistry::add(getPeripheralDescriptorSPIFlash());
 }

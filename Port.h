@@ -9,12 +9,12 @@
 #include "Resource.h"
 #include "BitManip.h"
 #include "PortInterface.h"
+#include "Signal.h"
 #include <stdint.h>
 #include <set>
 
 class Thread;
 class ClockBlock;
-struct Signal;
 
 class Port : public EventableResource, public PortInterface {
 public:
@@ -112,8 +112,6 @@ private:
   void handlePinsChange(uint32_t value, ticks_t time);
   /// Called whenever the readyOut value changes.
   void handleReadyOutChange(bool value, ticks_t time);
-  /// Update the pin buffer with the change.
-  void seePinsChange(const Signal &value, ticks_t time);
   /// Update the port to the specified time. The port must be clocked off a
   /// fixed frequency clock.
   void updateAux(ticks_t time);
@@ -153,6 +151,8 @@ public:
   Port();
   std::string getName() const;
   Signal getPinsValue() const;
+  /// Update the pin buffer with the change.
+  void seePinsChange(const Signal &value, ticks_t time);
   bool setCInUse(Thread &thread, bool val, ticks_t time);
 
   bool setCondition(Thread &thread, Condition c, ticks_t time);

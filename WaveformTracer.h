@@ -12,6 +12,7 @@
 #include <string>
 #include <queue>
 #include "PortInterface.h"
+#include "Signal.h"
 
 class Port;
 class WaveformTracer;

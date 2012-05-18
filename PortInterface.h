@@ -6,7 +6,9 @@
 #ifndef _PortInterface_h_
 #define _PortInterface_h_
 
-#include "Signal.h"
+#include "Config.h"
+
+struct Signal;
 
 class PortInterface {
 public:

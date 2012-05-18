@@ -81,6 +81,9 @@ add_executable(axe
   PortArg.h
   PortArg.cpp
   PortInterface.h
+  PortHandleClockProxy.h
+  PortHandleClockProxy.cpp
+  PortInterface.h
   PortNames.h
   PortNames.cpp
   PortSplitter.h
@@ -96,6 +99,8 @@ add_executable(axe
   RunnableQueue.cpp
   ScopedArray.h
   Signal.h
+  SPIFlash.h
+  SPIFlash.cpp
   SSwitch.h
   SSwitch.cpp
   SSwitchCtrlRegs.h
