@@ -68,6 +68,8 @@ add_executable(axe
   main.cpp
   Node.h
   Node.cpp
+  Options.h
+  Options.cpp
   Peripheral.h
   Peripheral.cpp
   PeripheralDescriptor.h
