@@ -80,11 +80,15 @@ private:
   Node *parent;
   std::string codeReference;
   OPCODE_TYPE decodeOpcode;
+  const uint8_t *rom;
+public:
+  uint32_t romBase;
+  uint32_t romSize;
 
+private:
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
   void invalidateSlowPath(uint32_t shiftedAddress);
-private:
   unsigned char *invalidationInfo;
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
@@ -180,6 +184,30 @@ private:
   }
 
 public:
+  uint32_t loadRomWord(uint32_t address) const {
+    uint32_t word;
+    std::memcpy(&word, &rom[address - romBase], 4);
+    if (HOST_LITTLE_ENDIAN) {
+      return word;
+    } else {
+      return bswap32(word);
+    }
+  }
+
+  int16_t loadRomShort(uint32_t address) const {
+    if (HOST_LITTLE_ENDIAN) {
+      uint16_t halfWord;
+      std::memcpy(&halfWord, &rom[address - romBase], 2);
+      return halfWord;
+    } else {
+      return loadRomByte(address) | loadRomByte(address + 1) << 8;
+    }
+  }
+
+  int16_t loadRomByte(uint32_t address) const {
+    return rom[address - romBase];
+  }
+
   uint32_t loadWord(uint32_t address) const
   {
     if (HOST_LITTLE_ENDIAN) {
@@ -300,6 +328,7 @@ public:
   void finalize();
   void updateIDs();
 
+  void setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize);
   /// Set the parent of the current core. updateIDs() must be called to update
   /// The core IDs and the channel end resource IDs.
   void setParent(Node *n) {

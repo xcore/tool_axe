@@ -19,6 +19,7 @@ struct Options {
   LoopbackPorts loopbackPorts;
   std::vector<std::pair<PeripheralDescriptor*, Properties> > peripherals;
   const char *file;
+  std::string rom;
   std::string vcdFile;
   bool tracing;
 

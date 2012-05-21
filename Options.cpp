@@ -21,6 +21,7 @@ static void printUsage(const char *ProgName) {
   "  -help                       Display this information.\n"
   "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
   "  --vcd FILE                  Write VCD trace to FILE.\n"
+  "  --rom FILE                  Specify boot rom.\n"
   "  -t                          Enable instruction tracing.\n"
   "\n"
   "Peripherals:\n";
@@ -177,6 +178,13 @@ void Options::parse(int argc, char **argv)
       }
       loopbackOption(argv[i + 1], argv[i + 2], loopbackPorts);
       i += 2;
+    } else if (arg == "--rom") {
+      if (i + 1 > argc) {
+        printUsage(argv[0]);
+        std::exit(1);
+      }
+      rom = argv[i + 1];
+      i++;
     } else if (arg == "--help") {
       printUsage(argv[0]);
       std::exit(0);

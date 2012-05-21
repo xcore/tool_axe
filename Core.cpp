@@ -16,7 +16,6 @@
 #include <iomanip>
 #include <sstream>
 
-
 Core::Core(uint32_t RamSize, uint32_t RamBase) :
   executionFrequency(new executionFrequency_t[RamSize >> 1]),
   opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
@@ -37,6 +36,9 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   memory(new uint32_t[RamSize >> 2]),
   coreNumber(0),
   parent(0),
+  rom(0),
+  romBase(0),
+  romSize(0),
   invalidationInfo(new unsigned char[RamSize >> 1]),
   syscallAddress(~0),
   exceptionAddress(~0)
@@ -385,4 +387,11 @@ void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size)
 {
   setOpcode(pc, opc, size);
   operands[pc] = ops;
+}
+
+void Core::setRom(const uint8_t *data, uint32_t base, uint32_t size)
+{
+  rom = data;
+  romBase = base;
+  romSize = size;
 }

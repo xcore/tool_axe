@@ -502,6 +502,41 @@ checkPeripheralPorts(SystemState &sys, const PeripheralDescriptor *descriptor,
   return true;
 }
 
+static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
+{
+  std::ifstream file(filename.c_str(),
+                     std::ios::in | std::ios::binary | std::ios::ate);
+  if (!file) {
+    std::cerr << "Error opening \"" << filename << "\"\n";
+    std::exit(1);
+  }
+  rom.resize(file.tellg());
+  if (rom.empty())
+    return;
+  file.seekg(0, std::ios::beg);
+  file.read(reinterpret_cast<char*>(&rom[0]), rom.size());
+  if (!file) {
+    std::cerr << "Error reading \"" << filename << "\"\n";
+    std::exit(1);
+  }
+  file.close();
+}
+
+static void setRom(SystemState &sys, std::vector<uint8_t> &rom)
+{
+  if (rom.empty())
+    return;
+  for (SystemState::node_iterator outerIt = sys.node_begin(),
+       outerE = sys.node_end(); outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (Node::core_iterator innerIt = node.core_begin(),
+         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      Core *core = *innerIt;
+      core->setRom(&rom[0], 0xffffc000, rom.size());
+    }
+  }
+}
+
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
   PeripheralDescriptorWithPropertiesVector;
 
@@ -511,7 +546,12 @@ loop(const Options &options)
   XE xe(options.file);
   std::auto_ptr<SystemState> statePtr = readXE(xe, options.file);
   SystemState &sys = *statePtr;
-  
+  std::vector<uint8_t> rom;
+  if (!options.rom.empty()) {
+    readRom(options.rom, rom);
+    setRom(sys, rom);
+  }
+
   if (!connectLoopbackPorts(sys, options.loopbackPorts)) {
     std::exit(1);
   }
