@@ -157,7 +157,7 @@ private:
   bool mayBranch:1;
   bool mayLoad:1;
   bool mayStore:1;
-  bool usesPc:1;
+  bool writesPc:1;
   bool mayExcept:1;
   bool mayKCall:1;
   bool mayPauseOn:1;
@@ -185,7 +185,7 @@ public:
     mayBranch(false),
     mayLoad(false),
     mayStore(false),
-    usesPc(false),
+    writesPc(false),
     mayExcept(false),
     mayKCall(false),
     mayPauseOn(false),
@@ -214,14 +214,12 @@ public:
   bool getUnimplemented() const { return unimplemented; }
   bool getCustom() const { return custom; }
   bool getMayBranch() const {
-    // In future we might want to exclude instructions which use the PC without
-    // writing it.
-    return usesPc;
+    return writesPc;
   }
   bool getMayStore() const { return mayStore; }
   bool getMayLoad() const { return mayLoad; }
   bool getMayAccessMemory() const { return mayLoad || mayStore; }
-  bool getUsesPc() const { return usesPc; }
+  bool getWritesPc() const { return writesPc; }
   bool getMayExcept() const { return mayExcept; }
   bool getMayKCall() const { return mayKCall; }
   bool getMayPauseOn() const { return mayPauseOn; }
@@ -268,8 +266,8 @@ public:
     mayStore = true;
     return *this;
   }
-  Instruction &setUsesPc() {
-    usesPc = true;
+  Instruction &setWritesPc() {
+    writesPc = true;
     return *this;
   }
   Instruction &setMayExcept() {
@@ -551,6 +549,8 @@ protected:
   virtual void emitLoadWord(const std::string &args) { emitLoad(args, WORD); }
   virtual void emitLoadShort(const std::string &args) { emitLoad(args, SHORT); }
   virtual void emitLoadByte(const std::string &args) { emitLoad(args, BYTE); }
+  virtual void emitWritePc(const std::string &args) = 0;
+  virtual void emitWritePcUnchecked(const std::string &args) = 0;
 };
 
 const char *CodeEmitter::getLoadStoreTypeName(LoadStoreType type)
@@ -653,6 +653,18 @@ void CodeEmitter::emitNested(const std::string &code)
         std::string content(&s[i], close);
         emitLoadByte(content);
         i = (close - s);
+      } else if (std::strncmp(&s[i], "write_pc(", 9) == 0) {
+        i += 9;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitWritePc(content);
+        i = (close - s);
+      } else if (std::strncmp(&s[i], "write_pc_unchecked(", 19) == 0) {
+        i += 19;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitWritePcUnchecked(content);
+        i = (close - s);
       } else {
         std::cerr << "error: stray % in code string\n";
         std::exit(1);
@@ -688,6 +700,8 @@ protected:
   virtual void emitDeschedule();
   virtual void emitStore(const std::string &args, LoadStoreType type);
   virtual void emitLoad(const std::string &args, LoadStoreType type);
+  virtual void emitWritePc(const std::string &args);
+  virtual void emitWritePcUnchecked(const std::string &args);
 private:
   bool shouldEmitMemoryChecks() {
     return !jit || !inst->getEnableMemCheckOpt();
@@ -802,7 +816,8 @@ void FunctionCodeEmitter::emitOp(unsigned num)
 
 void FunctionCodeEmitter::emitNextPc()
 {
-  std::cout << "nextPc";
+  // Add 0 so an error is given if %pc is assigned to.
+  std::cout << "(nextPc+0)";
 }
 
 void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
@@ -945,6 +960,30 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << "}\n";
 }
 
+void FunctionCodeEmitter::emitWritePc(const std::string &args)
+{
+  std::cout << "{\n";
+  std::cout << "  uint32_t addressToWrite = ";
+  emitNested(args);
+  std::cout << ";\n";
+  std::cout << "  if (addressToWrite & 1) {\n";
+  emitException("ET_ILLEGAL_PC, addressToWrite");
+  std::cout << "  }\n";
+  std::cout << "  uint32_t pcToWrite = TO_PC(addressToWrite);\n";
+  std::cout << "  if (!CHECK_PC(pcToWrite)) {\n";
+  emitException("ET_ILLEGAL_PC, addressToWrite");
+  std::cout << "  }\n";
+  emitWritePcUnchecked("pcToWrite");
+  std::cout << "}\n";
+}
+
+void FunctionCodeEmitter::emitWritePcUnchecked(const std::string &args)
+{
+  std::cout << "nextPc = ";
+  emitNested(args);
+  std::cout << ";\n";
+}
+
 static void
 emitCode(const Instruction &instruction,
          const std::string &code)
@@ -960,9 +999,7 @@ protected:
   virtual void emitBegin() {}
   virtual void emitRaw(const std::string &s) {}
   virtual void emitOp(unsigned) {}
-  virtual void emitNextPc() {
-    inst->setUsesPc();
-  }
+  virtual void emitNextPc() {}
   virtual void emitException(const std::string &args) {
     inst->setMayExcept();
     emitNested(args);
@@ -983,6 +1020,15 @@ protected:
   }
   virtual void emitLoad(const std::string &args, LoadStoreType type) {
     inst->setMayLoad();
+    emitNested(args);
+  }
+  virtual void emitWritePc(const std::string &args) {
+    inst->setWritesPc();
+    inst->setMayExcept();
+    emitNested(args);
+  }
+  virtual void emitWritePcUnchecked(const std::string &args) {
+    inst->setWritesPc();
     emitNested(args);
   }
 public:
@@ -1900,7 +1946,7 @@ void add()
   fru6_out("LDC", "ldc %0, %1", "%0 = %1;");
   fru6_in("BRFT", "bt %0, %1",
           "if (%0) {\n"
-          "  %pc = %1;\n"
+          "  %write_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
   fru6_in("BRFT_illegal", "bt %0, %1",
@@ -1910,7 +1956,7 @@ void add()
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
   fru6_in("BRBT", "bt %0, -%1",
           "if (%0) {\n"
-          "  %pc = %1;\n"
+          "  %write_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
@@ -1921,7 +1967,7 @@ void add()
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
   fru6_in("BRFF", "bt %0, %1",
           "if (!%0) {\n"
-          "  %pc = %1;\n"
+          "  %write_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
   fru6_in("BRFF_illegal", "bt %0, %1",
@@ -1931,7 +1977,7 @@ void add()
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
   fru6_in("BRBF", "bt %0, -%1",
           "if (!%0) {\n"
-          "  %pc = %1;\n"
+          "  %write_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
@@ -1962,18 +2008,12 @@ void add()
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
     .setEnableMemCheckOpt();
   fu6("RETSP", "retsp %0",
-      "uint32_t target;\n"
       "if (%0 > 0) {\n"
       "  uint32_t Addr = %1 + %0;\n"
       "  %load_word(%2, Addr)"
       "  %1 = Addr;\n"
       "}\n"
-      "target = TO_PC(%2);\n"
-      "if (!CHECK_PC(target)) {\n"
-      // Documentation doesn't mention this.
-      "  %exception(ET_ILLEGAL_PC, %2)\n"
-      "}\n"
-      "%pc = target;\n"
+      "%write_pc(%2);\n"
       "%yield"
       )
     .addImplicitOp(SP, inout)
@@ -1995,13 +2035,13 @@ void add()
     .addImplicitOp(SP, inout)
     .addImplicitOp(KSP, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;");
-  fu6("BRFU", "bu %0", "%pc = %0;")
+  fu6("BRFU", "bu %0", "%write_pc_unchecked(%0);")
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
-  fu6("BRFU_illegal", "bu %0", "%exception(ET_ILLEGAL_PC, %0)")
+  fu6("BRFU_illegal", "bu %0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
-  fu6("BRBU", "bu -%0", "%pc = %0;\n %yield")
+  fu6("BRBU", "bu -%0", "%write_pc_unchecked(%0);\n %yield")
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
-  fu6("BRBU_illegal", "bu -%0", "%exception(ET_ILLEGAL_PC, %0)")
+  fu6("BRBU_illegal", "bu -%0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
     .transform("%0 = %pc - %0;", "%0 = %0 - %pc;");
   fu6("LDAWCP", "ldaw %1, cp[%{cp}0]", "%1 = %2 + %0;")
     .addImplicitOp(R11, out)
@@ -2016,17 +2056,9 @@ void add()
   fu6("BLAT", "blat %0",
       "uint32_t Addr = %2 + (%0<<2);\n"
       "uint32_t value;\n"
-      "uint32_t target;\n"
       "%load_word(value, Addr)"
-      "if (value & 1) {\n"
-      "  %exception(ET_ILLEGAL_PC, value)\n"
-      "}\n"
-      "target = TO_PC(value);\n"
-      "if (!CHECK_PC(target)) {\n"
-      "  %exception(ET_ILLEGAL_PC, value)\n"
-      "}\n"
       "%1 = FROM_PC(%pc);\n"
-      "%pc = target;\n"
+      "%write_pc(value);\n"
       "%yield")
     .addImplicitOp(LR, out)
     .addImplicitOp(R11, in)
@@ -2052,14 +2084,14 @@ void add()
     .transform("%0 = %0 << 1;", "%0 = %0 >> 1;");
   fu10("BLRF", "bl %0",
        "%1 = FROM_PC(%pc);\n"
-       "%pc = %0;")
+       "%write_pc_unchecked(%0);")
     .addImplicitOp(LR, out)
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
   fu10("BLRF_illegal", "bl %0", "%exception(ET_ILLEGAL_PC, FROM_PC(%0))")
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
   fu10("BLRB", "bl -%0",
        "%1 = FROM_PC(%pc);\n"
-       "%pc = %0;\n"
+       "%write_pc_unchecked(%0);\n"
        "%yield")
     .addImplicitOp(LR, out)
     .transform("%0 = %pc - %0;", "%0 = %pc - %0;");
@@ -2068,17 +2100,9 @@ void add()
   fu10("BLACP", "bla cp[%{cp}0]",
       "uint32_t Addr = %2 + (%0<<2);\n"
       "uint32_t value;\n"
-      "uint32_t target;\n"
-      "%load_word(value, Addr)"
-      "if (value & 1) {\n"
-      "  %exception(ET_ILLEGAL_PC, value)\n"
-      "}\n"
-      "target = TO_PC(value);\n"
-      "if (!CHECK_PC(target)) {\n"
-      "  %exception(ET_ILLEGAL_PC, value)\n"
-      "}\n"
       "%1 = FROM_PC(%pc);\n"
-      "%pc = target;\n"
+      "%load_word(value, Addr)"
+      "%write_pc(value);\n"
       "%yield\n")
     .addImplicitOp(LR, out)
     .addImplicitOp(CP, in)
@@ -2524,35 +2548,16 @@ void add()
       "  %exception(ET_ECALL, 0)"
       "}");
   f1r("BAU", "bau %0",
-      "uint32_t target;\n"
-      "if (%0 & 1) {\n"
-      "  %exception(ET_ILLEGAL_PC, %0)\n"
-      "}\n"
-      "target = TO_PC(%0);\n"
-      "if (!CHECK_PC(target)) {\n"
-      "  %exception(ET_ILLEGAL_PC, %0)\n"
-      "}\n"
-      "%pc = target;\n"
+      "%write_pc(%0);\n"
       "%yield\n");
   f1r("BLA", "bla %0",
-      "uint32_t target;\n"
-      "if (%0 & 1) {\n"
-      "  %exception(ET_ILLEGAL_PC, %0)\n"
-      "}\n"
-      "target = TO_PC(%0);\n"
-      "if (!CHECK_PC(target)) {\n"
-      "  %exception(ET_ILLEGAL_PC, %0)\n"
-      "}\n"
       "%1 = FROM_PC(%pc);\n"
-      "%pc = target;\n"
+      "%write_pc(%0);\n"
       "%yield\n")
     .addImplicitOp(LR, out);
   f1r("BRU", "bru %0",
-      "uint32_t target = %pc + %0;\n"
-      "if (!CHECK_PC(target)) {\n"
-      "  %exception(ET_ILLEGAL_PC, FROM_PC(target))\n"
-      "}\n"
-      "%pc = target;\n"
+      "uint32_t target = FROM_PC(%pc + %0);\n"
+      "%write_pc(target);\n"
       "%yield\n");
   f1r("TSTART", "start t[%0]",
       "ResourceID resID(%0);\n"
@@ -2681,9 +2686,8 @@ void add()
   f0r("SETKEP", "set %0, %1", "%0 = %1 & ~((1 << 7) - 1);")
     .addImplicitOp(KEP, out)
     .addImplicitOp(R11, in);
-  // TODO handle illegal spc
   f0r("KRET", "kret",
-      "%pc = TO_PC(%0);\n"
+      "%write_pc(%0);\n"
       "%3 = %1;\n"
       "Thread::sr_t value((int)%2);\n"
       "value[Thread::WAITING] = false;\n"
@@ -2782,13 +2786,8 @@ void add()
     "  %deschedule;\n"
     "  break;\n"
     "case SyscallHandler::CONTINUE:\n"
-    "  uint32_t target = TO_PC(%0);\n"
-    "  if (CHECK_PC(target)) {\n"
-    "    %pc = target;\n"
-    "    %yield\n"
-    "  } else {\n"
-    "    %exception(ET_ILLEGAL_PC, %0);\n"
-    "  }\n"
+    "  %write_pc(%0);\n"
+    "  %yield\n"
     "  break;\n"
     "}\n")
     .addImplicitOp(LR, in)
