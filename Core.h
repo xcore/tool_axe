@@ -105,6 +105,7 @@ public:
   void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size);
   void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size);
 
+  const Operands *getOperandsArray() const { return operands; }
   const Operands &getOperands(uint32_t pc) const { return operands[pc]; }
   const OPCODE_TYPE *getOpcodeArray() const { return opcode; }
 

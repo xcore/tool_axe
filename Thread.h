@@ -12,6 +12,7 @@
 #include "RunnableQueue.h"
 #include "Resource.h"
 #include "Register.h"
+#include "Instruction.h"
 
 class Synchroniser;
 
@@ -81,8 +82,11 @@ private:
 
 class Core;
 class RunnableQueue;
+struct Operands;
 
 class Thread : public Runnable, public Resource {
+  const OPCODE_TYPE *opcode;
+  const Operands *operands;
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -140,7 +144,7 @@ public:
     return true;
   }
 
-  void setParent(Core &p) { parent = &p; }
+  void setParent(Core &p);
 
   Core &getParent() { return *parent; }
   const Core &getParent() const { return *parent; }
@@ -266,7 +270,6 @@ public:
     return setSRSlowPath(enabled);
   }
 
-public:
   void clre()
   {
     eeble() = false;
@@ -280,6 +283,8 @@ public:
   bool isExecuting() const;
   void run(ticks_t time);
   bool setC(ticks_t time, ResourceID resID, uint32_t val);
+
+  const Operands &getOperands(uint32_t pc) const { return operands[pc]; }
 private:
   bool setSRSlowPath(sr_t old);
 };

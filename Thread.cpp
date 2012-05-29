@@ -49,7 +49,13 @@ const char *registerNames[] = {
   "ssr"
 };
 
-Thread::Thread() : Resource(RES_TYPE_THREAD), parent(0), scheduler(0) {
+Thread::Thread() :
+  Resource(RES_TYPE_THREAD),
+  opcode(0),
+  operands(0),
+  parent(0),
+  scheduler(0)
+{
   time = 0;
   pc = 0;
   regs[KEP] = 0;
@@ -61,6 +67,13 @@ Thread::Thread() : Resource(RES_TYPE_THREAD), parent(0), scheduler(0) {
   eeble() = false;
   ieble() = false;
   setInUse(false);
+}
+
+void Thread::setParent(Core &p)
+{
+  parent = &p;
+  opcode = parent->getOpcodeArray();
+  operands = parent->getOperandsArray();
 }
 
 void Thread::finalize()
@@ -303,8 +316,8 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define CHECK_PC(addr) (((addr) >> (CORE.ramSizeLog2 - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
-#define OP(n) (CORE.getOperands(THREAD.pc).ops[(n)])
-#define LOP(n) (CORE.getOperands(THREAD.pc).lops[(n)])
+#define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
+#define LOP(n) (THREAD.getOperands(THREAD.pc).lops[(n)])
 #define TRACE(...) \
 do { \
 if (tracing) { \
@@ -403,8 +416,6 @@ template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
 
 void Thread::run(ticks_t time)
 {
-  const OPCODE_TYPE *opcode = getParent().getOpcodeArray();
-
   while (1) {
     if ((*opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
       return;
