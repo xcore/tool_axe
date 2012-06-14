@@ -79,7 +79,6 @@ private:
   unsigned coreNumber;
   Node *parent;
   std::string codeReference;
-  OPCODE_TYPE decodeOpcode;
   const uint8_t *rom;
 public:
   uint32_t romBase;
@@ -112,10 +111,7 @@ public:
   bool setSyscallAddress(uint32_t value);
   bool setExceptionAddress(uint32_t value);
 
-  void initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-                 OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit,
-                 OPCODE_TYPE interpretOne);
-
+  void initCache(bool tracing);
   void resetCaches();
 
   void runJIT(uint32_t jitPc);

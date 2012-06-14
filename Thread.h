@@ -296,6 +296,10 @@ struct PendingEvent {
   ticks_t time;
 };
 
-void initInstructionCache(Core &c);
+OPCODE_TYPE getInstruction_DECODE(bool tracing);
+OPCODE_TYPE getInstruction_ILLEGAL_PC(bool tracing);
+OPCODE_TYPE getInstruction_ILLEGAL_PC_THREAD(bool tracing);
+OPCODE_TYPE getInstruction_RUN_JIT(bool tracing);
+OPCODE_TYPE getInstruction_INTERPRET_ONE(bool tracing);
 
 #endif // _Thread_h_

@@ -12,6 +12,7 @@
 #include "Lock.h"
 #include "Chanend.h"
 #include "ClockBlock.h"
+#include "Trace.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -113,7 +114,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
     portNum[width] = num;
   }
   thread[0].alloc(0);
-  initInstructionCache(*this);
+  initCache(Tracer::get().getTracingEnabled());
   for (unsigned i = 0; i != (RamSize >> 1); ++i) {
     invalidationInfo[i] = INVALIDATE_NONE;
   }
@@ -244,20 +245,18 @@ bool Core::setExceptionAddress(uint32_t value)
 }
 
 void Core::
-initCache(OPCODE_TYPE decode, OPCODE_TYPE illegalPC,
-          OPCODE_TYPE illegalPCThread, OPCODE_TYPE runJit,
-          OPCODE_TYPE interpretOne)
+initCache(bool tracing)
 {
   const uint32_t ramSizeShorts = getRamSizeShorts();
   // Initialise instruction cache.
+  OPCODE_TYPE decode = getInstruction_DECODE(tracing);
   for (unsigned i = 0; i < ramSizeShorts; i++) {
     opcode[i] = decode;
   }
-  opcode[ramSizeShorts] = illegalPC;
-  opcode[getRunJitAddr()] = runJit;
-  opcode[getInterpretOneAddr()] = interpretOne;
-  opcode[getIllegalPCThreadAddr()] = illegalPCThread;
-  decodeOpcode = decode;
+  opcode[ramSizeShorts] = getInstruction_ILLEGAL_PC(tracing);
+  opcode[getRunJitAddr()] = getInstruction_RUN_JIT(tracing);
+  opcode[getInterpretOneAddr()] = getInstruction_INTERPRET_ONE(tracing);
+  opcode[getIllegalPCThreadAddr()] = getInstruction_ILLEGAL_PC_THREAD(tracing);
 }
 
 void Core::resetCaches()
@@ -353,7 +352,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
     info = invalidationInfoOffset[shiftedAddress];
     uint32_t pc = shiftedAddress - (ram_base/2);
     if (!JIT::invalidate(*this, pc))
-      opcode[pc] = decodeOpcode;
+      clearOpcode(pc);
     executionFrequency[pc] = 0;
     invalidationInfoOffset[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
@@ -369,7 +368,7 @@ void Core::runJIT(uint32_t jitPc)
 
 void Core::clearOpcode(uint32_t pc)
 {
-  opcode[pc] = decodeOpcode;
+  opcode[pc] = getInstruction_DECODE(Tracer::get().getTracingEnabled());
 }
 
 void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size)

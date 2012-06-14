@@ -422,20 +422,37 @@ void Thread::run(ticks_t time)
   }
 }
 
-template<bool tracing>
-void initInstructionCacheAux(Core &c)
-{
-  c.initCache(&Instruction_DECODE<tracing>,
-              &Instruction_ILLEGAL_PC<tracing>,
-              &Instruction_ILLEGAL_PC_THREAD<tracing>,
-              &Instruction_RUN_JIT<tracing>,
-              &Instruction_INTERPRET_ONE<tracing>);
+OPCODE_TYPE getInstruction_DECODE(bool tracing) {
+  if (tracing)
+    return &Instruction_DECODE<true>;
+  else
+    return &Instruction_DECODE<false>;
 }
 
-void initInstructionCache(Core &c)
-{
-  if (Tracer::get().getTracingEnabled())
-    initInstructionCacheAux<true>(c);
+OPCODE_TYPE getInstruction_ILLEGAL_PC(bool tracing) {
+  if (tracing)
+    return &Instruction_ILLEGAL_PC<true>;
   else
-    initInstructionCacheAux<false>(c);
+    return &Instruction_ILLEGAL_PC<false>;
+}
+
+OPCODE_TYPE getInstruction_ILLEGAL_PC_THREAD(bool tracing) {
+  if (tracing)
+    return &Instruction_ILLEGAL_PC_THREAD<true>;
+  else
+    return &Instruction_ILLEGAL_PC_THREAD<false>;
+}
+
+OPCODE_TYPE getInstruction_RUN_JIT(bool tracing) {
+  if (tracing)
+    return &Instruction_RUN_JIT<true>;
+  else
+    return &Instruction_RUN_JIT<false>;
+}
+
+OPCODE_TYPE getInstruction_INTERPRET_ONE(bool tracing) {
+  if (tracing)
+    return &Instruction_INTERPRET_ONE<true>;
+  else
+    return &Instruction_INTERPRET_ONE<false>;
 }
