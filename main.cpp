@@ -170,8 +170,8 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     	std::cerr << "Invalid offet in ELF program header" << i << std::endl;
     	std::exit(1);
     }
-    if (!core.isValidAddress(phdr.p_paddr) ||
-        !core.isValidAddress(phdr.p_paddr + phdr.p_memsz)) {
+    if (!core.isValidRamAddress(phdr.p_paddr) ||
+        !core.isValidRamAddress(phdr.p_paddr + phdr.p_memsz)) {
       std::cerr << "Error data from ELF program header " << i;
       std::cerr << " does not fit in memory" << std::endl;
       std::exit(1);

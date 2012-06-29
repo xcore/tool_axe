@@ -215,12 +215,12 @@ void JITImpl::resetPerFunctionState()
 }
 
 static bool
-getInstruction(Core &core, uint32_t pc, InstructionOpcode &opc,
+getInstruction(Core &core, uint32_t address, InstructionOpcode &opc,
                Operands &operands)
 {
-  if (!core.isValidPc(pc))
+  if (!core.isValidPc(core.toPc(address)))
     return false;
-  instructionDecode(core, pc, opc, operands);
+  instructionDecode(core, address, opc, operands);
   return true;
 }
 
@@ -473,36 +473,36 @@ static void deleteFunctionBody(LLVMValueRef f)
 }
 
 static bool
-getFragmentToCompile(Core &core, uint32_t startPc,
+getFragmentToCompile(Core &core, uint32_t startAddress,
                      std::vector<InstructionOpcode> &opcode,
                      std::vector<Operands> &operands, 
-                     bool &endOfBlock, uint32_t &nextPc)
+                     bool &endOfBlock, uint32_t &nextAddress)
 {
-  uint32_t pc = startPc;
+  uint32_t address = startAddress;
 
   opcode.clear();
   operands.clear();
   endOfBlock = false;
-  nextPc = pc;
+  nextAddress = address;
 
   InstructionOpcode opc;
   Operands ops;
   InstructionProperties *properties;
   do {
-    if (!getInstruction(core, pc, opc, ops)) {
+    if (!getInstruction(core, address, opc, ops)) {
       endOfBlock = true;
       break;
     }
-    instructionTransform(opc, ops, core, pc);
+    instructionTransform(opc, ops, core, address);
     properties = &instructionProperties[opc];
-    nextPc = pc + properties->size / 2;
+    nextAddress = address + properties->size;
     if (properties->mayBranch())
       endOfBlock = true;
     if (!properties->function)
       break;
     opcode.push_back(opc);
     operands.push_back(ops);
-    pc = nextPc;
+    address = nextAddress;
   } while (!properties->mayBranch());
   return !opcode.empty();
 }
@@ -530,8 +530,9 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
 
   std::vector<InstructionOpcode> opcode;
   std::vector<Operands> operands;
-  if (!getFragmentToCompile(core, startPc, opcode, operands,
+  if (!getFragmentToCompile(core, core.fromPc(startPc), opcode, operands,
                             endOfBlock, pcAfterFragment)) {
+    pcAfterFragment = core.toPc(pcAfterFragment);
     return false;
   }
   std::queue<std::pair<uint32_t,MemoryCheck*> > checks;

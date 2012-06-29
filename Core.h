@@ -14,6 +14,7 @@
 #include "Port.h"
 #include "Instruction.h"
 #include "BitManip.h"
+#include "DecodeCache.h"
 #include <string>
 #include <climits>
 
@@ -47,18 +48,9 @@ public:
     INVALIDATE_CURRENT_AND_PREVIOUS
   };
 private:
-  typedef int executionFrequency_t;
-  static const executionFrequency_t MIN_EXECUTION_FREQUENCY = INT_MIN;
-  executionFrequency_t *executionFrequency;
   uint32_t * memoryOffset;
   unsigned char *invalidationInfoOffset;
-  // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
-  // pseudo instruction just past the end of memory. This saves
-  // us from having to check for illegal pc values when incrementing the pc from
-  // the previous instruction. Addition pseudo instructions come after this and
-  // are use for communicating illegal states.
-  OPCODE_TYPE *opcode;
-  Operands *operands;
+  DecodeCache ramDecodeCache;
 public:
   const uint32_t ramSizeLog2;
   const uint32_t ram_base;
@@ -104,14 +96,13 @@ public:
   void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size);
   void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size);
 
-  const Operands *getOperandsArray() const { return operands; }
-  const Operands &getOperands(uint32_t pc) const { return operands[pc]; }
-  const OPCODE_TYPE *getOpcodeArray() const { return opcode; }
+  const DecodeCache::State &getRamDecodeCache() const {
+    return ramDecodeCache.getState();
+  }
 
   bool setSyscallAddress(uint32_t value);
   bool setExceptionAddress(uint32_t value);
 
-  void initCache(bool tracing);
   void resetCaches();
 
   void runJIT(uint32_t jitPc);
@@ -119,7 +110,9 @@ public:
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
-    const executionFrequency_t threshold = 128;
+    const DecodeCache::executionFrequency_t threshold = 128;
+    DecodeCache::executionFrequency_t *executionFrequency =
+      ramDecodeCache.getState().executionFrequency;
     if (++executionFrequency[shiftedAddress] > threshold) {
       return true;
     }
@@ -146,21 +139,28 @@ public:
     return address - ram_base;
   }
   
-  bool isValidAddress(uint32_t address) const
-  {
+  bool isValidRamAddress(uint32_t address) const {
     return (address >> ramSizeLog2) == ramBaseMultiple;
+  }
+  
+  bool isValidRomAddress(uint32_t address) const {
+    return (address - romBase) < romSize;
+  }
+  
+  bool isValidAddress(uint32_t address) const {
+    return isValidRamAddress(address) || isValidRomAddress(address);
   }
 
   bool isValidPc(uint32_t address) const {
     return address < getRamSizeShorts();
   }
 
-  uint32_t toPc(uint32_t address) const {
-    return (address - ram_base) >> 1;
-  }
-
   uint32_t fromPc(uint32_t pc) const {
     return (pc << 1) + ram_base;
+  }
+  
+  uint32_t toPc(uint32_t address) const {
+    return (address - ram_base) >> 1;
   }
 
 private:
@@ -191,7 +191,7 @@ public:
     }
   }
 
-  int16_t loadRomShort(uint32_t address) const {
+  uint16_t loadRomShort(uint32_t address) const {
     if (HOST_LITTLE_ENDIAN) {
       uint16_t halfWord;
       std::memcpy(&halfWord, &rom[address - romBase], 2);
@@ -201,12 +201,11 @@ public:
     }
   }
 
-  int16_t loadRomByte(uint32_t address) const {
+  uint8_t loadRomByte(uint32_t address) const {
     return rom[address - romBase];
   }
 
-  uint32_t loadWord(uint32_t address) const
-  {
+  uint32_t loadRamWord(uint32_t address) const {
     if (HOST_LITTLE_ENDIAN) {
       return *reinterpret_cast<const uint32_t*>((memOffset() + address));
     } else {
@@ -215,14 +214,24 @@ public:
     }
   }
 
-  int16_t loadShort(uint32_t address) const
-  {
-    return loadByte(address) | loadByte(address + 1) << 8;
+  uint16_t loadRamShort(uint32_t address) const {
+    return loadRamByte(address) | loadRamByte(address + 1) << 8;
   }
 
-  uint8_t loadByte(uint32_t address) const
-  {
+  uint8_t loadRamByte(uint32_t address) const {
     return memOffset()[address];
+  }
+  
+  uint8_t loadByte(uint32_t address) const {
+    if (isValidRamAddress(address))
+      return loadRamByte(address);
+    return loadRomByte(address);
+  }
+  
+  uint16_t loadShort(uint32_t address) const {
+    if (isValidRamAddress(address))
+      return loadRamShort(address);
+    return loadRomShort(address);
   }
 
   bool invalidateWordCheck(uint32_t address) {
@@ -266,9 +275,17 @@ public:
     return true;
   }
 
-  uint8_t &byte(uint32_t address)
-  {
-    return memOffset()[address];
+  uint8_t *ramBytePtr(uint32_t address) {
+    return &memOffset()[address];
+  }
+  
+  const uint8_t *romBytePtr(uint32_t address) {
+    return &rom[address - romBase];
+  }
+  
+  const uint8_t *memPtr(uint32_t address) {
+    return isValidRamAddress(address) ? ramBytePtr(address) :
+                                        romBytePtr(address);
   }
 
   void storeWord(uint32_t value, uint32_t address)

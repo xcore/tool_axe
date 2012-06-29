@@ -13,6 +13,7 @@
 #include "Resource.h"
 #include "Register.h"
 #include "Instruction.h"
+#include "DecodeCache.h"
 
 class Synchroniser;
 
@@ -85,8 +86,6 @@ class RunnableQueue;
 struct Operands;
 
 class Thread : public Runnable, public Resource {
-  const OPCODE_TYPE *opcode;
-  const Operands *operands;
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -97,6 +96,8 @@ class Thread : public Runnable, public Resource {
   Core *parent;
   /// The scheduler.
   RunnableQueue *scheduler;
+  /// Cached decode information.
+  DecodeCache::State decodeCache;
 public:
   enum SRBit {
     EEBLE = 0,
@@ -242,7 +243,14 @@ public:
   bool waiting() const {
     return sr[WAITING];
   }
-
+  
+  uint32_t fromPc(uint32_t pc) const {
+    return (pc << 1) + decodeCache.base;
+  }
+  
+  uint32_t toPc(uint32_t pc) const {
+    return (pc - decodeCache.base) >> 1;
+  }
 public:
   void dump() const;
 
@@ -284,7 +292,9 @@ public:
   void run(ticks_t time);
   bool setC(ticks_t time, ResourceID resID, uint32_t val);
 
-  const Operands &getOperands(uint32_t pc) const { return operands[pc]; }
+  const Operands &getOperands(uint32_t pc) const {
+    return decodeCache.operands[pc];
+  }
 private:
   bool setSRSlowPath(sr_t old);
 };

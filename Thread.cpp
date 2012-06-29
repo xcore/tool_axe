@@ -51,8 +51,6 @@ const char *registerNames[] = {
 
 Thread::Thread() :
   Resource(RES_TYPE_THREAD),
-  opcode(0),
-  operands(0),
   parent(0),
   scheduler(0)
 {
@@ -72,8 +70,7 @@ Thread::Thread() :
 void Thread::setParent(Core &p)
 {
   parent = &p;
-  opcode = parent->getOpcodeArray();
-  operands = parent->getOperandsArray();
+  decodeCache = parent->getRamDecodeCache();
 }
 
 void Thread::finalize()
@@ -312,7 +309,7 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define CORE THREAD.getParent()
 #define PHYSICAL_ADDR(addr) CORE.physicalAddress(addr)
 #define VIRTUAL_ADDR(addr) CORE.virtualAddress(addr)
-#define CHECK_ADDR(addr) CORE.isValidAddress(addr)
+#define CHECK_ADDR_RAM(addr) CORE.isValidRamAddress(addr)
 #define CHECK_PC(addr) (((addr) >> (CORE.ramSizeLog2 - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
@@ -389,8 +386,9 @@ static OPCODE_TYPE opcodeMapTracing[] = {
 template<bool tracing> JITReturn Instruction_DECODE(Thread &thread) {
   InstructionOpcode opc;
   Operands ops;
-  instructionDecode(CORE, THREAD.pc, opc, ops);
-  instructionTransform(opc, ops, CORE, THREAD.pc);
+  uint32_t address = THREAD.fromPc(THREAD.pc);
+  instructionDecode(CORE, address, opc, ops);
+  instructionTransform(opc, ops, CORE, address);
   CORE.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
                  instructionProperties[opc].size);
   return JIT_RETURN_END_TRACE;
@@ -400,8 +398,9 @@ template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
   THREAD.pc = THREAD.pendingPc;
   InstructionOpcode opc;
   Operands ops;
-  instructionDecode(CORE, THREAD.pc, opc, ops);
-  instructionTransform(opc, ops, CORE, THREAD.pc);
+  uint32_t address = THREAD.fromPc(THREAD.pc);
+  instructionDecode(CORE, address, opc, ops);
+  instructionTransform(opc, ops, CORE, address);
   return (*opcodeMap[opc])(thread);
 }
 
@@ -417,7 +416,7 @@ template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
 void Thread::run(ticks_t time)
 {
   while (1) {
-    if ((*opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
+    if ((*decodeCache.opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
       return;
   }
 }

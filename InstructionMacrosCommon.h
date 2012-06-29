@@ -6,9 +6,9 @@
 #ifndef _InstructionMacrosCommon_h_
 #define _InstructionMacrosCommon_h_
 
-#define LOAD_WORD(addr) CORE.loadWord(addr)
-#define LOAD_SHORT(addr) CORE.loadShort(addr)
-#define LOAD_BYTE(addr) CORE.loadByte(addr)
+#define LOAD_RAM_WORD(addr) CORE.loadRamWord(addr)
+#define LOAD_RAM_SHORT(addr) CORE.loadRamShort(addr)
+#define LOAD_RAM_BYTE(addr) CORE.loadRamByte(addr)
 #define LOAD_ROM_WORD(addr) CORE.loadRomWord(addr)
 #define LOAD_ROM_SHORT(addr) CORE.loadRomShort(addr)
 #define LOAD_ROM_BYTE(addr) CORE.loadRomByte(addr)
@@ -18,13 +18,13 @@
 #define STORE_WORD(value, addr) CORE.storeWord(value, addr)
 #define STORE_SHORT(value, addr) CORE.storeShort(value, addr)
 #define STORE_BYTE(value, addr) CORE.storeByte(value, addr)
-#define CHECK_ADDR_BYTE(addr) CHECK_ADDR(addr)
-#define CHECK_ADDR_SHORT(addr) (!((addr) & 1) && CHECK_ADDR(addr))
-#define CHECK_ADDR_WORD(addr) (!((addr) & 3) && CHECK_ADDR(addr))
+#define CHECK_ADDR_RAM_BYTE(addr) CHECK_ADDR_RAM(addr)
+#define CHECK_ADDR_RAM_SHORT(addr) (!((addr) & 1) && CHECK_ADDR_RAM(addr))
+#define CHECK_ADDR_RAM_WORD(addr) (!((addr) & 3) && CHECK_ADDR_RAM(addr))
 #define CHECK_ADDR_ROM(addr) ((uint32_t(addr) - CORE.romBase) < CORE.romSize)
 #define CHECK_ADDR_ROM_BYTE(addr) CHECK_ADDR_ROM(addr)
-#define CHECK_ADDR_ROM_SHORT(addr) (!((addr) & 1) && CHECK_ADDR(addr))
-#define CHECK_ADDR_ROM_WORD(addr) (!((addr) & 3) && CHECK_ADDR(addr))
+#define CHECK_ADDR_ROM_SHORT(addr) (!((addr) & 1) && CHECK_ADDR_ROM(addr))
+#define CHECK_ADDR_ROM_WORD(addr) (!((addr) & 3) && CHECK_ADDR_ROM(addr))
 #define FROM_PC(addr) VIRTUAL_ADDR((addr) << 1)
 #define TO_PC(addr) (PHYSICAL_ADDR(addr) >> 1)
 #define TIME THREAD.time

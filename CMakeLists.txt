@@ -44,6 +44,8 @@ add_executable(axe
   Core.h
   Core.cpp
   CRC.h
+  DecodeCache.h
+  DecodeCache.cpp
   Exceptions.h
   Exceptions.cpp
   Instruction.h

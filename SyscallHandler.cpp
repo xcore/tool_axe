@@ -40,7 +40,8 @@ private:
   bool tracing;
   unsigned doneSyscallsRequired;
   char *getString(Thread &thread, uint32_t address);
-  void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
+  const void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
+  void *getRamBuffer(Thread &thread, uint32_t address, uint32_t size);
   int getNewFd();
   bool isValidFd(int fd);
   int convertOpenFlags(int flags);
@@ -117,28 +118,50 @@ SyscallHandlerImpl::SyscallHandlerImpl() :
 /// Returns 0 if the address is invalid or the string is not null terminated.
 char *SyscallHandlerImpl::getString(Thread &thread, uint32_t startAddress)
 {
+  // TODO update for ROM.
   Core &core = thread.getParent();
-  if (!core.isValidAddress(startAddress))
+  if (!core.isValidRamAddress(startAddress))
     return 0;
   // Check the string is null terminated
   uint32_t address = startAddress;
   uint32_t end = core.getRamSize() + core.ram_base;
-  for (; address < end && core.loadByte(address); address++) {}
+  for (; address < end && core.loadRamByte(address); address++) {}
   if (address >= end) {
     return 0;
   }
-  return (char *)&core.byte(address);
+  return reinterpret_cast<char*>(core.ramBytePtr(address));
+}
+
+/// Returns a pointer to a buffer in memory of the given size.
+/// Returns 0 if the buffer address is invalid.
+const void *SyscallHandlerImpl::
+getBuffer(Thread &thread, uint32_t address, uint32_t size)
+{
+  Core &core = thread.getParent();
+  if (core.isValidRamAddress(address)) {
+    if (!core.isValidRamAddress(address + size)) {
+      return 0;
+    }
+  } else if (core.isValidRomAddress(address)) {
+    if (!core.isValidRomAddress(address + size)) {
+      return 0;
+    }
+  } else {
+    return 0;
+  }
+  return core.memPtr(address);
 }
 
 /// Returns a pointer to a buffer in memory of the given size.
 /// Returns 0 if the buffer address is invalid.
 void *SyscallHandlerImpl::
-getBuffer(Thread &thread, uint32_t address, uint32_t size)
+getRamBuffer(Thread &thread, uint32_t address, uint32_t size)
 {
   Core &core = thread.getParent();
-  if (!core.isValidAddress(address) || !core.isValidAddress(address + size))
+  if (!core.isValidRamAddress(address) ||
+      !core.isValidRamAddress(address + size))
     return 0;
-  return (void *)&core.byte(address);
+  return core.ramBytePtr(address);
 }
 
 /// Either returns an unused number for a file descriptor or -1 if there are no
@@ -317,7 +340,7 @@ doSyscall(Thread &thread, int &retval)
         thread.regs[R0] = (uint32_t)-1;
         return SyscallHandler::CONTINUE;
       }
-      void *buf = getBuffer(thread, thread.regs[R2], thread.regs[R3]);
+      void *buf = getRamBuffer(thread, thread.regs[R2], thread.regs[R3]);
       if (!buf) {
         // Invalid buffer
         thread.regs[R0] = (uint32_t)-1;
@@ -378,7 +401,7 @@ doSyscall(Thread &thread, int &retval)
       uint32_t Time = (uint32_t)std::time(0);
       Core &core = thread.getParent();
       if (TimeAddr != 0) {
-        if (!core.isValidAddress(TimeAddr) || (TimeAddr & 3)) {
+        if (!core.isValidRamAddress(TimeAddr) || (TimeAddr & 3)) {
           // Invalid address
           thread.regs[R0] = (uint32_t)-1;
           return SyscallHandler::CONTINUE;

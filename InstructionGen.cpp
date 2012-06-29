@@ -902,7 +902,7 @@ emitStore(const std::string &argString, LoadStoreType type)
   std::cout << ";\n";
 
   if (shouldEmitMemoryChecks()) {
-    std::cout << "  if (!CHECK_ADDR_" << getLoadStoreTypeName(type);
+    std::cout << "  if (!CHECK_ADDR_RAM_" << getLoadStoreTypeName(type);
     std::cout << "(StoreAddr)) {\n";
     emitException("ET_LOAD_STORE, StoreAddr");
     std::cout << "  }\n";
@@ -939,9 +939,9 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << ";\n";
 
   if (shouldEmitMemoryChecks()) {
-    std::cout << "  if (CHECK_ADDR_" << getLoadStoreTypeName(type);
+    std::cout << "  if (CHECK_ADDR_RAM_" << getLoadStoreTypeName(type);
     std::cout << "(LoadAddr)) {\n";
-    std::cout << "    LoadResult = LOAD_" << getLoadStoreTypeName(type);
+    std::cout << "    LoadResult = LOAD_RAM_" << getLoadStoreTypeName(type);
     std::cout << "(LoadAddr);\n";
     std::cout << "  } else if (CHECK_ADDR_ROM_" << getLoadStoreTypeName(type);
     std::cout << "(LoadAddr)) {\n";
@@ -951,7 +951,7 @@ emitLoad(const std::string &argString, LoadStoreType type)
     emitException("ET_LOAD_STORE, LoadAddr");
     std::cout << "  }\n";
   } else {
-    std::cout << "  LoadResult = LOAD_" << getLoadStoreTypeName(type);
+    std::cout << "  LoadResult = LOAD_RAM_" << getLoadStoreTypeName(type);
     std::cout << "(LoadAddr)\n;";
   }
   emitNested(dest);

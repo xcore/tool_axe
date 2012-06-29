@@ -37,11 +37,12 @@ uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   uint32_t newPc = t.regs[KEP];
   if (et == ET_KCALL)
     newPc += 64;
-  if ((newPc & 1) || !t.getParent().isValidAddress(newPc)) {
+  // TODO handle exception in ROM.
+  if ((newPc & 1) || !t.getParent().isValidRamAddress(newPc)) {
     std::cout << "Error: unable to handle exception (invalid kep)\n";
     std::abort();
   }
-  return t.getParent().toPc(newPc);
+  return t.toPc(newPc);
 }
 
 Resource *checkResource(Core &state, ResourceID id)

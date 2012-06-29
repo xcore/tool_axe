@@ -49,7 +49,7 @@ struct Operands {
   };
 };
 
-void instructionDecode(Core &core, uint32_t pc, InstructionOpcode &opcode,
+void instructionDecode(Core &core, uint32_t addr, InstructionOpcode &opcode,
                        Operands &operands);
 
 void
@@ -58,6 +58,6 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,
-                     uint32_t pc);
+                     uint32_t address);
 
 #endif //_Instruction_h_

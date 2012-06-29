@@ -18,9 +18,7 @@
 #include <sstream>
 
 Core::Core(uint32_t RamSize, uint32_t RamBase) :
-  executionFrequency(new executionFrequency_t[RamSize >> 1]),
-  opcode(new OPCODE_TYPE[(RamSize >> 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET]),
-  operands(new Operands[RamSize >> 1]),
+  ramDecodeCache(RamBase >> 1, RamBase),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ram_base(RamBase),
   ramBaseMultiple(RamBase / RamSize),
@@ -114,17 +112,12 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
     portNum[width] = num;
   }
   thread[0].alloc(0);
-  initCache(Tracer::get().getTracingEnabled());
   for (unsigned i = 0; i != (RamSize >> 1); ++i) {
     invalidationInfo[i] = INVALIDATE_NONE;
   }
-  std::memset(executionFrequency, 0,
-              sizeof(executionFrequency[0]) * (RamSize >> 1));
 }
 
 Core::~Core() {
-  delete[] opcode;
-  delete[] operands;
   delete[] invalidationInfo;
   delete[] thread;
   delete[] sync;
@@ -228,35 +221,18 @@ Resource *Core::getResourceByID(ResourceID ID)
 
 bool Core::setSyscallAddress(uint32_t value)
 {
-  uint32_t addr = physicalAddress(value) >> 1;
-  if (!isValidPc(addr))
+  if ((value & 1) || !isValidAddress(value))
     return false;
-  syscallAddress = addr;
+  syscallAddress = value;
   return true;
 }
 
 bool Core::setExceptionAddress(uint32_t value)
 {
-  uint32_t addr = physicalAddress(value) >> 1;
-  if (!isValidPc(addr))
+  if ((value & 1) || !isValidAddress(value))
     return false;
-  exceptionAddress = addr;
+  exceptionAddress = value;
   return true;
-}
-
-void Core::
-initCache(bool tracing)
-{
-  const uint32_t ramSizeShorts = getRamSizeShorts();
-  // Initialise instruction cache.
-  OPCODE_TYPE decode = getInstruction_DECODE(tracing);
-  for (unsigned i = 0; i < ramSizeShorts; i++) {
-    opcode[i] = decode;
-  }
-  opcode[ramSizeShorts] = getInstruction_ILLEGAL_PC(tracing);
-  opcode[getRunJitAddr()] = getInstruction_RUN_JIT(tracing);
-  opcode[getInterpretOneAddr()] = getInstruction_INTERPRET_ONE(tracing);
-  opcode[getIllegalPCThreadAddr()] = getInstruction_ILLEGAL_PC_THREAD(tracing);
 }
 
 void Core::resetCaches()
@@ -353,7 +329,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
     uint32_t pc = shiftedAddress - (ram_base/2);
     if (!JIT::invalidate(*this, pc))
       clearOpcode(pc);
-    executionFrequency[pc] = 0;
+    ramDecodeCache.getState().executionFrequency[pc] = 0;
     invalidationInfoOffset[shiftedAddress--] = INVALIDATE_NONE;
   } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
 }
@@ -362,18 +338,19 @@ void Core::runJIT(uint32_t jitPc)
 {
   if (!isValidPc(jitPc))
     return;
-  executionFrequency[jitPc] = MIN_EXECUTION_FREQUENCY;
+  ramDecodeCache.getState().executionFrequency[jitPc] =
+    DecodeCache::MIN_EXECUTION_FREQUENCY;
   JIT::compileBlock(*this, jitPc);
 }
 
 void Core::clearOpcode(uint32_t pc)
 {
-  opcode[pc] = getInstruction_DECODE(Tracer::get().getTracingEnabled());
+  ramDecodeCache.getState().clearOpcode(pc);
 }
 
 void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size)
 {
-  opcode[pc] = opc;
+  ramDecodeCache.getState().opcode[pc] = opc;
   if (invalidationInfo[pc] == INVALIDATE_NONE)
     invalidationInfo[pc] = INVALIDATE_CURRENT;
   assert((size % 2) == 0);
@@ -385,7 +362,7 @@ void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size)
 void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size)
 {
   setOpcode(pc, opc, size);
-  operands[pc] = ops;
+  ramDecodeCache.getState().operands[pc] = ops;
 }
 
 void Core::setRom(const uint8_t *data, uint32_t base, uint32_t size)

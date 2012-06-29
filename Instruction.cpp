@@ -344,19 +344,18 @@ static unsigned bitpValue(unsigned Value)
   return bitpValues[Value];
 }
 
-void instructionDecode(Core &core, uint32_t pc, InstructionOpcode &opcode,
+void instructionDecode(Core &core, uint32_t address, InstructionOpcode &opcode,
                        Operands &operands)
 {
-  assert(core.isValidPc(pc));
-  if (pc == core.syscallAddress) {
+  assert((address & 1) == 0 && core.isValidAddress(address));
+  if (address == core.syscallAddress) {
     opcode = SYSCALL;
     return;
   }
-  if (pc == core.exceptionAddress) {
+  if (address == core.exceptionAddress) {
     opcode = EXCEPTION;
     return;
   }
-  uint32_t address = core.fromPc(pc);
   uint16_t low = core.loadShort(address);
   uint16_t high = 0;
   bool highValid;
@@ -1420,9 +1419,11 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 #define CHECK_PC(addr) (core.isValidPc(addr))
 
 void
-instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,
-                     uint32_t pc)
+instructionTransform(InstructionOpcode &opc, Operands &operands,
+                     const Core &core, uint32_t address)
 {
+  // TODO handle ROM addresses.
+  uint32_t pc = core.toPc(address);
   switch (opc) {
   default:
     break;
