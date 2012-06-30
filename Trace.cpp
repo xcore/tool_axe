@@ -106,10 +106,11 @@ void Tracer::printCommonStart(const Node &n)
 
 void Tracer::printThreadPC()
 {
-  unsigned pc = line.thread->getParent().targetPc(line.thread->pc);
+  unsigned pc = line.thread->fromPc(line.thread->pc);
   const Core *core = &line.thread->getParent();
   const ElfSymbol *sym;
-  if (symInfo.get() && (sym = symInfo->getFunctionSymbol(core, pc))) {
+  if (line.thread->isInRam() && symInfo.get() &&
+      (sym = symInfo->getFunctionSymbol(core, pc))) {
     *line.buf << sym->name;
     if (sym->value != pc)
       *line.buf << '+' << (pc - sym->value);

@@ -244,12 +244,24 @@ public:
     return sr[WAITING];
   }
   
-  uint32_t fromPc(uint32_t pc) const {
-    return (pc << 1) + decodeCache.base;
-  }
+  bool isInRam() const;
+
+  void setPcFromAddress(uint32_t address);
   
+  uint32_t fromPc(uint32_t pc) const {
+    return decodeCache.fromPc(pc);
+  }
+
   uint32_t toPc(uint32_t pc) const {
-    return (pc - decodeCache.base) >> 1;
+    return decodeCache.toPc(pc);
+  }
+
+  void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size) {
+    decodeCache.setOpcode(pc, opc, size);
+  }
+
+  void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size) {
+    decodeCache.setOpcode(pc, opc, ops, size);
   }
 public:
   void dump() const;

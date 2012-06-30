@@ -57,7 +57,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
                   InstructionOpcode &opcode, Operands &operands);
 
 void
-instructionTransform(InstructionOpcode &opc, Operands &operands, const Core &core,
-                     uint32_t address);
+instructionTransform(InstructionOpcode &opc, Operands &operands,
+                     const Core &core, uint32_t address);
 
 #endif //_Instruction_h_

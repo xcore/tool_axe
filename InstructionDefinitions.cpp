@@ -77,8 +77,6 @@ extern "C" JITReturn jitInterpretOne(Thread &t) {
 
 #define THREAD thread
 #define CORE THREAD.getParent()
-#define PHYSICAL_ADDR(addr) ((addr) - ramBase)
-#define VIRTUAL_ADDR(addr) ((addr) + ramBase)
 #define CHECK_ADDR_RAM(addr) \
   ((uint32_t(addr) >> ramSizeLog2) == CORE.ramBaseMultiple)
 #define CHECK_PC(addr) ((uint32_t(addr) >> (ramSizeLog2 - 1)) == 0)

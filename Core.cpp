@@ -18,7 +18,7 @@
 #include <sstream>
 
 Core::Core(uint32_t RamSize, uint32_t RamBase) :
-  ramDecodeCache(RamBase >> 1, RamBase),
+  ramDecodeCache(RamBase >> 1, RamBase, true),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ram_base(RamBase),
   ramBaseMultiple(RamBase / RamSize),
@@ -38,12 +38,12 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   rom(0),
   romBase(0),
   romSize(0),
-  invalidationInfo(new unsigned char[RamSize >> 1]),
   syscallAddress(~0),
   exceptionAddress(~0)
 {
   memoryOffset = memory - (RamBase / 4);
-  invalidationInfoOffset = invalidationInfo - (RamBase / 2);
+  invalidationInfoOffset =
+    ramDecodeCache.getState().getInvalidationInfo() - (RamBase / 2);
 
   resource[RES_TYPE_PORT] = 0;
   resourceNum[RES_TYPE_PORT] = 0;
@@ -112,13 +112,9 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
     portNum[width] = num;
   }
   thread[0].alloc(0);
-  for (unsigned i = 0; i != (RamSize >> 1); ++i) {
-    invalidationInfo[i] = INVALIDATE_NONE;
-  }
 }
 
 Core::~Core() {
-  delete[] invalidationInfo;
   delete[] thread;
   delete[] sync;
   delete[] lock;
@@ -313,11 +309,11 @@ std::string Core::getCoreName() const
 
 void Core::invalidateWordSlowPath(uint32_t shiftedAddress)
 {
-  if (invalidationInfoOffset[shiftedAddress + 1] == INVALIDATE_NONE) {
+  if (invalidationInfoOffset[shiftedAddress + 1] == DecodeCache::INVALIDATE_NONE) {
     invalidateSlowPath(shiftedAddress);
     return;
   }
-  invalidationInfoOffset[shiftedAddress + 1] = INVALIDATE_CURRENT_AND_PREVIOUS;
+  invalidationInfoOffset[shiftedAddress + 1] = DecodeCache::INVALIDATE_CURRENT_AND_PREVIOUS;
   invalidateSlowPath(shiftedAddress + 1);
 }
 
@@ -330,8 +326,8 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
     if (!JIT::invalidate(*this, pc))
       clearOpcode(pc);
     ramDecodeCache.getState().executionFrequency[pc] = 0;
-    invalidationInfoOffset[shiftedAddress--] = INVALIDATE_NONE;
-  } while (info == INVALIDATE_CURRENT_AND_PREVIOUS);
+    invalidationInfoOffset[shiftedAddress--] = DecodeCache::INVALIDATE_NONE;
+  } while (info == DecodeCache::INVALIDATE_CURRENT_AND_PREVIOUS);
 }
 
 void Core::runJIT(uint32_t jitPc)
@@ -350,19 +346,12 @@ void Core::clearOpcode(uint32_t pc)
 
 void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size)
 {
-  ramDecodeCache.getState().opcode[pc] = opc;
-  if (invalidationInfo[pc] == INVALIDATE_NONE)
-    invalidationInfo[pc] = INVALIDATE_CURRENT;
-  assert((size % 2) == 0);
-  for (unsigned i = 1; i < size / 2; i++) {
-    invalidationInfo[pc + i] = INVALIDATE_CURRENT_AND_PREVIOUS;
-  }
+  ramDecodeCache.getState().setOpcode(pc, opc, size);
 }
 
 void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size)
 {
-  setOpcode(pc, opc, size);
-  ramDecodeCache.getState().operands[pc] = ops;
+  ramDecodeCache.getState().setOpcode(pc, opc, ops, size);
 }
 
 void Core::setRom(const uint8_t *data, uint32_t base, uint32_t size)

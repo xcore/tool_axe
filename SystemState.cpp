@@ -10,11 +10,16 @@
 
 using namespace Register;
 
+SystemState::SystemState() : currentRunnable(0), rom(0) {
+  pendingEvent.set = false;
+}
+
 SystemState::~SystemState()
 {
   for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
     delete *it;
   }
+  delete[] rom;
 }
 
 void SystemState::finalize()
@@ -36,7 +41,7 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
 {
   if (interrupt) {
     t.regs[SSR] = t.sr.to_ulong();
-    t.regs[SPC] = t.getParent().targetPc(t.pc);
+    t.regs[SPC] = t.fromPc(t.pc);
     t.regs[SED] = t.regs[ED];
     t.ieble() = false;
     t.inint() = true;
@@ -49,11 +54,11 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   res.completeEvent();
   if (Tracer::get().getTracingEnabled()) {
     if (interrupt) {
-      Tracer::get().interrupt(t, res, t.getParent().targetPc(t.pc),
+      Tracer::get().interrupt(t, res, t.fromPc(t.pc),
                                       t.regs[SSR], t.regs[SPC], t.regs[SED],
                                       t.regs[ED]);
     } else {
-      Tracer::get().event(t, res, t.getParent().targetPc(t.pc), t.regs[ED]);
+      Tracer::get().event(t, res, t.fromPc(t.pc), t.regs[ED]);
     }
   }
 }
@@ -72,4 +77,21 @@ int SystemState::run()
   }
   Tracer::get().noRunnableThreads(*this);
   return 1;
+}
+
+void SystemState::
+setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize)
+{
+  rom = new uint8_t[romSize];
+  std::memcpy(rom, data, romSize);
+  romDecodeCache.reset(new DecodeCache(romSize, romBase, false));
+  for (node_iterator outerIt = node_begin(),
+       outerE = node_end(); outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (Node::core_iterator innerIt = node.core_begin(),
+         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      Core *core = *innerIt;
+      core->setRom(rom, 0xffffc000, romSize);
+    }
+  }
 }

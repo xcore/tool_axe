@@ -22,6 +22,11 @@ public:
     INTERPRET_ONE_ADDR_OFFSET,
     ILLEGAL_PC_THREAD_ADDR_OFFSET
   };
+  enum {
+    INVALIDATE_NONE,
+    INVALIDATE_CURRENT,
+    INVALIDATE_CURRENT_AND_PREVIOUS
+  };
   struct State {
     // The opcode cache is bigger than the memory size. We place an ILLEGAL_PC
     // pseudo instruction just past the end of memory. This saves
@@ -31,29 +36,49 @@ public:
     OPCODE_TYPE *opcode;
     Operands *operands;
     executionFrequency_t *executionFrequency;
-    // TODO store as size in half words?
+    unsigned char *invalidationInfo;
+    // Size in half words.
     uint32_t size;
+    // Base in bytes
     uint32_t base;
 
-    void clearOpcode(uint32_t pc);
-
     unsigned getRunJitAddr() const {
-      return (size / 2 - 1) + RUN_JIT_ADDR_OFFSET;
+      return (size - 1) + RUN_JIT_ADDR_OFFSET;
     }
     
     unsigned getInterpretOneAddr() const {
-      return (size / 2 - 1) + INTERPRET_ONE_ADDR_OFFSET;
+      return (size - 1) + INTERPRET_ONE_ADDR_OFFSET;
     }
     
     unsigned getIllegalPCThreadAddr() const {
-      return (size / 2 - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
+      return (size - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
     }
+
+    bool contains(uint32_t address) const {
+      return ((address - base) >> 1) < size;
+    }
+
+    uint32_t toPc(uint32_t address) const {
+      return (address - base) >> 1;
+    }
+    
+    uint32_t fromPc(uint32_t address) const {
+      return (address << 1) + base;
+    }
+
+    unsigned char *getInvalidationInfo() {
+      return invalidationInfo;
+    }
+    
+    void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size);
+    void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size);
+    void clearOpcode(uint32_t pc);
   };
 private:
   State state;
   void initCache(bool tracing);
 public:
-  DecodeCache(uint32_t size, uint32_t base);
+  DecodeCache(uint32_t size, uint32_t base, bool writable);
   ~DecodeCache();
   State &getState() { return state; }
   const State &getState() const { return state; }

@@ -42,11 +42,6 @@ public:
     INTERPRET_ONE_ADDR_OFFSET = 3,
     ILLEGAL_PC_THREAD_ADDR_OFFSET = 4
   };
-  enum {
-    INVALIDATE_NONE,
-    INVALIDATE_CURRENT,
-    INVALIDATE_CURRENT_AND_PREVIOUS
-  };
 private:
   uint32_t * memoryOffset;
   unsigned char *invalidationInfoOffset;
@@ -80,7 +75,6 @@ private:
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
   void invalidateSlowPath(uint32_t shiftedAddress);
-  unsigned char *invalidationInfo;
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
 public:
@@ -122,21 +116,6 @@ public:
   void updateExecutionFrequency(uint32_t shiftedAddress) {
     if (updateExecutionFrequencyFromStub(shiftedAddress))
       runJIT(shiftedAddress);
-  }
-
-  uint32_t targetPc(unsigned pc) const
-  {
-    return ram_base + (pc << 1);
-  }
-
-  uint32_t virtualAddress(uint32_t address) const
-  {
-    return address + ram_base;
-  }
-
-  uint32_t physicalAddress(uint32_t address) const
-  {
-    return address - ram_base;
   }
   
   bool isValidRamAddress(uint32_t address) const {
@@ -237,7 +216,7 @@ public:
   bool invalidateWordCheck(uint32_t address) {
     uint16_t info;
     std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
-    if (info == (INVALIDATE_NONE | (INVALIDATE_NONE << 8)))
+    if (info == (DecodeCache::INVALIDATE_NONE | (DecodeCache::INVALIDATE_NONE << 8)))
       return false;
     return true;
   }
@@ -250,7 +229,7 @@ public:
   }
 
   bool invalidateShortCheck(uint32_t address) {
-    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+    if (invalidationInfoOffset[address >> 1] == DecodeCache::INVALIDATE_NONE)
       return false;
     return true;
   }
@@ -263,7 +242,7 @@ public:
   }
 
   bool invalidateByteCheck(uint32_t address) {
-    if (invalidationInfoOffset[address >> 1] == INVALIDATE_NONE)
+    if (invalidationInfoOffset[address >> 1] == DecodeCache::INVALIDATE_NONE)
       return false;
     return true;
   }

@@ -13,6 +13,7 @@
 
 class Node;
 class ChanEndpoint;
+class DecodeCache;
 
 class SystemState {
   std::vector<Node*> nodes;
@@ -21,14 +22,15 @@ class SystemState {
   Runnable *currentRunnable;
   PendingEvent pendingEvent;
 
+  uint8_t *rom;
+  std::auto_ptr<DecodeCache> romDecodeCache;
+
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
 
 public:
   typedef std::vector<Node*>::iterator node_iterator;
   typedef std::vector<Node*>::const_iterator const_node_iterator;
-  SystemState() : currentRunnable(0) {
-    pendingEvent.set = false;
-  }
+  SystemState();
   ~SystemState();
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
@@ -89,6 +91,11 @@ public:
   
   bool hasPendingEvent() const {
     return pendingEvent.set;
+  }
+
+  void setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize);
+  const DecodeCache::State &getRomDecodeCache() const {
+    return romDecodeCache->getState();
   }
 
   node_iterator node_begin() { return nodes.begin(); }

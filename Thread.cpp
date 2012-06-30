@@ -84,7 +84,7 @@ void Thread::dump() const
   for (unsigned i = 0; i < NUM_REGISTERS; i++) {
     std::cout << getRegisterName(i) << ": 0x" << regs[i] << "\n";
   }
-  std::cout << "pc: 0x" << getParent().targetPc(pc) << "\n";
+  std::cout << "pc: 0x" << fromPc(pc) << "\n";
   std::cout << std::dec;
 }
 
@@ -129,6 +129,25 @@ bool Thread::setSRSlowPath(sr_t enabled)
 bool Thread::isExecuting() const
 {
   return this == parent->getParent()->getParent()->getExecutingRunnable();
+}
+
+bool Thread::isInRam() const
+{
+  return decodeCache.base == parent->getRamDecodeCache().base;
+}
+
+void Thread::setPcFromAddress(uint32_t address)
+{
+  assert((address & 1) == 0);
+  if (!decodeCache.contains(address)) {
+    if (isInRam()) {
+      decodeCache = parent->getParent()->getParent()->getRomDecodeCache();
+    } else {
+      decodeCache = parent->getRamDecodeCache();
+    }
+    assert(decodeCache.contains(address));
+  }
+  pc = decodeCache.toPc(address);
 }
 
 enum {
@@ -307,8 +326,6 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 
 #define THREAD thread
 #define CORE THREAD.getParent()
-#define PHYSICAL_ADDR(addr) CORE.physicalAddress(addr)
-#define VIRTUAL_ADDR(addr) CORE.virtualAddress(addr)
 #define CHECK_ADDR_RAM(addr) CORE.isValidRamAddress(addr)
 #define CHECK_PC(addr) (((addr) >> (CORE.ramSizeLog2 - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
@@ -389,8 +406,8 @@ template<bool tracing> JITReturn Instruction_DECODE(Thread &thread) {
   uint32_t address = THREAD.fromPc(THREAD.pc);
   instructionDecode(CORE, address, opc, ops);
   instructionTransform(opc, ops, CORE, address);
-  CORE.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
-                 instructionProperties[opc].size);
+  THREAD.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
+                   instructionProperties[opc].size);
   return JIT_RETURN_END_TRACE;
 }
 

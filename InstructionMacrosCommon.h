@@ -25,8 +25,8 @@
 #define CHECK_ADDR_ROM_BYTE(addr) CHECK_ADDR_ROM(addr)
 #define CHECK_ADDR_ROM_SHORT(addr) (!((addr) & 1) && CHECK_ADDR_ROM(addr))
 #define CHECK_ADDR_ROM_WORD(addr) (!((addr) & 3) && CHECK_ADDR_ROM(addr))
-#define FROM_PC(addr) VIRTUAL_ADDR((addr) << 1)
-#define TO_PC(addr) (PHYSICAL_ADDR(addr) >> 1)
+#define FROM_PC(addr) THREAD.fromPc(addr)
+#define TO_PC(addr) THREAD.toPc(addr)
 #define TIME THREAD.time
 
 #endif //_InstructionMacrosCommon_h_

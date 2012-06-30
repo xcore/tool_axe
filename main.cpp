@@ -458,8 +458,9 @@ readXE(XE &xe, const char *filename)
   return system;
 }
 
-static int runCores(SystemState &sys, const std::set<Core*> &cores,
-                     const std::map<Core*,uint32_t> &entryPoints)
+static int
+runCores(SystemState &sys, const std::set<Core*> &cores,
+         const std::map<Core*,uint32_t> &entryPoints)
 {
   for (std::set<Core*>::iterator it = cores.begin(), e = cores.end(); it != e;
        ++it) {
@@ -467,9 +468,9 @@ static int runCores(SystemState &sys, const std::set<Core*> &cores,
     sys.schedule(core->getThread(0));
     std::map<Core*,uint32_t>::const_iterator match;
     if ((match = entryPoints.find(core)) != entryPoints.end()) {
-      uint32_t entryPc = core->physicalAddress(match->second) >> 1;
-      if (core->isValidPc(entryPc)) {
-        core->getThread(0).pc = entryPc;
+      uint32_t address = match->second;
+      if ((address & 1) == 0 && core->isValidAddress(address)) {
+        core->getThread(0).setPcFromAddress(address);
       } else {
         std::cout << "Warning: invalid ELF entry point 0x";
         std::cout << std::hex << match->second << std::dec << "\n";
@@ -478,6 +479,25 @@ static int runCores(SystemState &sys, const std::set<Core*> &cores,
   }
   SyscallHandler::setDoneSyscallsRequired(cores.size());
   return sys.run();
+}
+
+static int
+runCoreRoms(SystemState &system)
+{
+  unsigned numCores = 0;
+  for (SystemState::node_iterator outerIt = system.node_begin(),
+       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (Node::core_iterator innerIt = node.core_begin(),
+         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      Core &core = **innerIt;
+      system.schedule(core.getThread(0));
+      core.getThread(0).setPcFromAddress(core.romBase);
+      numCores++;
+    }
+  }
+  SyscallHandler::setDoneSyscallsRequired(numCores);
+  return system.run();
 }
 
 static bool
@@ -522,21 +542,6 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
-static void setRom(SystemState &sys, std::vector<uint8_t> &rom)
-{
-  if (rom.empty())
-    return;
-  for (SystemState::node_iterator outerIt = sys.node_begin(),
-       outerE = sys.node_end(); outerIt != outerE; ++outerIt) {
-    Node &node = **outerIt;
-    for (Node::core_iterator innerIt = node.core_begin(),
-         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
-      Core *core = *innerIt;
-      core->setRom(&rom[0], 0xffffc000, rom.size());
-    }
-  }
-}
-
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
   PeripheralDescriptorWithPropertiesVector;
 
@@ -546,11 +551,6 @@ loop(const Options &options)
   XE xe(options.file);
   std::auto_ptr<SystemState> statePtr = readXE(xe, options.file);
   SystemState &sys = *statePtr;
-  std::vector<uint8_t> rom;
-  if (!options.rom.empty()) {
-    readRom(options.rom, rom);
-    setRom(sys, rom);
-  }
 
   if (!connectLoopbackPorts(sys, options.loopbackPorts)) {
     std::exit(1);
@@ -571,6 +571,13 @@ loop(const Options &options)
   if (!options.vcdFile.empty()) {
     waveformTracer.reset(new WaveformTracer(options.vcdFile));
     connectWaveformTracer(sys, *waveformTracer);
+  }
+
+  if (!options.rom.empty()) {
+    std::vector<uint8_t> rom;
+    readRom(options.rom, rom);
+    sys.setRom(&rom[0], 0xffffc000, rom.size());
+    return runCoreRoms(sys);
   }
 
   std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
