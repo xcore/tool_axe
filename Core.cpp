@@ -20,7 +20,6 @@
 Core::Core(uint32_t RamSize, uint32_t RamBase) :
   ramDecodeCache(RamBase >> 1, RamBase, true),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
-  ram_base(RamBase),
   ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
   sync(new Synchroniser[NUM_SYNCS]),
@@ -233,8 +232,8 @@ bool Core::setExceptionAddress(uint32_t value)
 
 void Core::resetCaches()
 {
-  uint32_t ramEnd = ram_base + (1 << ramSizeLog2);
-  for (unsigned address = ram_base; address < ramEnd; address += 4) {
+  uint32_t ramEnd = getRamBase() + (1 << ramSizeLog2);
+  for (unsigned address = getRamBase(); address < ramEnd; address += 4) {
     invalidateWord(address);    
   }
 }
@@ -322,7 +321,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
   unsigned char info;
   do {
     info = invalidationInfoOffset[shiftedAddress];
-    uint32_t pc = shiftedAddress - (ram_base/2);
+    uint32_t pc = shiftedAddress - (getRamBase()/2);
     if (!JIT::invalidate(*this, pc))
       clearOpcode(pc);
     ramDecodeCache.getState().executionFrequency[pc] = 0;

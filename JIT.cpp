@@ -552,7 +552,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     LLVMSetFunctionCallConv(f, LLVMFastCallConv);
   }
   threadParam = LLVMGetParam(f, 0);
-  LLVMValueRef ramBase = LLVMConstInt(LLVMInt32Type(), core.ram_base, false);
+  LLVMValueRef ramBase = LLVMConstInt(LLVMInt32Type(), core.getRamBase(), false);
   ramSizeLog2Param = LLVMConstInt(LLVMInt32Type(), core.ramSizeLog2, false);
   LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);

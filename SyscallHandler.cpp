@@ -124,7 +124,7 @@ char *SyscallHandlerImpl::getString(Thread &thread, uint32_t startAddress)
     return 0;
   // Check the string is null terminated
   uint32_t address = startAddress;
-  uint32_t end = core.getRamSize() + core.ram_base;
+  uint32_t end = core.getRamSize() + core.getRamBase();
   for (; address < end && core.loadRamByte(address); address++) {}
   if (address >= end) {
     return 0;

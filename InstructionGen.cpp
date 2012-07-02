@@ -2195,7 +2195,7 @@ void add()
   fl2r("GETPS", "get %0, ps[%1]",
        "switch (%1) {\n"
        "case PS_RAM_BASE:\n"
-       "  %0 = CORE.ram_base;\n"
+       "  %0 = CORE.getRamBase();\n"
        "  break;\n"
        "default:\n"
        "  // TODO\n"

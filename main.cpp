@@ -155,7 +155,7 @@ static void readElf(const char *filename, const XEElfSector *elfSector,
     std::exit(1);
   }
   core.resetCaches();
-  uint32_t ram_base = core.ram_base;
+  uint32_t ram_base = core.getRamBase();
   uint32_t ram_size = core.getRamSize();
   for (unsigned i = 0; i < num_phdrs; i++) {
     GElf_Phdr phdr;

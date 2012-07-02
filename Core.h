@@ -48,7 +48,6 @@ private:
   DecodeCache ramDecodeCache;
 public:
   const uint32_t ramSizeLog2;
-  const uint32_t ram_base;
   const uint32_t ramBaseMultiple;
 private:
   Thread * const thread;
@@ -102,6 +101,7 @@ public:
   void runJIT(uint32_t jitPc);
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
+  uint32_t getRamBase() const { return getRamSize() * ramBaseMultiple; }
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
     const DecodeCache::executionFrequency_t threshold = 128;
@@ -135,11 +135,11 @@ public:
   }
 
   uint32_t fromPc(uint32_t pc) const {
-    return (pc << 1) + ram_base;
+    return (pc << 1) + getRamBase();
   }
   
   uint32_t toPc(uint32_t address) const {
-    return (address - ram_base) >> 1;
+    return (address - getRamBase()) >> 1;
   }
 
 private:
