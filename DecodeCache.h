@@ -42,6 +42,10 @@ public:
     // Base in bytes
     uint32_t base;
 
+    void setBase(uint32_t value) {
+      base = value;
+    }
+
     unsigned getRunJitAddr() const {
       return (size - 1) + RUN_JIT_ADDR_OFFSET;
     }

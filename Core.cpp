@@ -134,6 +134,25 @@ bool Core::allocatable[LAST_STD_RES_TYPE + 1] = {
   false, // RES_TYPE_CLKBLK
 };
 
+void Core::setRamBaseMultiple(unsigned multiple)
+{
+  // Invalidate cache.
+  resetCaches();
+
+  // Update ram base.
+  ramBaseMultiple = multiple;
+  uint32_t ramBase = getRamBase();
+  ramDecodeCache.getState().setBase(ramBase);
+  memoryOffset = memory - (ramBase / 4);
+  invalidationInfoOffset =
+    ramDecodeCache.getState().getInvalidationInfo() - (ramBase / 2);
+
+  // Inform threads of the change.
+  for (unsigned i = 0; i < NUM_THREADS; i++) {
+    getThread(i).seeRamDecodeCacheChange();
+  }
+}
+
 void Core::dumpPaused() const
 {
   for (unsigned i = 0; i < NUM_THREADS; i++) {

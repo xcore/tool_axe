@@ -38,4 +38,6 @@ bool setClock(Thread &t, ResourceID resID, uint32_t val, ticks_t time);
 bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
                          ticks_t time);
 
+bool setProcessorState(Thread &t, uint32_t reg, uint32_t value);
+
 #endif // _InstructionHelpers_h_

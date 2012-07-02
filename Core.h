@@ -48,7 +48,7 @@ private:
   DecodeCache ramDecodeCache;
 public:
   const uint32_t ramSizeLog2;
-  const uint32_t ramBaseMultiple;
+  uint32_t ramBaseMultiple;
 private:
   Thread * const thread;
   Synchroniser * const sync;
@@ -84,6 +84,8 @@ public:
 
   Core(uint32_t RamSize, uint32_t RamBase);
   ~Core();
+
+  void setRamBaseMultiple(unsigned multiple);
 
   void clearOpcode(uint32_t pc);
   void setOpcode(uint32_t pc, OPCODE_TYPE opc, unsigned size);

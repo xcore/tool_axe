@@ -153,3 +153,27 @@ bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
   }
   return res->setReady(t, ready, time);
 }
+
+/// Set proccessor state. Can't be called from JIT as setting the RAM base
+/// invalidates the cache.
+bool setProcessorState(Thread &t, uint32_t reg, uint32_t value)
+{
+  Core &core = t.getParent();
+  switch (reg) {
+  case PS_VECTOR_BASE:
+    core.vector_base = value;
+    return true;
+  case PS_RAM_BASE:
+    if (t.isInRam()) {
+      // TODO changing ram base while executing from RAM requires more thought.
+      // If we try and fetch the next instruction as normal then we will get an
+      // illegal pc exception immediately. Instead we should execute the next
+      // instruction in the instruction buffer, which would normally be a branch
+      // instruction. For now just bailout.
+      std::abort();
+    }
+    core.setRamBaseMultiple(value / core.getRamSize());
+    return true;
+  }
+  return false;
+}

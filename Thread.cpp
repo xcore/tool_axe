@@ -78,6 +78,14 @@ void Thread::finalize()
   scheduler = &getParent().getParent()->getParent()->getScheduler();
 }
 
+void Thread::seeRamDecodeCacheChange()
+{
+  if (decodeCache.base ==
+      getParent().getParent()->getParent()->getRomDecodeCache().base)
+    return;
+  decodeCache = getParent().getRamDecodeCache();
+}
+
 void Thread::dump() const
 {
   std::cout << std::hex;

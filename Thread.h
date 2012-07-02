@@ -263,7 +263,9 @@ public:
   void setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size) {
     decodeCache.setOpcode(pc, opc, ops, size);
   }
-public:
+
+  void seeRamDecodeCacheChange();
+
   void dump() const;
 
   void schedule();

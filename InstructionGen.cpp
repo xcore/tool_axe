@@ -2201,15 +2201,11 @@ void add()
        "  // TODO\n"
        "  ERROR();\n"
        "}\n");
+  // Can't JIT SETPS as setting ram base invalidates the decode cache.
   fl2r_in("SETPS", "set %0, ps[%1]",
-          "switch (%1) {\n"
-          "case PS_VECTOR_BASE:\n"
-          "  CORE.vector_base = %0;\n"
-          "  break;\n"
-          "default:\n"
-          "  // TODO\n"
-          "  ERROR();\n"
-          "}\n");
+          "if (!setProcessorState(THREAD, %1, %0)) {\n"
+          "  %exception(ET_ILLEGAL_PS, %1);\n"
+          "}\n").setDisableJit();
   fl2r_in("SETC", "setc res[%0], %1",
           "if (!THREAD.setC(TIME, ResourceID(%0), %1)) {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, %0);\n"
