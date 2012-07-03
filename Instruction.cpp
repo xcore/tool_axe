@@ -1416,14 +1416,16 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 #define OP(n) (operands.ops[n])
 #define LOP(n) (operands.lops[n])
 #define PC pc
-#define CHECK_PC(addr) (core.isValidPc(addr))
+#define CHECK_PC(pc) (decodeCache->isValidPc(pc))
 
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands,
                      const Core &core, uint32_t address)
 {
-  // TODO handle ROM addresses.
-  uint32_t pc = core.toPc(address);
+  const DecodeCache::State *decodeCache =
+    core.getDecodeCacheContaining(address);
+  assert(decodeCache);
+  uint32_t pc = decodeCache->toPc(address);
   switch (opc) {
   default:
     break;

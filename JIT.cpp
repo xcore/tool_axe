@@ -218,7 +218,7 @@ static bool
 getInstruction(Core &core, uint32_t address, InstructionOpcode &opc,
                Operands &operands)
 {
-  if (!core.isValidPc(core.toPc(address)))
+  if (!core.isValidRamPc(core.toRamPc(address)))
     return false;
   instructionDecode(core, address, opc, operands);
   return true;
@@ -530,9 +530,9 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
 
   std::vector<InstructionOpcode> opcode;
   std::vector<Operands> operands;
-  if (!getFragmentToCompile(core, core.fromPc(startPc), opcode, operands,
+  if (!getFragmentToCompile(core, core.fromRamPc(startPc), opcode, operands,
                             endOfBlock, pcAfterFragment)) {
-    pcAfterFragment = core.toPc(pcAfterFragment);
+    pcAfterFragment = core.toRamPc(pcAfterFragment);
     return false;
   }
   std::queue<std::pair<uint32_t,MemoryCheck*> > checks;

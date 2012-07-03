@@ -95,11 +95,14 @@ public:
     return ramDecodeCache.getState();
   }
 
+  const DecodeCache::State *getDecodeCacheContaining(uint32_t address) const;
+
   bool setSyscallAddress(uint32_t value);
   bool setExceptionAddress(uint32_t value);
 
   void resetCaches();
 
+  // TODO should take address in order to handle ROM.
   void runJIT(uint32_t jitPc);
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
@@ -132,16 +135,16 @@ public:
     return isValidRamAddress(address) || isValidRomAddress(address);
   }
 
-  bool isValidPc(uint32_t address) const {
-    return address < getRamSizeShorts();
+  bool isValidRamPc(uint32_t address) const {
+    return getRamDecodeCache().isValidPc(address);
   }
 
-  uint32_t fromPc(uint32_t pc) const {
-    return (pc << 1) + getRamBase();
+  uint32_t fromRamPc(uint32_t pc) const {
+    return getRamDecodeCache().fromPc(pc);
   }
   
-  uint32_t toPc(uint32_t address) const {
-    return (address - getRamBase()) >> 1;
+  uint32_t toRamPc(uint32_t address) const {
+    return getRamDecodeCache().toPc(address);
   }
 
 private:

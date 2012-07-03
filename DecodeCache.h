@@ -62,6 +62,10 @@ public:
       return ((address - base) >> 1) < size;
     }
 
+    bool isValidPc(uint32_t pc) const {
+      return pc < size;
+    }
+
     uint32_t toPc(uint32_t address) const {
       return (address - base) >> 1;
     }

@@ -233,6 +233,16 @@ Resource *Core::getResourceByID(ResourceID ID)
   );
 }
 
+const DecodeCache::State *Core::
+getDecodeCacheContaining(uint32_t address) const
+{
+  if (isValidRamAddress(address))
+    return &getRamDecodeCache();
+  if (isValidRomAddress(address))
+    return &getParent()->getParent()->getRomDecodeCache();
+  return 0;
+}
+
 bool Core::setSyscallAddress(uint32_t value)
 {
   if ((value & 1) || !isValidAddress(value))
@@ -350,7 +360,7 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
 
 void Core::runJIT(uint32_t jitPc)
 {
-  if (!isValidPc(jitPc))
+  if (!isValidRamPc(jitPc))
     return;
   ramDecodeCache.getState().executionFrequency[jitPc] =
     DecodeCache::MIN_EXECUTION_FREQUENCY;
