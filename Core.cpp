@@ -34,6 +34,9 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   memory(new uint32_t[RamSize >> 2]),
   coreNumber(0),
   parent(0),
+  // TODO use sensible boot config value.
+  bootConfig(0),
+  bootStatus(0),
   rom(0),
   romBase(0),
   romSize(0),
@@ -304,6 +307,41 @@ ChanEndpoint *Core::getChanendDest(ResourceID ID)
   if (getLocalChanendDest(ID, result))
     return result;
   return parent->getChanendDest(ID);
+}
+
+bool Core::setProcessorState(uint32_t reg, uint32_t value)
+{
+  switch (reg) {
+  case PS_VECTOR_BASE:
+    vector_base = value;
+    return true;
+  case PS_RAM_BASE:
+    setRamBaseMultiple(value / getRamSize());
+    return true;
+  case PS_BOOT_STATUS:
+    bootStatus = value;
+    return true;
+  }
+  return false;
+}
+
+bool Core::getProcessorState(uint32_t reg, uint32_t &value)
+{
+  switch (reg) {
+  case PS_VECTOR_BASE:
+    value = vector_base;
+    return true;
+  case PS_RAM_BASE:
+    value = getRamBase();
+    return true;
+  case PS_BOOT_CONFIG:
+    value = bootConfig;
+    return true;
+  case PS_BOOT_STATUS:
+    value = bootStatus;
+    return true;
+  }
+  return false;
 }
 
 void Core::finalize()

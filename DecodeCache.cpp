@@ -19,6 +19,8 @@ DecodeCache::DecodeCache(uint32_t sz, uint32_t b, bool writable)
     for (unsigned i = 0; i != sz; ++i) {
       state.invalidationInfo[i] = INVALIDATE_NONE;
     }
+  } else {
+    state.invalidationInfo = 0;
   }
   std::memset(state.executionFrequency, 0,
               sizeof(state.executionFrequency[0]) * sz);

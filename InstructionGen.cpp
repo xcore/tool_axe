@@ -2193,13 +2193,8 @@ void add()
   fl2r_in("SETN", "setn res[%1], %0", "").setUnimplemented();
   fl2r("GETN", "getn %0, res[%1]", "").setUnimplemented();
   fl2r("GETPS", "get %0, ps[%1]",
-       "switch (%1) {\n"
-       "case PS_RAM_BASE:\n"
-       "  %0 = CORE.getRamBase();\n"
-       "  break;\n"
-       "default:\n"
-       "  // TODO\n"
-       "  ERROR();\n"
+       "if (!CORE.getProcessorState(%1, %0)) {\n"
+       "  %exception(ET_ILLEGAL_PS, %1)\n"
        "}\n");
   // Can't JIT SETPS as setting ram base invalidates the decode cache.
   fl2r_in("SETPS", "set %0, ps[%1]",

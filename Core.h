@@ -32,7 +32,9 @@ class Node;
 
 enum ProcessorState {
   PS_RAM_BASE = 0x00b,
-  PS_VECTOR_BASE = 0x10b
+  PS_VECTOR_BASE = 0x10b,
+  PS_BOOT_CONFIG = 0x30b,
+  PS_BOOT_STATUS = 0x40b
 };
 
 class Core {
@@ -65,6 +67,8 @@ private:
   unsigned coreNumber;
   Node *parent;
   std::string codeReference;
+  uint32_t bootConfig;
+  uint32_t bootStatus;
   const uint8_t *rom;
 public:
   uint32_t romBase;
@@ -322,6 +326,9 @@ public:
   unsigned getIllegalPCThreadAddr() const {
     return (getRamSizeShorts() - 1) + ILLEGAL_PC_THREAD_ADDR_OFFSET;
   }
+
+  bool setProcessorState(uint32_t reg, uint32_t value);
+  bool getProcessorState(uint32_t reg, uint32_t &value);
 
   void finalize();
   void updateIDs();
