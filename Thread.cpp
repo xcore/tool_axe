@@ -144,17 +144,24 @@ bool Thread::isInRam() const
   return decodeCache.base == parent->getRamDecodeCache().base;
 }
 
-void Thread::setPcFromAddress(uint32_t address)
+bool Thread::tryUpdateDecodeCache(uint32_t address)
 {
   assert((address & 1) == 0);
   if (!decodeCache.contains(address)) {
-    if (isInRam()) {
-      decodeCache = parent->getParent()->getParent()->getRomDecodeCache();
-    } else {
-      decodeCache = parent->getRamDecodeCache();
-    }
-    assert(decodeCache.contains(address));
+    const DecodeCache::State *newDecodeCache =
+      getParent().getDecodeCacheContaining(address);
+    if (!newDecodeCache)
+      return false;
+    decodeCache = *newDecodeCache;
   }
+  return true;
+}
+
+void Thread::setPcFromAddress(uint32_t address)
+{
+  bool updateOk = tryUpdateDecodeCache(address);
+  assert(updateOk);
+  (void)updateOk;
   pc = decodeCache.toPc(address);
 }
 

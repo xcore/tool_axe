@@ -683,6 +683,7 @@ public:
   void emitCycles();
   void emitRegWriteBack();
   void emitUpdateExecutionFrequency();
+  void emitForceYield();
   void emitYieldIfTimeSliceExpired();
   void emitNormalReturn();
   void emitCheckEvents() const;
@@ -877,6 +878,17 @@ void FunctionCodeEmitter::emitYield()
   emitNormalReturn();
 }
 
+void FunctionCodeEmitter::emitForceYield()
+{
+  emitCycles();
+  emitRegWriteBack();
+  emitUpdateExecutionFrequency();
+  std::cout << "  THREAD.schedule();\n";
+  if (!jit)
+    emitTraceEnd(*inst);
+  std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+}
+
 void FunctionCodeEmitter::emitDeschedule()
 {
   emitCycles();
@@ -970,10 +982,17 @@ void FunctionCodeEmitter::emitWritePc(const std::string &args)
   emitException("ET_ILLEGAL_PC, addressToWrite");
   std::cout << "  }\n";
   std::cout << "  uint32_t pcToWrite = TO_PC(addressToWrite);\n";
-  std::cout << "  if (!CHECK_PC(pcToWrite)) {\n";
-  emitException("ET_ILLEGAL_PC, addressToWrite");
-  std::cout << "  }\n";
+  std::cout << "  if (CHECK_PC(pcToWrite)) {\n";
   emitWritePcUnchecked("pcToWrite");
+  std::cout << "  } else {\n";
+  std::cout << "    if (THREAD.tryUpdateDecodeCache(addressToWrite)) {\n";
+  std::cout << "      pcToWrite = THREAD.toPc(addressToWrite);\n";
+  emitWritePcUnchecked("pcToWrite");
+  emitForceYield();
+  std::cout << "    } else {\n";
+  emitException("ET_ILLEGAL_PC, addressToWrite");
+  std::cout << "    }\n";
+  std::cout << "  }\n";
   std::cout << "}\n";
 }
 
@@ -1025,6 +1044,7 @@ protected:
   virtual void emitWritePc(const std::string &args) {
     inst->setWritesPc();
     inst->setMayExcept();
+    inst->setMayYield();
     emitNested(args);
   }
   virtual void emitWritePcUnchecked(const std::string &args) {
@@ -2678,11 +2698,11 @@ void add()
     .addImplicitOp(KEP, out)
     .addImplicitOp(R11, in);
   f0r("KRET", "kret",
-      "%write_pc(%0);\n"
       "%3 = %1;\n"
       "Thread::sr_t value((int)%2);\n"
       "value[Thread::WAITING] = false;\n"
-      "%4 = value;")
+      "%4 = value;"
+      "%write_pc(%0);\n")
     .addImplicitOp(SPC, in)
     .addImplicitOp(SED, in)
     .addImplicitOp(SSR, in)

@@ -243,8 +243,10 @@ public:
   bool waiting() const {
     return sr[WAITING];
   }
-  
+
   bool isInRam() const;
+
+  bool tryUpdateDecodeCache(uint32_t address);
 
   void setPcFromAddress(uint32_t address);
   
