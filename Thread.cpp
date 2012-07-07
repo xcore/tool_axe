@@ -86,6 +86,12 @@ void Thread::seeRamDecodeCacheChange()
   decodeCache = getParent().getRamDecodeCache();
 }
 
+void Thread::runJIT(uint32_t pc)
+{
+  if (isInRam())
+    getParent().runJIT(pc);
+}
+
 void Thread::dump() const
 {
   std::cout << std::hex;

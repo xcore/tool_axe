@@ -111,21 +111,6 @@ public:
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
   uint32_t getRamBase() const { return getRamSize() * ramBaseMultiple; }
-
-  bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
-    const DecodeCache::executionFrequency_t threshold = 128;
-    DecodeCache::executionFrequency_t *executionFrequency =
-      ramDecodeCache.getState().executionFrequency;
-    if (++executionFrequency[shiftedAddress] > threshold) {
-      return true;
-    }
-    return false;
-  }
-
-  void updateExecutionFrequency(uint32_t shiftedAddress) {
-    if (updateExecutionFrequencyFromStub(shiftedAddress))
-      runJIT(shiftedAddress);
-  }
   
   bool isValidRamAddress(uint32_t address) const {
     return (address >> ramSizeLog2) == ramBaseMultiple;

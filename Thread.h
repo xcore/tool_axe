@@ -266,6 +266,23 @@ public:
     decodeCache.setOpcode(pc, opc, ops, size);
   }
 
+  void runJIT(uint32_t pc);
+
+  bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
+    const DecodeCache::executionFrequency_t threshold = 128;
+    DecodeCache::executionFrequency_t *executionFrequency =
+    decodeCache.executionFrequency;
+    if (++executionFrequency[shiftedAddress] > threshold) {
+      return true;
+    }
+    return false;
+  }
+
+  void updateExecutionFrequency(uint32_t shiftedAddress) {
+    if (updateExecutionFrequencyFromStub(shiftedAddress))
+      runJIT(shiftedAddress);
+  }
+
   void seeRamDecodeCacheChange();
 
   void dump() const;

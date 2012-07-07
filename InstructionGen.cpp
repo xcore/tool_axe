@@ -764,7 +764,7 @@ void FunctionCodeEmitter::emitUpdateExecutionFrequency()
     return;
   std::cout << "if (!tracing) {\n";
   if (inst->getMayBranch()) {
-    std::cout << "CORE.updateExecutionFrequency(THREAD.pc);\n";
+    std::cout << "THREAD.updateExecutionFrequency(THREAD.pc);\n";
   }
   std::cout << "}\n";
 }
@@ -974,6 +974,8 @@ emitLoad(const std::string &argString, LoadStoreType type)
 
 void FunctionCodeEmitter::emitWritePc(const std::string &args)
 {
+  // TODO could bailout in JIT if address is in ROM instead of handling it
+  // (reduce amout of code need to JIT.)
   std::cout << "{\n";
   std::cout << "  uint32_t addressToWrite = ";
   emitNested(args);

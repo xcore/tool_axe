@@ -26,7 +26,7 @@ extern "C" uint32_t jitGetPc(Thread &t) {
 }
 
 extern "C" JITReturn jitStubImpl(Thread &t) {
-  if (t.getParent().updateExecutionFrequencyFromStub(t.pc)) {
+  if (t.updateExecutionFrequencyFromStub(t.pc)) {
     t.pendingPc = t.pc;
     t.pc = t.getParent().getRunJitAddr();
   }
@@ -34,7 +34,7 @@ extern "C" JITReturn jitStubImpl(Thread &t) {
 }
 
 extern "C" void jitUpdateExecutionFrequency(Thread &t) {
-  t.getParent().updateExecutionFrequency(t.pc);
+  t.updateExecutionFrequency(t.pc);
 }
 
 extern "C" uint32_t
