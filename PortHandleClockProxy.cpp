@@ -31,10 +31,12 @@ void PortHandleClockProxy::seePinsChange(const Signal &newSignal, ticks_t time)
 
 void PortHandleClockProxy::run(ticks_t time)
 {
-  uint32_t newValue = currentSignal.getValue(time);
-  if (newValue == currentValue)
+  if (!currentSignal.isClock())
     return;
-  next.seePinsChange(Signal(newValue), time);
-  assert(currentSignal.isClock());
+  uint32_t newValue = currentSignal.getValue(time);
+  if (newValue != currentValue) {
+    next.seePinsChange(Signal(newValue), time);
+    currentValue = newValue;
+  }
   scheduler.push(*this, currentSignal.getNextEdge(time).time);
 }
