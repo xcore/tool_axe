@@ -22,6 +22,9 @@ public:
   void addElf(Core *c, const XEElfSector *elfSector);
   void addSchedule(Core *c, uint32_t address);
   void addRun(unsigned numDoneSyscalls);
+  void overrideEntryPoint(uint32_t address);
+  void eraseAllButLastImage();
+  void setLoadImages(bool value);
   int execute();
 };
 

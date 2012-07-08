@@ -16,6 +16,11 @@ class PeripheralDescriptor;
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
 struct Options {
+  enum BootMode {
+    BOOT_SIM,
+    BOOT_SPI
+  };
+  BootMode bootMode;
   LoopbackPorts loopbackPorts;
   std::vector<std::pair<PeripheralDescriptor*, Properties> > peripherals;
   const char *file;

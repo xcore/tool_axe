@@ -318,7 +318,10 @@ public:
   void finalize();
   void updateIDs();
 
+  void setBootConfig(uint32_t value) { bootConfig = value; }
+
   void setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize);
+
   /// Set the parent of the current core. updateIDs() must be called to update
   /// The core IDs and the channel end resource IDs.
   void setParent(Node *n) {

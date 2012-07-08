@@ -378,6 +378,28 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
+const uint32_t romBaseAddress = 0xffffc000;
+
+static void
+adjustForBootMode(const Options &options, SystemState &sys,
+                  BootSequence &bootSequence)
+{
+  if (options.bootMode == Options::BOOT_SPI) {
+    bootSequence.eraseAllButLastImage();
+    bootSequence.overrideEntryPoint(romBaseAddress);
+    bootSequence.setLoadImages(false);
+    for (SystemState::node_iterator outerIt = sys.node_begin(),
+         outerE = sys.node_end(); outerIt != outerE; ++outerIt) {
+      Node &node = **outerIt;
+      for (Node::core_iterator innerIt = node.core_begin(),
+           innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+        Core *core = *innerIt;
+        core->setBootConfig(1 << 2);
+      }
+    }
+  }
+}
+
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
   PeripheralDescriptorWithPropertiesVector;
 
@@ -412,7 +434,7 @@ loop(const Options &options)
   if (!options.rom.empty()) {
     std::vector<uint8_t> rom;
     readRom(options.rom, rom);
-    sys.setRom(&rom[0], 0xffffc000, rom.size());
+    sys.setRom(&rom[0], romBaseAddress, rom.size());
   }
 
   std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
@@ -502,6 +524,9 @@ loop(const Options &options)
     // Shouldn't happen.
     bootSequence.addRun(callSectors.size());
   }
+
+  adjustForBootMode(options, sys, bootSequence);
+
   return bootSequence.execute();
 }
 

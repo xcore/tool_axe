@@ -34,8 +34,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase) :
   memory(new uint32_t[RamSize >> 2]),
   coreNumber(0),
   parent(0),
-  // TODO use sensible boot config value.
-  bootConfig(8 << 2),
+  bootConfig(0),
   bootStatus(0),
   rom(0),
   romBase(0),

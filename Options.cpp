@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 Options::Options() :
+  bootMode(BOOT_SIM),
   file(0),
   tracing(false)
 {  
@@ -21,6 +22,7 @@ static void printUsage(const char *ProgName) {
   "  -help                       Display this information.\n"
   "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
   "  --vcd FILE                  Write VCD trace to FILE.\n"
+  "  --boot-spi                  Specify boot from SPI\n"
   "  --rom FILE                  Specify boot rom.\n"
   "  -t                          Enable instruction tracing.\n"
   "\n"
@@ -185,6 +187,8 @@ void Options::parse(int argc, char **argv)
       }
       rom = argv[i + 1];
       i++;
+    } else if (arg == "--boot-spi") {
+      bootMode = BOOT_SPI;
     } else if (arg == "--help") {
       printUsage(argv[0]);
       std::exit(0);

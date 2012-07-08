@@ -14,6 +14,7 @@
 #include "Trace.h"
 #include <gelf.h>
 #include <iostream>
+#include <algorithm>
 
 const unsigned XCORE_ELF_MACHINE = 0xB49E;
 
@@ -84,13 +85,20 @@ public:
 
 class BootSequenceStepElf : public BootSequenceStep {
 public:
+  bool loadImage;
+  bool useElfEntryPoint;
   Core *core;
   const XEElfSector *elfSector;
   BootSequenceStepElf(Core *c, const XEElfSector *e) :
     BootSequenceStep(ELF),
+    loadImage(true),
+    useElfEntryPoint(true),
     core(c),
     elfSector(e) {}
   int execute(SystemState &sys);
+  Core *getCore() const { return core; }
+  void setUseElfEntryPoint(bool value) { useElfEntryPoint = value; }
+  void setLoadImage(bool value) { loadImage = value; }
 };
 
 class BootSequenceStepSchedule : public BootSequenceStep {
@@ -148,34 +156,37 @@ int BootSequenceStepElf::execute(SystemState &sys)
       std::cout << std::hex << ehdr.e_entry << std::dec << "\n";
     }
   }
-  unsigned num_phdrs = ehdr.e_phnum;
-  if (num_phdrs == 0) {
-    std::cerr << "No ELF program headers" << std::endl;
-    std::exit(1);
-  }
-  core->resetCaches();
   uint32_t ram_base = core->getRamBase();
   uint32_t ram_size = core->getRamSize();
-  for (unsigned i = 0; i < num_phdrs; i++) {
-    GElf_Phdr phdr;
-    if (gelf_getphdr(e, i, &phdr) == NULL) {
-      std::cerr << "Reading ELF program header " << i << " failed: " << elf_errmsg(-1) << std::endl;
+  if (loadImage) {
+    unsigned num_phdrs = ehdr.e_phnum;
+    if (num_phdrs == 0) {
+      std::cerr << "No ELF program headers" << std::endl;
       std::exit(1);
     }
-    if (phdr.p_filesz == 0) {
-      continue;
+    core->resetCaches();
+    for (unsigned i = 0; i < num_phdrs; i++) {
+      GElf_Phdr phdr;
+      if (gelf_getphdr(e, i, &phdr) == NULL) {
+        std::cerr << "Reading ELF program header " << i << " failed: ";
+        std::cerr << elf_errmsg(-1) << std::endl;
+        std::exit(1);
+      }
+      if (phdr.p_filesz == 0) {
+        continue;
+      }
+      if (phdr.p_offset > ElfSize) {
+        std::cerr << "Invalid offet in ELF program header" << i << std::endl;
+        std::exit(1);
+      }
+      if (!core->isValidRamAddress(phdr.p_paddr) ||
+          !core->isValidRamAddress(phdr.p_paddr + phdr.p_memsz)) {
+        std::cerr << "Error data from ELF program header " << i;
+        std::cerr << " does not fit in memory" << std::endl;
+        std::exit(1);
+      }
+      core->writeMemory(phdr.p_paddr, &buf[phdr.p_offset], phdr.p_filesz);
     }
-    if (phdr.p_offset > ElfSize) {
-      std::cerr << "Invalid offet in ELF program header" << i << std::endl;
-      std::exit(1);
-    }
-    if (!core->isValidRamAddress(phdr.p_paddr) ||
-        !core->isValidRamAddress(phdr.p_paddr + phdr.p_memsz)) {
-      std::cerr << "Error data from ELF program header " << i;
-      std::cerr << " does not fit in memory" << std::endl;
-      std::exit(1);
-    }
-    core->writeMemory(phdr.p_paddr, &buf[phdr.p_offset], phdr.p_filesz);
   }
 
   SymbolInfo *SI = Tracer::get().getSymbolInfo();
@@ -197,9 +208,10 @@ int BootSequenceStepElf::execute(SystemState &sys)
       << std::hex << doExceptionSym->value << std::dec << "\n";
     }
   }
-  sys.schedule(core->getThread(0));
-  core->getThread(0).setPcFromAddress(entryPoint);
-  return 0;
+  if (useElfEntryPoint) {
+    sys.schedule(core->getThread(0));
+    core->getThread(0).setPcFromAddress(entryPoint);
+  }
 
   elf_end(e);
   return 0;
@@ -235,6 +247,60 @@ void BootSequence::addSchedule(Core *c, uint32_t address) {
 
 void BootSequence::addRun(unsigned numDoneSyscalls) {
   steps.push_back(new BootSequenceStepRun(numDoneSyscalls));
+}
+
+static std::vector<BootSequenceStep*>::iterator
+getPenultimateRunStep(std::vector<BootSequenceStep*>::iterator begin,
+                      std::vector<BootSequenceStep*>::iterator end)
+{
+  std::vector<BootSequenceStep*>::iterator it = end;
+  unsigned count = 0;
+  while (it != begin) {
+    --it;
+    if ((*it)->getType() == BootSequenceStep::RUN
+        && ++count == 2) {
+      return it;
+    }
+  }
+  return end;
+}
+
+void BootSequence::overrideEntryPoint(uint32_t address)
+{
+  std::vector<BootSequenceStep*> newSteps;
+  for (std::vector<BootSequenceStep*>::iterator it = steps.begin(),
+       e = steps.end(); it != e; ++it) {
+    newSteps.push_back(*it);
+    if ((*it)->getType() == BootSequenceStep::ELF) {
+      BootSequenceStepElf *step = static_cast<BootSequenceStepElf*>(*it);
+      step->setUseElfEntryPoint(false);
+      newSteps.push_back(new BootSequenceStepSchedule(step->getCore(), address));
+    }
+  }
+  std::swap(steps, newSteps);
+}
+
+void BootSequence::eraseAllButLastImage()
+{
+  std::vector<BootSequenceStep*>::iterator eraseTo =
+    getPenultimateRunStep(steps.begin(), steps.end());
+  if (eraseTo == steps.end())
+    return;
+  for (std::vector<BootSequenceStep*>::iterator it = steps.begin();
+       it != eraseTo; ++it) {
+    delete *it;
+  }
+  steps.erase(steps.begin(), eraseTo);
+}
+
+void BootSequence::setLoadImages(bool value)
+{
+  for (std::vector<BootSequenceStep*>::iterator it = steps.begin(),
+       e = steps.end(); it != e; ++it) {
+    if ((*it)->getType() == BootSequenceStep::ELF) {
+      static_cast<BootSequenceStepElf*>(*it)->setLoadImage(value);
+    }
+  }
 }
 
 int BootSequence::execute() {
