@@ -37,11 +37,6 @@ Tracer::PushLineState::~PushLineState()
   }
 }
 
-void Tracer::setSymbolInfo(std::auto_ptr<SymbolInfo> &si)
-{
-  symInfo = si;
-}
-
 void Tracer::setColour(bool enable)
 {
   colours = enable ? TerminalColours::ansi : TerminalColours::null;
@@ -109,8 +104,8 @@ void Tracer::printThreadPC()
   unsigned pc = line.thread->fromPc(line.thread->pc);
   const Core *core = &line.thread->getParent();
   const ElfSymbol *sym;
-  if (line.thread->isInRam() && symInfo.get() &&
-      (sym = symInfo->getFunctionSymbol(core, pc))) {
+  if (line.thread->isInRam() &&
+      (sym = symInfo.getFunctionSymbol(core, pc))) {
     *line.buf << sym->name;
     if (sym->value != pc)
       *line.buf << '+' << (pc - sym->value);
@@ -159,10 +154,9 @@ void Tracer::printOperand(CPRelOffset op)
   uint32_t address = cpValue + (op.getOffset() << 2);
   const Core *core = &line.thread->getParent();
   const ElfSymbol *sym, *cpSym;
-  if (symInfo.get() &&
-      (sym = symInfo->getDataSymbol(core, address)) &&
+  if ((sym = symInfo.getDataSymbol(core, address)) &&
       sym->value == address &&
-      (cpSym = symInfo->getGlobalSymbol(core, "_cp")) &&
+      (cpSym = symInfo.getGlobalSymbol(core, "_cp")) &&
       cpSym->value == cpValue) {
     *line.buf << sym->name;
     *line.buf << "(0x" << std::hex << address << ')';
@@ -177,10 +171,9 @@ void Tracer::printOperand(DPRelOffset op)
   uint32_t address = dpValue + (op.getOffset() << 2);
   const Core *core = &line.thread->getParent();
   const ElfSymbol *sym, *dpSym;
-  if (symInfo.get() &&
-      (sym = symInfo->getDataSymbol(core, address)) &&
+  if ((sym = symInfo.getDataSymbol(core, address)) &&
       sym->value == address &&
-      (dpSym = symInfo->getGlobalSymbol(core, "_dp")) &&
+      (dpSym = symInfo.getGlobalSymbol(core, "_dp")) &&
       dpSym->value == dpValue) {
     *line.buf << sym->name;
     *line.buf << "(0x" << std::hex << address << std::dec << ')';

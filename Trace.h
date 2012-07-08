@@ -97,7 +97,7 @@ private:
   std::ostringstream buf;
   std::ostringstream pendingBuf;
   LineState line;
-  std::auto_ptr<SymbolInfo> symInfo;
+  SymbolInfo symInfo;
   TerminalColours colours;
 
   static Tracer instance;
@@ -133,8 +133,7 @@ public:
 
   void setTracingEnabled(bool enable) { tracingEnabled = enable; }
   bool getTracingEnabled() const { return tracingEnabled; }
-  void setSymbolInfo(std::auto_ptr<SymbolInfo> &si);
-  SymbolInfo *getSymbolInfo() { return symInfo.get(); }
+  SymbolInfo *getSymbolInfo() { return &symInfo; }
   void setColour(bool enable);
 
   template<typename T0>

@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <gelf.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/relaxng.h>
@@ -35,60 +34,11 @@
 #include "registerAllPeripherals.h"
 #include "JIT.h"
 #include "Options.h"
-
-#define XCORE_ELF_MACHINE 0xB49E
+#include "BootSequence.h"
 
 const char configSchema[] = {
 #include "ConfigSchema.inc"
 };
-
-static void readSymbols(Elf *e, Elf_Scn *scn, const GElf_Shdr &shdr,
-                        unsigned low, unsigned high,
-                        std::auto_ptr<CoreSymbolInfo> &SI)
-{
-  Elf_Data *data = elf_getdata(scn, NULL);
-  if (data == NULL) {
-    return;
-  }
-  unsigned count = shdr.sh_size / shdr.sh_entsize;
-
-  CoreSymbolInfoBuilder builder;
-
-  for (unsigned i = 0; i < count; i++) {
-    GElf_Sym sym;
-    if (gelf_getsym(data, i, &sym) == NULL) {
-      continue;
-    }
-    if (sym.st_shndx == SHN_ABS)
-      continue;
-    if (sym.st_value < low || sym.st_value >= high)
-      continue;
-    builder.addSymbol(elf_strptr(e, shdr.sh_link, sym.st_name),
-                      sym.st_value,
-                      sym.st_info);
-  }
-  SI = builder.getSymbolInfo();
-}
-
-static void readSymbols(Elf *e, unsigned low, unsigned high,
-                        std::auto_ptr<CoreSymbolInfo> &SI)
-{
-  Elf_Scn *scn = NULL;
-  GElf_Shdr shdr;
-  while ((scn = elf_nextscn(e, scn)) != NULL) {
-    if (gelf_getshdr(scn, &shdr) == NULL) {
-      continue;
-    }
-    if (shdr.sh_type == SHT_SYMTAB) {
-      // Found the symbol table
-      break;
-    }
-  }
-  
-  if (scn != NULL) {
-    readSymbols(e, scn, shdr, low, high, SI);
-  }
-}
 
 static xmlNode *findChild(xmlNode *node, const char *name)
 {
@@ -110,78 +60,6 @@ static xmlAttr *findAttribute(xmlNode *node, const char *name)
       return child;
   }
   return 0;
-}
-
-static void readElf(const char *filename, const XEElfSector *elfSector,
-                    Core &core, std::auto_ptr<CoreSymbolInfo> &SI,
-                    std::map<Core*,uint32_t> &entryPoints)
-{
-  uint64_t ElfSize = elfSector->getElfSize();
-  const scoped_array<char> buf(new char[ElfSize]);
-  if (!elfSector->getElfData(buf.get())) {
-    std::cerr << "Error reading elf data from \"" << filename << "\"" << std::endl;
-    std::exit(1);
-  }
-
-  if (elf_version(EV_CURRENT) == EV_NONE) {
-    std::cerr << "ELF library intialisation failed: "
-              << elf_errmsg(-1) << std::endl;
-    std::exit(1);
-  }
-  Elf *e;
-  if ((e = elf_memory(buf.get(), ElfSize)) == NULL) {
-    std::cerr << "Error reading ELF: " << elf_errmsg(-1) << std::endl;
-    std::exit(1);
-  }
-  if (elf_kind(e) != ELF_K_ELF) {
-    std::cerr << filename << " is not an ELF object" << std::endl;
-    std::exit(1);
-  }
-  GElf_Ehdr ehdr;
-  if (gelf_getehdr(e, &ehdr) == NULL) {
-    std::cerr << "Reading ELF header failed: " << elf_errmsg(-1) << std::endl;
-    std::exit(1);
-  }
-  if (ehdr.e_machine != XCORE_ELF_MACHINE) {
-    std::cerr << "Not a XCore ELF" << std::endl;
-    std::exit(1);
-  }
-  if (ehdr.e_entry != 0) {
-    entryPoints.insert(std::make_pair(&core, (uint32_t)ehdr.e_entry));
-  }
-  unsigned num_phdrs = ehdr.e_phnum;
-  if (num_phdrs == 0) {
-    std::cerr << "No ELF program headers" << std::endl;
-    std::exit(1);
-  }
-  core.resetCaches();
-  uint32_t ram_base = core.getRamBase();
-  uint32_t ram_size = core.getRamSize();
-  for (unsigned i = 0; i < num_phdrs; i++) {
-    GElf_Phdr phdr;
-    if (gelf_getphdr(e, i, &phdr) == NULL) {
-      std::cerr << "Reading ELF program header " << i << " failed: " << elf_errmsg(-1) << std::endl;
-      std::exit(1);
-    }
-    if (phdr.p_filesz == 0) {
-      continue;
-    }
-    if (phdr.p_offset > ElfSize) {
-    	std::cerr << "Invalid offet in ELF program header" << i << std::endl;
-    	std::exit(1);
-    }
-    if (!core.isValidRamAddress(phdr.p_paddr) ||
-        !core.isValidRamAddress(phdr.p_paddr + phdr.p_memsz)) {
-      std::cerr << "Error data from ELF program header " << i;
-      std::cerr << " does not fit in memory" << std::endl;
-      std::exit(1);
-    }
-    core.writeMemory(phdr.p_paddr, &buf[phdr.p_offset], phdr.p_filesz);
-  }
-
-  readSymbols(e, ram_base, ram_base + ram_size, SI);
-
-  elf_end(e);
 }
 
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
@@ -458,48 +336,6 @@ readXE(XE &xe, const char *filename)
   return system;
 }
 
-static int
-runCores(SystemState &sys, const std::set<Core*> &cores,
-         const std::map<Core*,uint32_t> &entryPoints)
-{
-  for (std::set<Core*>::iterator it = cores.begin(), e = cores.end(); it != e;
-       ++it) {
-    Core *core = *it;
-    sys.schedule(core->getThread(0));
-    std::map<Core*,uint32_t>::const_iterator match;
-    if ((match = entryPoints.find(core)) != entryPoints.end()) {
-      uint32_t address = match->second;
-      if ((address & 1) == 0 && core->isValidAddress(address)) {
-        core->getThread(0).setPcFromAddress(address);
-      } else {
-        std::cout << "Warning: invalid ELF entry point 0x";
-        std::cout << std::hex << match->second << std::dec << "\n";
-      }
-    }
-  }
-  SyscallHandler::setDoneSyscallsRequired(cores.size());
-  return sys.run();
-}
-
-static int
-runCoreRoms(SystemState &system)
-{
-  unsigned numCores = 0;
-  for (SystemState::node_iterator outerIt = system.node_begin(),
-       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
-    Node &node = **outerIt;
-    for (Node::core_iterator innerIt = node.core_begin(),
-         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
-      Core &core = **innerIt;
-      system.schedule(core.getThread(0));
-      core.getThread(0).setPcFromAddress(core.romBase);
-      numCores++;
-    }
-  }
-  SyscallHandler::setDoneSyscallsRequired(numCores);
-  return system.run();
-}
-
 static bool
 checkPeripheralPorts(SystemState &sys, const PeripheralDescriptor *descriptor,
                      const Properties &properties)
@@ -577,17 +413,13 @@ loop(const Options &options)
     std::vector<uint8_t> rom;
     readRom(options.rom, rom);
     sys.setRom(&rom[0], 0xffffc000, rom.size());
-    return runCoreRoms(sys);
   }
 
   std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
   addToCoreMap(coreMap, *statePtr);
 
-  std::auto_ptr<SymbolInfo> SIAutoPtr(new SymbolInfo);
-  Tracer::get().setSymbolInfo(SIAutoPtr);
-  SymbolInfo *SI = Tracer::get().getSymbolInfo();
+  BootSequence bootSequence(sys);
 
-  std::map<Core*,uint32_t> entryPoints;
   std::set<Core*> gotoSectors;
   std::set<Core*> callSectors;
   for (std::vector<const XESector *>::const_iterator
@@ -607,33 +439,13 @@ loop(const Options &options)
         }
         if (gotoSectors.count(core)) {
           // Shouldn't happen.
-          return runCores(sys, gotoSectors, entryPoints);
+          break;
         }
         if (callSectors.count(core)) {
-          int status = runCores(sys, callSectors, entryPoints);
-          if (status != 0)
-            return status;
+          bootSequence.addRun(callSectors.size());
           callSectors.clear();
         }
-        std::auto_ptr<CoreSymbolInfo> CSI;
-        readElf(options.file, elfSector, *core, CSI, entryPoints);
-        SI->add(core, CSI);
-        // TODO check old instructions are cleared.
-
-        // Patch in syscall instruction at the syscall address.
-        if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(core, "_DoSyscall")) {
-          if (!core->setSyscallAddress(syscallSym->value)) {
-            std::cout << "Warning: invalid _DoSyscall address "
-            << std::hex << syscallSym->value << std::dec << "\n";
-          }
-        }
-        // Patch in exception instruction at the exception address
-        if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(core, "_DoException")) {
-          if (!core->setExceptionAddress(doExceptionSym->value)) {
-            std::cout << "Warning: invalid _DoException address "
-            << std::hex << doExceptionSym->value << std::dec << "\n";
-          }
-        }
+        bootSequence.addElf(core, elfSector);
       }
       break;
     case XESector::XE_SECTOR_CALL:
@@ -642,7 +454,7 @@ loop(const Options &options)
         static_cast<const XECallOrGotoSector*>(*it);
         if (!gotoSectors.empty()) {
           // Shouldn't happen.
-          return runCores(sys, gotoSectors, entryPoints);
+          break;
         }
         unsigned jtagIndex = callSector->getNode();
         unsigned coreNum = callSector->getCore();
@@ -653,9 +465,7 @@ loop(const Options &options)
           std::exit(1);
         }
         if (!callSectors.insert(core).second) {
-          int status = runCores(sys, callSectors, entryPoints);
-          if (status != 0)
-            return status;
+          bootSequence.addRun(callSectors.size());
           callSectors.clear();
           callSectors.insert(core);
         }
@@ -667,9 +477,7 @@ loop(const Options &options)
           static_cast<const XECallOrGotoSector*>(*it);
         if (!callSectors.empty()) {
           // Handle calls.
-          int status = runCores(sys, callSectors, entryPoints);
-          if (status != 0)
-            return status;
+          bootSequence.addRun(callSectors.size());
           callSectors.clear();
         }
         unsigned jtagIndex = gotoSector->getNode();
@@ -682,20 +490,19 @@ loop(const Options &options)
         }
         if (!gotoSectors.insert(core).second) {
           // Shouldn't happen.
-          return runCores(sys, gotoSectors, entryPoints);
+          break;
         }
       }
       break;
     }
   }
   if (!gotoSectors.empty()) {
-    return runCores(sys, gotoSectors, entryPoints);
-  }
-  if (!callSectors.empty()) {
+    bootSequence.addRun(gotoSectors.size());
+  } else if (!callSectors.empty()) {
     // Shouldn't happen.
-    return runCores(sys, callSectors, entryPoints);
+    bootSequence.addRun(callSectors.size());
   }
-  return 0;
+  return bootSequence.execute();
 }
 
 int

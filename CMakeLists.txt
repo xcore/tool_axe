@@ -33,6 +33,8 @@ add_executable(genHex
 add_executable(axe
   AccessSecondIterator.h
   BitManip.h
+  BootSequence.h
+  BootSequence.cpp
   Chanend.h
   Chanend.cpp
   ChanEndpoint.h
