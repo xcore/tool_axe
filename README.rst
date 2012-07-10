@@ -16,7 +16,6 @@ experimental and likely to contain bugs.
 Known Issues
 ====================
 
-* No simulation of the boot ROM.
 * No simulation of debug.
 * No support for configurable delays on ports / clocks.
 * Minimal support for reading and writing of pswitch / sswitch registers.
