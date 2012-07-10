@@ -684,7 +684,7 @@ public:
   void emitRegWriteBack();
   void emitUpdateExecutionFrequency();
   void emitForceYield();
-  void emitYieldIfTimeSliceExpired();
+  void emitYieldIfTimeSliceExpired(bool endTrace = true);
   void emitNormalReturn();
   void emitCheckEvents() const;
   void setInstruction(const Instruction &i) { inst = &i; }
@@ -821,11 +821,11 @@ void FunctionCodeEmitter::emitNextPc()
   std::cout << "(nextPc+0)";
 }
 
-void FunctionCodeEmitter::emitYieldIfTimeSliceExpired()
+void FunctionCodeEmitter::emitYieldIfTimeSliceExpired(bool endTrace)
 {
   std::cout << "if (THREAD.hasTimeSliceExpired()) {\n";
   std::cout << "  THREAD.schedule();\n";
-  if (!jit)
+  if (!jit && endTrace)
     emitTraceEnd(*inst);
   std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
@@ -1226,7 +1226,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
     FunctionCodeEmitter emitter(jit);
     emitter.setInstruction(inst);
     if (inst.getYieldBefore()) {
-      emitter.emitYieldIfTimeSliceExpired();
+      emitter.emitYieldIfTimeSliceExpired(false);
     }
     // Read operands.
     const std::vector<OpType> &operands = inst.getOperands();
