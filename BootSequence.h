@@ -7,6 +7,7 @@
 #define _BootSequence_h
 
 #include <vector>
+#include <stdint.h>
 
 class Core;
 class SystemState;

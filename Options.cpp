@@ -7,6 +7,7 @@
 #include "PeripheralRegistry.h"
 #include <iostream>
 #include <cstdlib>
+#include <cstring>
 
 Options::Options() :
   bootMode(BOOT_SIM),

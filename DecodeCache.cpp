@@ -6,6 +6,7 @@
 #include "DecodeCache.h"
 #include "Thread.h"
 #include "Trace.h"
+#include <cstring>
 
 DecodeCache::DecodeCache(uint32_t sz, uint32_t b, bool writable)
 {
