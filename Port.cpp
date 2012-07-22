@@ -38,16 +38,11 @@ Signal Port::getDataPortPinsValue() const
   return pinsInputValue;
 }
 
-uint32_t Port::getDataPortPinsValue(ticks_t time) const
-{
-  return getDataPortPinsValue().getValue(time);
-}
-
 Signal Port::getPinsValue() const {
-  if (!outputPort) {
-    return pinsInputValue;
+  if (outputPort) {
+    return getPinsOutputValue();
   }
-  return getPinsOutputValue();
+  return pinsInputValue;
 }
 
 bool Port::setCInUse(Thread &thread, bool val, ticks_t time)
@@ -58,6 +53,7 @@ bool Port::setCInUse(Thread &thread, bool val, ticks_t time)
     condition = COND_FULL;
     outputPort = false;
     buffered = false;
+    inverted = false;
     transferRegValid = false;
     timeRegValid = false;
     holdTransferReg = false;
@@ -108,20 +104,37 @@ setData(Thread &thread, uint32_t d, ticks_t time)
   return true;
 }
 
+bool Port::setPortInv(Thread &thread, bool value, ticks_t time)
+{
+  update(time);
+  updateOwner(thread);
+  if (inverted == value)
+    return true;
+  if (value && getPortWidth() != 1)
+    return false;
+  inverted = value;
+  // TODO inverting the port should only change the direction if we are actually
+  // driving the pins.
+  //if (outputPort || portType != DATAPORT) {
+    outputValue(getPinsOutputValue(), time);
+  //}
+  return true;
+}
+
 Signal Port::getPinsOutputValue() const
 {
   if (portType == READYPORT) {
     if (readyOutOf)
-      return Signal(readyOutOf->getReadyOutValue());
-    return Signal(0);
+      return getEffectiveValue(Signal(readyOutOf->getReadyOutValue()));
+    return getEffectiveValue(Signal(0));
   }
   if (portType == CLOCKPORT) {
-    return clock->getValue();
+    return getEffectiveValue(clock->getValue());
   }
   assert(portType == DATAPORT);
   if (!outputPort)
-    return Signal(0);
-  return Signal(shiftReg & portWidthMask());
+    return getEffectiveValue(Signal(0));
+  return getEffectiveValue(Signal(shiftReg & portWidthMask()));
 }
 
 void Port::
@@ -136,13 +149,14 @@ outputValue(Signal value, ticks_t time)
 void Port::
 handlePinsChange(Signal value, ticks_t time)
 {
+  Signal effectiveValue = getEffectiveValue(value);
   for (std::set<ClockBlock*>::iterator it = sourceOf.begin(),
        e = sourceOf.end(); it != e; ++it) {
-    (*it)->setValue(value, time);
+    (*it)->setValue(effectiveValue, time);
   }
   for (std::set<ClockBlock*>::iterator it = readyInOf.begin(),
        e = readyInOf.end(); it != e; ++it) {
-    (*it)->setReadyInValue(value, time);
+    (*it)->setReadyInValue(effectiveValue, time);
   }
   if (tracer)
     tracer->seePinsChange(value, time);
@@ -159,7 +173,7 @@ handleReadyOutChange(bool value, ticks_t time)
 {
   for (std::set<Port*>::iterator it = readyOutPorts.begin(),
        e = readyOutPorts.end(); it != e; ++it) {
-    (*it)->outputValue(value, time);
+    (*it)->outputValue(getEffectiveValue(value), time);
   }
 }
 
@@ -268,7 +282,7 @@ shouldRealignShiftRegister()
   if (timeRegValid)
     return !useReadyOut() && portCounter == timeReg;
   return condition != COND_FULL &&
-         valueMeetsCondition(getDataPortPinsValue(time));
+         valueMeetsCondition(getEffectiveDataPortInputPinsValue(time));
 }
 
 uint32_t Port::
@@ -349,7 +363,7 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
     if (!outputPort &&
         (!useReadyOut() || (readyOut && !timeRegValid)) &&
         (!useReadyIn() || clock->getReadyInValue(time) != 0)) {
-      uint32_t currentValue = getDataPortPinsValue(time);
+      uint32_t currentValue = getEffectiveDataPortInputPinsValue(time);
       shiftReg >>= getPortWidth();
       shiftReg |= currentValue << (getTransferWidth() - getPortWidth());
       validShiftRegEntries++;
@@ -653,7 +667,7 @@ peek(Thread &thread, ticks_t threadTime)
 {
   update(threadTime);
   updateOwner(thread);
-  return getPinsValue().getValue(threadTime);
+  return getEffectiveInputPinsValue().getValue(threadTime);
 }
 
 uint32_t Port::
@@ -716,6 +730,13 @@ bool Port::checkTransferWidth(uint32_t value)
   }
 }
 
+Signal Port::getEffectiveValue(Signal value) const
+{
+  if (inverted)
+    value.flipLeastSignificantBit();
+  return value;
+}
+
 void Port::setClkInitial(ClockBlock *c) {
   clock = c;
   clock->attachPort(this);
@@ -745,7 +766,7 @@ bool Port::setReady(Thread &thread, Port *p, ticks_t time)
   }
   readyOutOf = p;
   p->attachReadyOut(*this);
-  outputValue(p->getReadyOutValue(), time);
+  outputValue(getEffectiveValue(p->getReadyOutValue()), time);
   return true;
 }
 
@@ -870,7 +891,7 @@ void Port::scheduleUpdateIfNeededInputPort()
     }
     if ((!useReadyIn() || clock->getReadyInValue() != Signal(0)) &&
         (pausedIn || eventsPermitted() || (useReadyOut() && readyOut))) {
-      Signal inputSignal = getDataPortPinsValue();
+      Signal inputSignal = getEffectiveDataPortInputPinsValue();
       if (inputSignal.isClock() ||
           valueMeetsCondition(inputSignal.getValue(time))) {
         return scheduleUpdate((nextEdge + 1)->time);

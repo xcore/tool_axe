@@ -149,6 +149,12 @@ struct Signal {
     halfPeriod = 0;
     value = v;
   }
+  void flipLeastSignificantBit() {
+    if (halfPeriod == 0)
+      value ^= 1;
+    else
+      value += halfPeriod;
+  }
   uint32_t getHalfPeriod() const {
     return halfPeriod;
   }

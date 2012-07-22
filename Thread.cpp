@@ -333,12 +333,12 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
       static_cast<Port*>(res)->clearBuf(*this, time);
       break;
     }
-  case SETC_INV_NOINVERT:
-    // Do nothing for now. TODO
-    break;
   case SETC_INV_INVERT:
-    internalError(*this, __FILE__, __LINE__);
-    break;
+  case SETC_INV_NOINVERT:
+    if (res->getType() != RES_TYPE_PORT)
+      return false;
+    return static_cast<Port*>(res)->setPortInv(*this, val == SETC_INV_INVERT,
+                                               time);
   }
   return true;
 }

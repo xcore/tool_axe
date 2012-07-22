@@ -63,7 +63,7 @@ bool ClockBlock::setSource(Thread &thread, Port *p, ticks_t time)
   if (divide != 1)
     return false;
   p->update(time);
-  setValue(p->getPinsValue(), time);
+  setValue(p->getEffectiveInputPinsValue(), time);
   if (source)
     source->deregisterAsSourceOf(this);
   source = p;
@@ -133,7 +133,7 @@ bool ClockBlock::setReady(Thread &thread, Port *p, ticks_t time)
     readyIn->deregisterAsReadyInOf(this);
   readyIn = p;
   readyIn->registerAsReadyInOf(this);
-  readyInValue = readyIn->getPinsValue();
+  readyInValue = readyIn->getEffectiveInputPinsValue();
   seeChangeOnAttachedPorts(time);
   return true;
 }

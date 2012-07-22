@@ -89,6 +89,8 @@ private:
   bool outputPort;
   /// Is the port buffered?
   bool buffered;
+  /// Is the port inverted?
+  bool inverted;
   ReadyMode readyMode;
   MasterSlave masterSlave;
   PortType portType;
@@ -147,16 +149,34 @@ private:
   bool isValidPortShiftCount(uint32_t count) const;
   bool shouldRealignShiftRegister();
   bool checkTransferWidth(uint32_t value);
+  Signal getEffectiveValue(Signal value) const;
+  uint32_t getEffectiveValue(uint32_t value) const {
+    if (inverted)
+      value ^= 1;
+    return value;
+  }
+  Signal getPinsValue() const;
+  Signal getDataPortPinsValue() const;
+  Signal getEffectiveDataPortInputPinsValue() const {
+    return getEffectiveValue(getDataPortPinsValue());
+  }
+  uint32_t getEffectiveDataPortInputPinsValue(ticks_t time) const {
+    return getEffectiveDataPortInputPinsValue().getValue(time);
+  }
+  bool seeEventEnable(ticks_t time);
 public:
   Port();
   std::string getName() const;
-  Signal getPinsValue() const;
+  Signal getEffectiveInputPinsValue() const {
+    return getEffectiveValue(getPinsValue());
+  }
   /// Update the pin buffer with the change.
   void seePinsChange(const Signal &value, ticks_t time);
   bool setCInUse(Thread &thread, bool val, ticks_t time);
 
   bool setCondition(Thread &thread, Condition c, ticks_t time);
   bool setData(Thread &thread, uint32_t d, ticks_t time);
+  bool setPortInv(Thread &thread, bool value, ticks_t time);
 
   ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
   ResOpResult inpw(Thread &thread, uint32_t width, ticks_t time,
@@ -274,10 +294,6 @@ public:
     update(time);
     scheduleUpdateIfNeeded();
   }
-protected:
-  uint32_t getDataPortPinsValue(ticks_t time) const;
-  Signal getDataPortPinsValue() const;
-  bool seeEventEnable(ticks_t time);
 };
 
 #endif // _Port_h_
