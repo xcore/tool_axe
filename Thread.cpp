@@ -190,6 +190,8 @@ enum {
   SETC_RDY_NOREADY = 0x3007,
   SETC_RDY_STROBED = 0x300f,
   SETC_RDY_HANDSHAKE = 0x3017,
+  SETC_SDELAY_NOSDELAY = 0x4007,
+  SETC_SDELAY_SDELAY = 0x400f,
   SETC_PORT_DATAPORT = 0x5007,
   SETC_PORT_CLOCKPORT = 0x500f,
   SETC_PORT_READYPORT = 0x5017,
@@ -339,6 +341,16 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
       return false;
     return static_cast<Port*>(res)->setPortInv(*this, val == SETC_INV_INVERT,
                                                time);
+  case SETC_SDELAY_NOSDELAY:
+  case SETC_SDELAY_SDELAY:
+    {
+      if (res->getType() != RES_TYPE_PORT)
+        return false;
+      Edge::Type samplingEdge = (val == SETC_SDELAY_SDELAY) ? Edge::FALLING :
+                                                              Edge::RISING;
+      static_cast<Port*>(res)->setSamplingEdge(*this, samplingEdge, time);
+      break;
+    }
   }
   return true;
 }

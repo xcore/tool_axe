@@ -91,6 +91,8 @@ private:
   bool buffered;
   /// Is the port inverted?
   bool inverted;
+  /// The edge that the port samples data.
+  Edge::Type samplingEdge;
   ReadyMode readyMode;
   MasterSlave masterSlave;
   PortType portType;
@@ -177,6 +179,7 @@ public:
   bool setCondition(Thread &thread, Condition c, ticks_t time);
   bool setData(Thread &thread, uint32_t d, ticks_t time);
   bool setPortInv(Thread &thread, bool value, ticks_t time);
+  void setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time);
 
   ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
   ResOpResult inpw(Thread &thread, uint32_t width, ticks_t time,

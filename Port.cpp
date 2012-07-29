@@ -54,6 +54,7 @@ bool Port::setCInUse(Thread &thread, bool val, ticks_t time)
     outputPort = false;
     buffered = false;
     inverted = false;
+    samplingEdge = Edge::RISING;
     transferRegValid = false;
     timeRegValid = false;
     holdTransferReg = false;
@@ -119,6 +120,16 @@ bool Port::setPortInv(Thread &thread, bool value, ticks_t time)
     outputValue(getPinsOutputValue(), time);
   //}
   return true;
+}
+
+void Port::setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time)
+{
+  update(time);
+  updateOwner(thread);
+  if (samplingEdge == value)
+    return;
+  samplingEdge = value;
+  scheduleUpdateIfNeeded();
 }
 
 Signal Port::getPinsOutputValue() const
@@ -359,7 +370,8 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
       }
     }
     updateReadyOut(time);
-  } else {
+  }
+  if (edgeType == samplingEdge) {
     if (!outputPort &&
         (!useReadyOut() || (readyOut && !timeRegValid)) &&
         (!useReadyIn() || clock->getReadyInValue(time) != 0)) {
@@ -382,7 +394,7 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
           timestampReg = portCounter;
           transferRegValid = true;
           if (timeAndConditionMet()) {
-            // TODO should the be conditional on pausedIn || EventPermitted()?
+            // TODO should this be conditional on pausedIn || EventPermitted()?
             timeRegValid = false;
             if (pausedIn) {
               pausedIn->time = time;
@@ -876,13 +888,14 @@ void Port::scheduleUpdateIfNeededInputPort()
   if (nextEdge->type == Edge::RISING) {
     return scheduleUpdate(nextEdge->time);
   }
+  // Next edge is falling edge
   if (readyOut != nextReadyOut()) {
     return scheduleUpdate(nextEdge->time);
   }
   if (timeRegValid) {
     unsigned fallingEdges = fallingEdgesUntilTimeMet();
     unsigned edges = (fallingEdges - 1) * 2;
-    if (!useReadyOut())
+    if (!useReadyOut() && samplingEdge == Edge::RISING)
       edges++;
     return scheduleUpdate((nextEdge + edges)->time);
   } else {
@@ -894,7 +907,11 @@ void Port::scheduleUpdateIfNeededInputPort()
       Signal inputSignal = getEffectiveDataPortInputPinsValue();
       if (inputSignal.isClock() ||
           valueMeetsCondition(inputSignal.getValue(time))) {
-        return scheduleUpdate((nextEdge + 1)->time);
+        EdgeIterator nextSamplingEdge = nextEdge;
+        if (nextSamplingEdge->type != samplingEdge) {
+          ++nextSamplingEdge;
+        }
+        return scheduleUpdate(nextSamplingEdge->time);
       }
     }
   }
