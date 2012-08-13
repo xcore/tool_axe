@@ -35,9 +35,11 @@ loop:
 init_ksp:
   ldc r1, KERNEL_STACK_SIZE
   get r11, id
+  add r11, r11, 1
   mul r1, r1, r11
   ldaw r11, dp[kernel_stack]
   ldaw r11, r11[r1]
+  sub r11, r11, 4
   ldaw r1, sp[0]
   set sp, r11
   stw r1, sp[0]
@@ -56,7 +58,7 @@ init_thread:
 
 .align 128
 exception_handler:
-  kentsp 4
+  kentsp 3
   stw r11, sp[0]
   stw spc, sp[1]
   stw r0, sp[2]
@@ -92,7 +94,7 @@ skip_long_instruction:
   ldw r11, sp[0]
   ldw spc, sp[1]
   ldw r0, sp[2]
-  krestsp 4
+  krestsp 3
   kret
 
 .globl exception_expect

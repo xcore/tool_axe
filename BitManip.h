@@ -6,6 +6,21 @@
 #ifndef _BitManip_h_
 #define _BitManip_h_
 
+inline uint32_t extractBits(uint32_t value, unsigned shift, unsigned size)
+{
+  return (value >> shift) & ((1 << size) - 1);
+}
+
+inline uint32_t extractBitRange(uint32_t value, unsigned high, unsigned low)
+{
+  return extractBits(value, low, 1 + high - low);
+}
+
+inline uint32_t extractBit(uint32_t value, unsigned shift)
+{
+  return extractBits(value, shift, 1);
+}
+
 inline uint32_t countLeadingZeros(uint32_t x)
 {
 #ifdef __GNUC__

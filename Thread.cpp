@@ -172,6 +172,36 @@ void Thread::setPcFromAddress(uint32_t address)
 }
 
 enum {
+  SETC_MODE_INUSE = 0x0,
+  SETC_MODE_COND = 0x1,
+  SETC_MODE_IE_MODE = 0x2,
+  SETC_MODE_DRIVE = 0x3,
+  SETC_MODE_LONG = 0x7
+};
+
+const uint32_t SETC_MODE_SHIFT = 0x0;
+const uint32_t SETC_MODE_SIZE = 0x3;
+
+const uint32_t SETC_VALUE_SHIFT = 0x3;
+const uint32_t SETC_VALUE_SIZE = 0x9;
+
+enum {
+  SETC_LMODE_RUN = 0x0,
+  SETC_LMODE_MS = 0x1,
+  SETC_LMODE_BUF = 0x2,
+  SETC_LMODE_RDY = 0x3,
+  SETC_LMODE_SDELAY = 0x4,
+  SETC_LMODE_PORT = 0x5,
+  SETC_LMODE_INV = 0x6,
+  SETC_LMODE_PIN_DELAY = 0x7,
+  SETC_LMODE_FALL_DELAY = 0x8,
+  SETC_LMODE_RISE_DELAY = 0x9
+};
+
+const uint32_t SETC_LMODE_SHIFT = 0xc;
+const uint32_t SETC_LMODE_SIZE = 0x4;
+
+enum {
   SETC_INUSE_OFF = 0x0,
   SETC_INUSE_ON = 0x8,
   SETC_COND_FULL = 0x1,
@@ -270,6 +300,21 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
     return res->setCInUse(*this, val == SETC_INUSE_ON, time);
   if (!res->isInUse())
     return false;
+  if (extractBits(val, SETC_MODE_SHIFT, SETC_MODE_SIZE) == SETC_MODE_LONG) {
+    uint32_t field = extractBits(val, SETC_VALUE_SHIFT, SETC_VALUE_SIZE);
+    switch (extractBits(val, SETC_LMODE_SHIFT, SETC_LMODE_SIZE)) {
+    default: break;
+    case SETC_LMODE_PIN_DELAY:
+      if (res->getType() != RES_TYPE_PORT || field > 5)
+        return false;
+      return true;
+    case SETC_LMODE_FALL_DELAY:
+    case SETC_LMODE_RISE_DELAY:
+      if (res->getType() != RES_TYPE_CLKBLK)
+        return false;
+      return true;
+    }
+  }
   switch (val) {
   default:
     internalError(*this, __FILE__, __LINE__); // TODO

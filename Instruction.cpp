@@ -7,19 +7,14 @@
 #include "Core.h"
 #include <cassert>
 
-static inline uint32_t bits(uint32_t value, unsigned shift, unsigned size)
-{
-  return (value >> shift) & ((1 << size) - 1);
-}
-
 static inline uint32_t bitRange(uint32_t value, unsigned high, unsigned low)
 {
-  return bits(value, low, 1 + high - low);
+  return extractBitRange(value, high, low);
 }
 
 static inline uint32_t bit(uint32_t value, unsigned shift)
 {
-  return bits(value, shift, 1);
+  return extractBit(value, shift);
 }
 
 // Also tests for 2RUS
