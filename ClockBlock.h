@@ -44,6 +44,9 @@ public:
 
   bool setSource(Thread &thread, Port *p, ticks_t time);
 
+  bool setEdgeDelay(Thread &thread, Edge::Type type, unsigned val,
+                    ticks_t time);
+
   void setSourceRefClock(Thread &thread, ticks_t time);
 
   bool isFixedFrequency() const {

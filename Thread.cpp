@@ -289,6 +289,17 @@ getPortType(uint32_t val)
   }
 }
 
+static Edge::Type getEdgeTypeFromLMode(uint32_t val)
+{
+  switch (val) {
+  default: assert(0 && "Unexpected LMode");
+  case SETC_LMODE_RISE_DELAY:
+    return Edge::RISING;
+  case SETC_LMODE_FALL_DELAY:
+    return Edge::FALLING;
+  }
+}
+
 bool Thread::
 setC(ticks_t time, ResourceID resID, uint32_t val)
 {
@@ -301,18 +312,22 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
   if (!res->isInUse())
     return false;
   if (extractBits(val, SETC_MODE_SHIFT, SETC_MODE_SIZE) == SETC_MODE_LONG) {
-    uint32_t field = extractBits(val, SETC_VALUE_SHIFT, SETC_VALUE_SIZE);
-    switch (extractBits(val, SETC_LMODE_SHIFT, SETC_LMODE_SIZE)) {
+    uint32_t lmode = extractBits(val, SETC_LMODE_SHIFT, SETC_LMODE_SIZE);
+    uint32_t valField = extractBits(val, SETC_VALUE_SHIFT, SETC_VALUE_SIZE);
+    switch (lmode) {
     default: break;
     case SETC_LMODE_PIN_DELAY:
-      if (res->getType() != RES_TYPE_PORT || field > 5)
+      if (res->getType() != RES_TYPE_PORT || valField > 5)
         return false;
       return true;
     case SETC_LMODE_FALL_DELAY:
     case SETC_LMODE_RISE_DELAY:
-      if (res->getType() != RES_TYPE_CLKBLK)
-        return false;
-      return true;
+      if (res->getType() == RES_TYPE_CLKBLK) {
+        ClockBlock *clock = static_cast<ClockBlock*>(res);
+        return clock->setEdgeDelay(*this, getEdgeTypeFromLMode(lmode), valField,
+                                   time);
+      }
+      return false;
     }
   }
   switch (val) {

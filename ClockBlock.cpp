@@ -71,6 +71,15 @@ bool ClockBlock::setSource(Thread &thread, Port *p, ticks_t time)
   return true;
 }
 
+bool ClockBlock::
+setEdgeDelay(Thread &thread, Edge::Type type, unsigned val, ticks_t time)
+{
+  if (running)
+    return false;
+  // TODO handle new delay.
+  return true;
+}
+
 void ClockBlock::setSourceRefClock(Thread &thread, ticks_t time)
 {
   updateAttachedPorts(time);
