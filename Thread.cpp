@@ -317,9 +317,11 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
     switch (lmode) {
     default: break;
     case SETC_LMODE_PIN_DELAY:
-      if (res->getType() != RES_TYPE_PORT || valField > 5)
-        return false;
-      return true;
+      if (res->getType() == RES_TYPE_PORT) {
+        Port *port = static_cast<Port*>(res);
+        return port->setPinDelay(*this, valField, time);
+      }
+      return false;
     case SETC_LMODE_FALL_DELAY:
     case SETC_LMODE_RISE_DELAY:
       if (res->getType() == RES_TYPE_CLKBLK) {

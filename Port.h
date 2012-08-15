@@ -180,6 +180,7 @@ public:
   bool setData(Thread &thread, uint32_t d, ticks_t time);
   bool setPortInv(Thread &thread, bool value, ticks_t time);
   void setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time);
+  bool setPinDelay(Thread &thread, unsigned value, ticks_t time);
 
   ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
   ResOpResult inpw(Thread &thread, uint32_t width, ticks_t time,

@@ -132,6 +132,16 @@ void Port::setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time)
   scheduleUpdateIfNeeded();
 }
 
+bool Port::setPinDelay(Thread &thread, unsigned value, ticks_t time)
+{
+  update(time);
+  updateOwner(thread);
+  if (value > 5)
+    return false;
+  // TODO set pin delay
+  return true;
+}
+
 Signal Port::getPinsOutputValue() const
 {
   if (portType == READYPORT) {
