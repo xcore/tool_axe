@@ -15,4 +15,19 @@ public:
   virtual void seePinsChange(const Signal &value, ticks_t time) = 0;
 };
 
+/// Port interface which delgates seePinsChange calls to a member function of
+/// another class.
+template <class T>
+class PortInterfaceMemberFuncDelegate : public PortInterface {
+  T &obj;
+  void (T::*func)(const Signal &value, ticks_t time);
+public:
+  PortInterfaceMemberFuncDelegate(T &o, void (T::*f)(const Signal &value, ticks_t time)) :
+  obj(o),
+  func(f) {}
+  void seePinsChange(const Signal &value, ticks_t time) {
+    (obj.*func)(value, time);
+  }
+};
+
 #endif // _PortInterface_h_

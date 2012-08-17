@@ -23,27 +23,6 @@ class SPIFlash : public Peripheral {
   void seeMOSIChange(const Signal &value, ticks_t time);
   void seeSCLKChange(const Signal &value, ticks_t time);
   void seeSSChange(const Signal &value, ticks_t time);
-  struct MOSI : PortInterface {
-    MOSI(SPIFlash &p) : parent(p) {}
-    SPIFlash &parent;
-    void seePinsChange(const Signal &value, ticks_t time) {
-      parent.seeMOSIChange(value, time);
-    }
-  };
-  struct SCLK : PortInterface {
-    SCLK(SPIFlash &p) : parent(p) {}
-    SPIFlash &parent;
-    void seePinsChange(const Signal &value, ticks_t time) {
-      parent.seeSCLKChange(value, time);
-    }
-  };
-  struct SS : PortInterface {
-    SS(SPIFlash &p) : parent(p) {}
-    SPIFlash &parent;
-    void seePinsChange(const Signal &value, ticks_t time) {
-      parent.seeSSChange(value, time);
-    }
-  };
   enum State {
     WAIT_FOR_CMD,
     WAIT_FOR_ADDRESS,
@@ -54,9 +33,9 @@ class SPIFlash : public Peripheral {
   unsigned char *mem;
   unsigned memSize;
   Port *MISO;
-  MOSI MOSIProxy;
-  SCLK SCLKProxy;
-  SS SSProxy;
+  PortInterfaceMemberFuncDelegate<SPIFlash> MOSIProxy;
+  PortInterfaceMemberFuncDelegate<SPIFlash> SCLKProxy;
+  PortInterfaceMemberFuncDelegate<SPIFlash> SSProxy;
   PortHandleClockProxy MOSIHandleClock;
   PortHandleClockProxy SCLKHandleClock;
   PortHandleClockProxy SSHandleClock;
@@ -85,9 +64,9 @@ SPIFlash::SPIFlash(RunnableQueue &scheduler, Port *p) :
   mem(0),
   memSize(0),
   MISO(p),
-  MOSIProxy(*this),
-  SCLKProxy(*this),
-  SSProxy(*this),
+  MOSIProxy(*this, &SPIFlash::seeMOSIChange),
+  SCLKProxy(*this, &SPIFlash::seeSCLKChange),
+  SSProxy(*this, &SPIFlash::seeSSChange),
   MOSIHandleClock(scheduler, MOSIProxy),
   SCLKHandleClock(scheduler, SCLKProxy),
   SSHandleClock(scheduler, SSProxy),
