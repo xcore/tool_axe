@@ -36,11 +36,10 @@ class SPIFlash : public Peripheral {
   PortInterfaceMemberFuncDelegate<SPIFlash> MOSIProxy;
   PortInterfaceMemberFuncDelegate<SPIFlash> SCLKProxy;
   PortInterfaceMemberFuncDelegate<SPIFlash> SSProxy;
-  PortHandleClockProxy MOSIHandleClock;
   PortHandleClockProxy SCLKHandleClock;
   PortHandleClockProxy SSHandleClock;
   unsigned MISOValue;
-  unsigned MOSIValue;
+  Signal MOSIValue;
   unsigned SCLKValue;
   unsigned SSValue;
   uint8_t receiveReg;
@@ -55,7 +54,7 @@ public:
   SPIFlash(RunnableQueue &scheduler, Port *MISO);
   ~SPIFlash();
   void openFile(const std::string &s);
-  void connectMOSI(Port *p) { p->setLoopback(&MOSIHandleClock); }
+  void connectMOSI(Port *p) { p->setLoopback(&MOSIProxy); }
   void connectSCLK(Port *p) { p->setLoopback(&SCLKHandleClock); }
   void connectSS(Port *p) { p->setLoopback(&SSHandleClock); }
 };
@@ -67,7 +66,6 @@ SPIFlash::SPIFlash(RunnableQueue &scheduler, Port *p) :
   MOSIProxy(*this, &SPIFlash::seeMOSIChange),
   SCLKProxy(*this, &SPIFlash::seeSCLKChange),
   SSProxy(*this, &SPIFlash::seeSSChange),
-  MOSIHandleClock(scheduler, MOSIProxy),
   SCLKHandleClock(scheduler, SCLKProxy),
   SSHandleClock(scheduler, SSProxy),
   MISOValue(0),
@@ -96,7 +94,7 @@ void SPIFlash::reset()
 
 void SPIFlash::seeMOSIChange(const Signal &value, ticks_t time)
 {
-  MOSIValue = value.getValue(time);
+  MOSIValue = value;
 }
 
 void SPIFlash::seeSCLKChange(const Signal &value, ticks_t time)
@@ -109,7 +107,7 @@ void SPIFlash::seeSCLKChange(const Signal &value, ticks_t time)
     return;
   if (SCLKValue == 1) {
     // Rising edge.
-    receiveReg = (receiveReg << 1) | MOSIValue;
+    receiveReg = (receiveReg << 1) | MOSIValue.getValue(time);
     if (++receivedBits == 8) {
       switch (state) {
       default: assert(0 && "Unexpected state");
