@@ -12,6 +12,7 @@
 #include "AccessSecondIterator.h"
 
 class Peripheral;
+class PortAliases;
 class Properties;
 class SystemState;
 
@@ -46,7 +47,7 @@ public:
 class PeripheralDescriptor {
   std::string name;
   std::map<std::string,PropertyDescriptor> properties;
-  typedef Peripheral*(*CreateFunc)(SystemState &,
+  typedef Peripheral*(*CreateFunc)(SystemState &, const PortAliases &,
                                    const Properties &);
   CreateFunc create;
 public:
@@ -58,8 +59,9 @@ public:
   const std::string &getName() const { return name; }
   PropertyDescriptor &addProperty(const PropertyDescriptor &p);
   const PropertyDescriptor *getProperty(const std::string &name) const;
-  void createInstance(SystemState &system, const Properties &properties) const {
-    (*create)(system, properties);
+  void createInstance(SystemState &system, const PortAliases &portAliases,
+                      const Properties &properties) const {
+    (*create)(system, portAliases, properties);
   }
   typedef AccessSecondIterator<std::map<std::string,PropertyDescriptor>::iterator> iterator;
   typedef AccessSecondIterator<std::map<std::string,PropertyDescriptor>::const_iterator> const_iterator;

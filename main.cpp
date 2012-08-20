@@ -35,9 +35,14 @@
 #include "JIT.h"
 #include "Options.h"
 #include "BootSequence.h"
+#include "PortAliases.h"
 
 const char configSchema[] = {
 #include "ConfigSchema.inc"
+};
+
+const char XNSchema[] = {
+#include "XNSchema.inc"
 };
 
 static xmlNode *findChild(xmlNode *node, const char *name)
@@ -65,18 +70,19 @@ static xmlAttr *findAttribute(xmlNode *node, const char *name)
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
 static bool
-connectLoopbackPorts(SystemState &state, const LoopbackPorts &ports)
+connectLoopbackPorts(SystemState &state, const PortAliases &portAliases,
+                     const LoopbackPorts &ports)
 {
   for (LoopbackPorts::const_iterator it = ports.begin(), e = ports.end();
        it != e; ++it) {
-    Port *first = it->first.lookup(state);
+    Port *first = it->first.lookup(state, portAliases);
     if (!first) {
       std::cerr << "Error: Invalid port ";
       it->first.dump(std::cerr);
       std::cerr << '\n';
       return false;
     }
-    Port *second = it->second.lookup(state);
+    Port *second = it->second.lookup(state, portAliases);
     if (!second) {
       std::cerr << "Error: Invalid port ";
       it->second.dump(std::cerr);
@@ -204,6 +210,21 @@ lookupNodeChecked(const std::map<long,Node*> &nodeNumberMap, unsigned nodeID)
   return it->second;
 }
 
+static bool
+checkDocAgainstSchema(xmlDoc *doc, const char *schemaData, size_t schemaSize)
+{
+  xmlRelaxNGParserCtxtPtr schemaContext =
+    xmlRelaxNGNewMemParserCtxt(schemaData, schemaSize);
+  xmlRelaxNGPtr schema = xmlRelaxNGParse(schemaContext);
+  xmlRelaxNGValidCtxtPtr validationContext =
+    xmlRelaxNGNewValidCtxt(schema);
+  bool isValid = xmlRelaxNGValidateDoc(validationContext, doc) == 0;
+  xmlRelaxNGFreeValidCtxt(validationContext);
+  xmlRelaxNGFree(schema);
+  xmlRelaxNGFreeParserCtxt(schemaContext);
+  return isValid;
+}
+
 static inline std::auto_ptr<SystemState>
 createSystemFromConfig(const char *filename, const XESector *configSector)
 {
@@ -220,23 +241,10 @@ createSystemFromConfig(const char *filename, const XESector *configSector)
   length -= 8;
   buf[length] = '\0';
   
-  /*
-   * this initialize the library and check potential ABI mismatches
-   * between the version it was compiled for and the actual shared
-   * library used.
-   */
-  LIBXML_TEST_VERSION
-  
   xmlDoc *doc = xmlReadDoc((xmlChar*)buf.get(), "config.xml", NULL, 0);
 
-  xmlRelaxNGParserCtxtPtr schemaContext =
-    xmlRelaxNGNewMemParserCtxt(configSchema, sizeof(configSchema));
-  xmlRelaxNGPtr schema = xmlRelaxNGParse(schemaContext);
-  xmlRelaxNGValidCtxtPtr validationContext =
-    xmlRelaxNGNewValidCtxt(schema);
-  if (xmlRelaxNGValidateDoc(validationContext, doc) != 0) {
+  if (!checkDocAgainstSchema(doc, configSchema, sizeof(configSchema)))
     std::exit(1);
-  }
 
   xmlNode *root = xmlDocGetRootElement(doc);
   xmlNode *system = findChild(root, "System");
@@ -287,7 +295,6 @@ createSystemFromConfig(const char *filename, const XESector *configSector)
   }
   systemState->finalize();
   xmlFreeDoc(doc);
-  xmlCleanupParser();
   return systemState;
 }
 
@@ -337,7 +344,8 @@ readXE(XE &xe, const char *filename)
 }
 
 static bool
-checkPeripheralPorts(SystemState &sys, const PeripheralDescriptor *descriptor,
+checkPeripheralPorts(SystemState &sys, const PortAliases &portAliases,
+                     const PeripheralDescriptor *descriptor,
                      const Properties &properties)
 {
   for (PeripheralDescriptor::const_iterator it = descriptor->properties_begin(),
@@ -348,7 +356,7 @@ checkPeripheralPorts(SystemState &sys, const PeripheralDescriptor *descriptor,
     if (!property)
       continue;
     const PortArg &portArg = property->getAsPort();
-    if (!portArg.lookup(sys)) {
+    if (!portArg.lookup(sys, portAliases)) {
       std::cerr << "Error: Invalid port ";
       portArg.dump(std::cerr);
       std::cerr << '\n';
@@ -403,14 +411,84 @@ adjustForBootMode(const Options &options, SystemState &sys,
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
   PeripheralDescriptorWithPropertiesVector;
 
+static void readPortAliasesFromCore(PortAliases &aliases, xmlNode *core)
+{
+  std::string reference((char*)findAttribute(core, "Reference")->children->content);
+  
+  for (xmlNode *port = core->children; port; port = port->next) {
+    if (port->type != XML_ELEMENT_NODE ||
+        strcmp("Port", (char*)port->name) != 0)
+      continue;
+    std::string location((char*)findAttribute(port, "Location")->children->content);
+    std::string name((char*)findAttribute(port, "Name")->children->content);
+    aliases.add(name, reference, location);
+  }
+}
+
+static void readPortAliasesFromNodes(PortAliases &aliases, xmlNode *nodes)
+{
+  for (xmlNode *node = nodes->children; node; node = node->next) {
+    if (node->type != XML_ELEMENT_NODE ||
+        strcmp("Node", (char*)node->name) != 0)
+      continue;
+    for (xmlNode *core = node->children; core; core = core->next) {
+      if (core->type != XML_ELEMENT_NODE ||
+          strcmp("Core", (char*)core->name) != 0)
+        continue;
+      readPortAliasesFromCore(aliases, core);
+    }
+  }
+}
+
+static void readPortAliases(PortAliases &aliases, xmlNode *root) {
+  xmlNode *packages = findChild(root, "Packages");
+  for (xmlNode *child = packages->children; child; child = child->next) {
+    if (child->type != XML_ELEMENT_NODE ||
+        strcmp("Package", (char*)child->name) != 0)
+      continue;
+    readPortAliasesFromNodes(aliases, findChild(child, "Nodes"));
+  }
+}
+
+static void
+readPortAliases(PortAliases &aliases, XE &xe, const std::string &filename)
+{
+  const XESector *XNSector = xe.getXNSector();
+  if (!XNSector)
+    return;
+  uint64_t length = XNSector->getLength();
+  const scoped_array<char> buf(new char[length + 1]);
+  if (!XNSector->getData(buf.get())) {
+    std::cerr << "Error reading XN from \"" << filename << "\"" << std::endl;
+    std::exit(1);
+  }
+  if (length < 8) {
+    std::cerr << "Error unexpected XN sector length" << std::endl;
+    std::exit(1);
+  }
+  length -= 8;
+  buf[length] = '\0';
+  
+  xmlDoc *doc = xmlReadDoc((xmlChar*)buf.get(), "platform_def.xn", NULL, 0);
+  
+  if (!checkDocAgainstSchema(doc, XNSchema, sizeof(XNSchema)))
+    std::exit(1);
+
+  readPortAliases(aliases, xmlDocGetRootElement(doc));
+  xmlFreeDoc(doc);
+}
+
 int
 loop(const Options &options)
 {
   XE xe(options.file);
   std::auto_ptr<SystemState> statePtr = readXE(xe, options.file);
+  PortAliases portAliases;
+  readPortAliases(portAliases, xe, options.file);
+  
   SystemState &sys = *statePtr;
 
-  if (!connectLoopbackPorts(sys, options.loopbackPorts)) {
+  if (!connectLoopbackPorts(sys, portAliases, options.loopbackPorts)) {
     std::exit(1);
   }
 
@@ -418,10 +496,10 @@ loop(const Options &options)
     options.peripherals;
   for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
        e = peripherals.end(); it != e; ++it) {
-    if (!checkPeripheralPorts(sys, it->first, it->second)) {
+    if (!checkPeripheralPorts(sys, portAliases, it->first, it->second)) {
       std::exit(1);
     }
-    it->first->createInstance(sys, it->second);
+    it->first->createInstance(sys, portAliases, it->second);
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;
@@ -532,6 +610,13 @@ loop(const Options &options)
 
 int
 main(int argc, char **argv) {
+  /*
+   * this initialize the library and check potential ABI mismatches
+   * between the version it was compiled for and the actual shared
+   * library used.
+   */
+  LIBXML_TEST_VERSION
+
   registerAllPeripherals();
   Options options;
   options.parse(argc, argv);
@@ -543,5 +628,7 @@ main(int argc, char **argv) {
   if (options.tracing) {
     Tracer::get().setTracingEnabled(true);
   }
-  return loop(options);
+  int retval = loop(options);
+  xmlCleanupParser();
+  return retval;
 }

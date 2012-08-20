@@ -1,0 +1,193 @@
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <start>
+    <element name="Network" ns="http://www.xmos.com">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <optional>
+          <ref name="Packages"/>
+        </optional>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name ns="">Packages</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </start>
+
+  <define name="Packages">
+    <element name="Packages">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <oneOrMore>
+          <ref name="Package"/>
+        </oneOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Package</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Package">
+    <element name="Package">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <oneOrMore>
+          <ref name="Nodes"/>
+        </oneOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Nodes</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Nodes">
+    <element name="Nodes">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <oneOrMore>
+          <ref name="Node"/>
+        </oneOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Node</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Node">
+    <element name="Node">
+      <ref name="anyAttributes"/>
+      <interleave>
+        <oneOrMore>
+          <ref name="Core"/>
+        </oneOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Core</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Core">
+    <element name="Core">
+      <attribute name="Reference">
+        <ref name="identifier"/>
+      </attribute>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>Reference</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <interleave>
+        <zeroOrMore>
+          <ref name="Port"/>
+        </zeroOrMore>
+        <zeroOrMore>
+          <element>
+            <anyName>
+              <except>
+                <name>Port</name>
+              </except>
+            </anyName>
+            <ref name="anyContent"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+
+  <define name="Port">
+    <element name="Port">
+      <attribute name="Location">
+        <ref name="identifier"/>
+      </attribute>
+      <attribute name="Name">
+        <ref name="identifier"/>
+      </attribute>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>Location</name>
+              <name>Name</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <ref name="anyElements"/>
+    </element>
+  </define>
+
+  <define name="anyElements">
+    <zeroOrMore>
+      <ref name="anyElement"/>
+    </zeroOrMore>
+  </define>
+
+  <define name="anyElement">
+    <element>
+      <anyName/>
+      <ref name="anyContent"/>
+    </element>
+  </define>
+
+  <define name="anyAttributes">
+    <zeroOrMore>
+      <attribute>
+        <anyName/>
+      </attribute>
+    </zeroOrMore>
+  </define>
+
+  <define name="anyContent">
+    <ref name="anyElements"/>
+    <ref name="anyAttributes"/>
+    <text/>
+  </define>
+
+  <define name="identifier">
+    <data type="string">
+      <param name="pattern">[_\[\]\.0-9a-zA-Z]+</param>
+    </data>
+  </define>
+</grammar>

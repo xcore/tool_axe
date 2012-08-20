@@ -84,6 +84,8 @@ add_executable(axe
   Property.cpp
   Port.h
   Port.cpp
+  PortAliases.h
+  PortAliases.cpp
   PortArg.h
   PortArg.cpp
   PortInterface.h
@@ -134,8 +136,10 @@ add_executable(axe
   WaveformTracer.cpp
   XE.h
   XE.cpp
+  XNSchema.rng
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc
+  ${AXE_BINARY_DIR}/XNSchema.inc
   ${AXE_BINARY_DIR}/InstructionBitcode.inc
   )
 
@@ -183,6 +187,11 @@ add_custom_command(
  OUTPUT ${AXE_BINARY_DIR}/ConfigSchema.inc
  COMMAND ${GENHEX_EXE} ${AXE_SOURCE_DIR}/ConfigSchema.rng ${AXE_BINARY_DIR}/ConfigSchema.inc
  DEPENDS genHex ConfigSchema.rng
+ )
+add_custom_command(
+ OUTPUT ${AXE_BINARY_DIR}/XNSchema.inc
+ COMMAND ${GENHEX_EXE} ${AXE_SOURCE_DIR}/XNSchema.rng ${AXE_BINARY_DIR}/XNSchema.inc
+ DEPENDS genHex XNSchema.rng
  )
 
 if(COMPILER_IS_GCC_COMPATIBLE)

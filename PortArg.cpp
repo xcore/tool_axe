@@ -10,6 +10,7 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
+#include "PortAliases.h"
 
 bool PortArg::parse(const std::string &s, PortArg &arg)
 {
@@ -61,7 +62,8 @@ static Core *findMatchingCore(const std::string &s, SystemState &system)
   return 0;
 }
 
-Port *PortArg::lookup(SystemState &system) const
+static Port *
+lookupAux(SystemState &system, const std::string &core, const std::string &port)
 {
   Core *c = findMatchingCore(core, system);
   if (!c)
@@ -73,6 +75,16 @@ Port *PortArg::lookup(SystemState &system) const
   if (!res || res->getType() != RES_TYPE_PORT)
     return 0;
   return static_cast<Port*>(res);
+}
+
+Port *PortArg::lookup(SystemState &system, const PortAliases &portAliases) const
+{
+  if (core.empty()) {
+    std::string actualCore, actualPort;
+    if (portAliases.lookup(port, actualCore, actualPort))
+      return lookupAux(system, actualCore, actualPort);
+  }
+  return lookupAux(system, core, port);
 }
 
 void PortArg::dump(std::ostream &s) const

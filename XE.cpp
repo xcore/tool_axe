@@ -70,18 +70,15 @@ XE::~XE()
   }
 }
 
-const XESector *XE::getConfigSector() const
+const XESector *XE::getSector(XESector::XBSectorType type) const
 {
   for (std::vector<const XESector *>::const_iterator it = sectors.begin(),
        end = sectors.end(); it != end; ++it) {
-    switch((*it)->getType()) {
-    case XESector::XE_SECTOR_CONFIG:
+    if ((*it)->getType() == type)
       return *it;
-    }
   }
   return 0;
 }
-
 
 uint8_t XE::ReadU8()
 {

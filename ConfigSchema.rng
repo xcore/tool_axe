@@ -218,6 +218,7 @@
   <define name="anyContent">
     <ref name="anyElements"/>
     <ref name="anyAttributes"/>
+    <text/>
   </define>
 
   <define name="numberAnyBase">

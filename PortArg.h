@@ -11,6 +11,7 @@
 
 class Port;
 class SystemState;
+class PortAliases;
 
 class PortArg {
   std::string core;
@@ -19,7 +20,7 @@ public:
   PortArg() {}
   PortArg(const std::string &c, const std::string &p) : core(c), port(p) {}
   static bool parse(const std::string &s, PortArg &arg);
-  Port *lookup(SystemState &system) const;
+  Port *lookup(SystemState &system, const PortAliases &portAliases) const;
   void dump(std::ostream &s) const;
 };
 

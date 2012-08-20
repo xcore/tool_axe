@@ -180,12 +180,13 @@ void SPIFlash::openFile(const std::string &s)
 }
 
 static Peripheral *
-createSPIFlash(SystemState &system, const Properties &properties)
+createSPIFlash(SystemState &system, const PortAliases &portAliases,
+               const Properties &properties)
 {
-  Port *MISO = properties.get("miso")->getAsPort().lookup(system);
-  Port *MOSI = properties.get("mosi")->getAsPort().lookup(system);
-  Port *SCLK = properties.get("sclk")->getAsPort().lookup(system);
-  Port *SS = properties.get("ss")->getAsPort().lookup(system);
+  Port *MISO = properties.get("miso")->getAsPort().lookup(system, portAliases);
+  Port *MOSI = properties.get("mosi")->getAsPort().lookup(system, portAliases);
+  Port *SCLK = properties.get("sclk")->getAsPort().lookup(system, portAliases);
+  Port *SS = properties.get("ss")->getAsPort().lookup(system, portAliases);
   std::string file = properties.get("filename")->getAsString();
   SPIFlash *p = new SPIFlash(system.getScheduler(), MISO);
   p->openFile(file);

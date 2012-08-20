@@ -154,7 +154,8 @@ void UartRx::run(ticks_t time)
 }
 
 static Peripheral *
-createUartRx(SystemState &system, const Properties &properties)
+createUartRx(SystemState &system, const PortAliases &portAliases,
+             const Properties &properties)
 {
   int32_t bitrate = DEFAULT_BIT_RATE;
   if (const Property *p = properties.get("bitrate"))
@@ -162,7 +163,7 @@ createUartRx(SystemState &system, const Properties &properties)
   ticks_t bitTime = (CYCLES_PER_TICK*100000000)/bitrate;
   UartRx *p = new UartRx(system.getScheduler(), bitTime) ;
   PortArg portArg = properties.get("port")->getAsPort();
-  Port *port = portArg.lookup(system);
+  Port *port = portArg.lookup(system, portAliases);
   port->setLoopback(p);
   return p;
 }

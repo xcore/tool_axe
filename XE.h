@@ -20,6 +20,7 @@ public:
     XE_SECTOR_CONFIG = 3,
     XE_SECTOR_GOTO = 5,
     XE_SECTOR_CALL = 6,
+    XE_SECTOR_XN = 8,
     XE_SECTOR_LAST = 0x5555,
   };
 private:
@@ -65,11 +66,33 @@ public:
 };
 
 class XE {
+  
+private:
+  uint16_t version;
+  std::ifstream s;
+  std::vector<const XESector *>sectors;
+  bool error;
+  
+  uint8_t ReadU8();
+  uint16_t ReadU16();
+  uint32_t ReadU32();
+  uint64_t ReadU64();
+  bool ReadHeader();
+  const XESector *getSector(XESector::XBSectorType type) const;
+  
+  friend class XESector;
+  friend class XEElfSector;
+  friend class XECallOrGotoSector;
 public:
   XE(const char *filename);
   ~XE();
   const std::vector<const XESector *> &getSectors() { return sectors; }
-  const XESector *getConfigSector() const;
+  const XESector *getConfigSector() const {
+    return getSector(XESector::XE_SECTOR_CONFIG);
+  }
+  const XESector *getXNSector() const {
+    return getSector(XESector::XE_SECTOR_XN);
+  }
   bool operator!() const {
     return error;
   }
@@ -77,22 +100,6 @@ public:
   void close() {
     s.close();
   }
-
-private:
-  uint16_t version;
-  std::ifstream s;
-  std::vector<const XESector *>sectors;
-  bool error;
-
-  uint8_t ReadU8();
-  uint16_t ReadU16();
-  uint32_t ReadU32();
-  uint64_t ReadU64();
-  bool ReadHeader();
-
-  friend class XESector;
-  friend class XEElfSector;
-  friend class XECallOrGotoSector;
 };
 
 #endif //_XE_h_
