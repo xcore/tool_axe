@@ -241,7 +241,7 @@ createSystemFromConfig(const char *filename, const XESector *configSector)
   length -= 8;
   buf[length] = '\0';
   
-  xmlDoc *doc = xmlReadDoc((xmlChar*)buf.get(), "config.xml", NULL, 0);
+  xmlDoc *doc = xmlReadDoc(BAD_CAST buf.get(), "config.xml", NULL, 0);
 
   if (!checkDocAgainstSchema(doc, configSchema, sizeof(configSchema)))
     std::exit(1);
@@ -469,7 +469,7 @@ readPortAliases(PortAliases &aliases, XE &xe, const std::string &filename)
   length -= 8;
   buf[length] = '\0';
   
-  xmlDoc *doc = xmlReadDoc((xmlChar*)buf.get(), "platform_def.xn", NULL, 0);
+  xmlDoc *doc = xmlReadDoc(BAD_CAST buf.get(), "platform_def.xn", NULL, 0);
   
   if (!checkDocAgainstSchema(doc, XNSchema, sizeof(XNSchema)))
     std::exit(1);
