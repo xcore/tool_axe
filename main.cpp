@@ -101,7 +101,6 @@ static void connectWaveformTracer(Core &core, WaveformTracer &waveformTracer)
        it != e; ++it) {
     waveformTracer.add(core.getCoreName(), *it);
   }
-  waveformTracer.finalizePorts();
 }
 
 static void
@@ -116,6 +115,7 @@ connectWaveformTracer(SystemState &system, WaveformTracer &waveformTracer)
       connectWaveformTracer(core, waveformTracer);
     }
   }
+  waveformTracer.finalizePorts();
 }
 
 static long readNumberAttribute(xmlNode *node, const char *name)
