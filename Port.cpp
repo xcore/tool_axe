@@ -170,14 +170,16 @@ outputValue(Signal value, ticks_t time)
 void Port::
 handlePinsChange(Signal value, ticks_t time)
 {
-  Signal effectiveValue = getEffectiveValue(value);
-  for (std::set<ClockBlock*>::iterator it = sourceOf.begin(),
-       e = sourceOf.end(); it != e; ++it) {
-    (*it)->setValue(effectiveValue, time);
-  }
-  for (std::set<ClockBlock*>::iterator it = readyInOf.begin(),
-       e = readyInOf.end(); it != e; ++it) {
-    (*it)->setReadyInValue(effectiveValue, time);
+  if (isInUse()) {
+    Signal effectiveValue = getEffectiveValue(value);
+    for (std::set<ClockBlock*>::iterator it = sourceOf.begin(),
+         e = sourceOf.end(); it != e; ++it) {
+      (*it)->setValue(effectiveValue, time);
+    }
+    for (std::set<ClockBlock*>::iterator it = readyInOf.begin(),
+         e = readyInOf.end(); it != e; ++it) {
+      (*it)->setReadyInValue(effectiveValue, time);
+    }
   }
   if (tracer)
     tracer->seePinsChange(value, time);
@@ -203,7 +205,7 @@ seePinsChange(const Signal &value, ticks_t time)
 {
   update(time);
   pinsInputValue = value;
-  if (!isInUse() || outputPort)
+  if (outputPort)
     return;
   handlePinsChange(value, time);
   scheduleUpdateIfNeeded();
