@@ -48,6 +48,8 @@ add_executable(axe
   CRC.h
   DecodeCache.h
   DecodeCache.cpp
+  EthernetPhy.h
+  EthernetPhy.cpp
   Exceptions.h
   Exceptions.cpp
   Instruction.h
@@ -70,6 +72,9 @@ add_executable(axe
   Lock.cpp
   Lock.h
   main.cpp
+  NetworkLink.h
+  NetworkLink.cpp
+  NetworkLinkTap.cpp
   Node.h
   Node.cpp
   Options.h

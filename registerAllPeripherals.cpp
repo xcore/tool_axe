@@ -7,10 +7,12 @@
 #include "PeripheralRegistry.h"
 #include "UartRx.h"
 #include "SPIFlash.h"
+#include "EthernetPhy.h"
 #include "PeripheralDescriptor.h"
 
 void registerAllPeripherals()
 {
   PeripheralRegistry::add(getPeripheralDescriptorUartRx());
   PeripheralRegistry::add(getPeripheralDescriptorSPIFlash());
+  PeripheralRegistry::add(getPeripheralDescriptorEthernetPhy());
 }
