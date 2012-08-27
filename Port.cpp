@@ -395,6 +395,9 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
         validShiftRegEntries = shiftRegEntries;
         transferRegValid = false;
         timeRegValid = false;
+        if (isBuffered()) {
+          condition = COND_FULL;
+        }
       }
       if (validShiftRegEntries == portShiftCount &&
           (!useReadyOut() || !transferRegValid ||
@@ -415,10 +418,6 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
             }
             if (eventsPermitted()) {
               event(time);
-            }
-            if (isBuffered()) {
-              // TODO is this right?
-              condition = COND_FULL;
             }
           }
         }
