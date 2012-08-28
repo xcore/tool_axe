@@ -1346,9 +1346,11 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
                 break;
               case 0xd:
                 DECODE_L2RUS(OUTPW_l2rus, high, low);
+                OP(2) = bitpValue(OP(2));
                 break;
               case 0xe:
                 DECODE_L2RUS(INPW_l2rus, high, low);
+                OP(2) = bitpValue(OP(2));
                 break;
             }
           }
