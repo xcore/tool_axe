@@ -19,6 +19,8 @@
 const uint32_t ethernetPhyHalfPeriod = CYCLES_PER_TICK * 2;
 const unsigned interframeGap = (12 * 8) / 4; // Time to transmit 12 bytes.
 const uint32_t CRC32Poly = 0xEDB88320;
+/// Minimum frame size (including CRC).
+const unsigned minFrameSize = 64;
 
 class EthernetPhyTx {
   void seeTXDChange(const Signal &value, ticks_t time);
@@ -42,6 +44,7 @@ class EthernetPhyTx {
   uint8_t prevNibble;
 
   void reset();
+  bool transmitFrame();
 public:
   EthernetPhyTx(RunnableQueue &sched, Port *MISO);
   void setLink(NetworkLink *value) { link = value; }
@@ -75,6 +78,28 @@ void EthernetPhyTx::reset()
 }
 
 #include <iostream>
+
+bool EthernetPhyTx::transmitFrame()
+{
+  if (frame.size() < minFrameSize)
+    return false;
+
+  // Check CRC.
+  uint32_t crc = 0;
+  for (unsigned i = 0, e = frame.size(); i != e; ++i) {
+    uint8_t data = frame[i];
+    if (i < 4)
+      data = ~data;
+    crc = crc8(crc, data, CRC32Poly);
+  }
+  crc = ~crc;
+  if (crc != 0) {
+    return false;
+  }
+  
+  link->transmitFrame(&frame[0], frame.size() - 4);
+  return true;
+}
 
 void EthernetPhyTx::seeTXDChange(const Signal &value, ticks_t time)
 {
@@ -116,8 +141,8 @@ void EthernetPhyTx::clock(ticks_t time)
         }
       } else {
         // End of frame.
-        if (!hadError && !frame.empty()) {
-          link->transmitFrame(&frame[0], frame.size());
+        if (!hadError) {
+          transmitFrame();
         }
         reset();
       }
@@ -194,7 +219,7 @@ bool EthernetPhyRx::receiveFrame()
 {
   if (!link->receiveFrame(frame, frameSize))
     return false;
-  const unsigned minSize = 64 - 4;
+  const unsigned minSize = minFrameSize - 4;
   if (frameSize < minSize) {
     std::memset(&frame[frameSize], 0, minSize - frameSize);
     frameSize = minSize;
