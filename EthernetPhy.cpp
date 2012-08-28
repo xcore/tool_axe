@@ -85,12 +85,9 @@ bool EthernetPhyTx::transmitFrame()
     return false;
 
   // Check CRC.
-  uint32_t crc = 0;
+  uint32_t crc = 0x9226F562;
   for (unsigned i = 0, e = frame.size(); i != e; ++i) {
-    uint8_t data = frame[i];
-    if (i < 4)
-      data = ~data;
-    crc = crc8(crc, data, CRC32Poly);
+    crc = crc8(crc, frame[i], CRC32Poly);
   }
   crc = ~crc;
   if (crc != 0) {
@@ -199,12 +196,11 @@ EthernetPhyRx::EthernetPhyRx(Port *rxclk, Port *rxd, Port *rxdv, Port *rxer) :
 
 void EthernetPhyRx::appendCRC32()
 {
-  uint32_t crc = 0;
+  // Initializing the CRC with 0x9226F562 is equivalent to initializing the CRC
+  // with 0 and inverting the first 4 bytes.
+  uint32_t crc = 0x9226F562;
   for (unsigned i = 0; i < frameSize; i++) {
-    uint8_t data = frame[i];
-    if (i < 4)
-      data = ~data;
-    crc = crc8(crc, data, CRC32Poly);
+    crc = crc8(crc, frame[i], CRC32Poly);
   }
   crc = crc32(crc, 0, CRC32Poly);
   crc = ~crc;
