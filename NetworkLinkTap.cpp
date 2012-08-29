@@ -24,11 +24,12 @@ public:
 
 NetworkLinkTap::NetworkLinkTap()
 {
-  fd = open("/dev/tap0", O_RDWR | O_NONBLOCK);
+  fd = open("/dev/tap0", O_RDWR);
   if (fd < 0) {
     std::perror("opening tap interface");
     std::exit(1);
   }
+  fcntl(fd, F_SETFL, O_NONBLOCK);
 }
 
 void NetworkLinkTap::transmitFrame(const uint8_t *data, unsigned size)
@@ -45,7 +46,10 @@ bool NetworkLinkTap::receiveFrame(uint8_t *data, unsigned &size)
   assert(fd >= 0);
   ssize_t nread = read(fd, data, maxFrameSize);
   if (nread < 0) {
-    if (errno != EAGAIN)
+    if (errno == EAGAIN)
+      return false;
+    // EIO is returned is device is not yet configured.
+    if (errno == EIO)
       return false;
     std::perror("reading from interface");
     close(fd);
