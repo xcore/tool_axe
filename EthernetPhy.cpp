@@ -163,6 +163,7 @@ class EthernetPhyRx {
   Port *RX_DV;
   Port *RX_ER;
   unsigned RX_CLKValue;
+  uint32_t RXDValue;
   uint8_t frame[NetworkLink::maxFrameSize];
   unsigned frameSize;
   unsigned nibblesReceieved;
@@ -176,6 +177,7 @@ class EthernetPhyRx {
   } state;
   void appendCRC32();
   bool receiveFrame();
+  void setRXD(unsigned value, ticks_t time);
 public:
   EthernetPhyRx(Port *rxclk, Port *rxd, Port *rxdv, Port *rxer);
 
@@ -190,6 +192,7 @@ EthernetPhyRx::EthernetPhyRx(Port *rxclk, Port *rxd, Port *rxdv, Port *rxer) :
   RX_DV(rxdv),
   RX_ER(rxer),
   RX_CLKValue(0),
+  RXDValue(0),
   state(IDLE)
 {
 }
@@ -224,6 +227,14 @@ bool EthernetPhyRx::receiveFrame()
   return true;
 }
 
+void EthernetPhyRx::setRXD(unsigned value, ticks_t time)
+{
+  if (value == RXDValue)
+    return;
+  RXD->seePinsChange(Signal(value), time);
+  RXDValue = value;
+}
+
 void EthernetPhyRx::clock(ticks_t time)
 {
   RX_CLKValue = !RX_CLKValue;
@@ -233,13 +244,13 @@ void EthernetPhyRx::clock(ticks_t time)
     switch (state) {
     case IDLE:
       if (receiveFrame()) {
-        RXD->seePinsChange(Signal(0x5), time);
+        setRXD(0x5, time);
         RX_DV->seePinsChange(Signal(1), time);
         state = TX_SFD2;
       }
       break;
     case TX_SFD2:
-      RXD->seePinsChange(Signal(0xd), time);
+      setRXD(0xd, time);
       nibblesReceieved = 0;
       state = TX_FRAME;
       break;
@@ -248,7 +259,7 @@ void EthernetPhyRx::clock(ticks_t time)
         unsigned byteNum = nibblesReceieved / 2;
         unsigned nibbleNum = nibblesReceieved % 2;
         unsigned data = (frame[byteNum] >> (nibbleNum * 4)) & 0xff;
-        RXD->seePinsChange(Signal(data), time);
+        setRXD(data, time);
         ++nibblesReceieved;
         if (nibblesReceieved == frameSize * 2) {
           state = TX_EFD;
@@ -256,7 +267,7 @@ void EthernetPhyRx::clock(ticks_t time)
       }
       break;
     case TX_EFD:
-      RXD->seePinsChange(Signal(0), time);
+      setRXD(0, time);
       RX_DV->seePinsChange(Signal(0), time);
       state = INTER_FRAME;
       interFrameNibblesRemaining = interframeGap;
