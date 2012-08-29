@@ -661,7 +661,7 @@ endin(Thread &thread, ticks_t threadTime, uint32_t &value)
     entries += shiftRegEntries;
     if (validShiftRegEntries != 0)
       portShiftCount = validShiftRegEntries;
-  } else if (validShiftRegEntries != 0) {
+  } else {
     validShiftRegEntries = 0;
     portShiftCount = shiftRegEntries;
     transferReg = shiftReg;

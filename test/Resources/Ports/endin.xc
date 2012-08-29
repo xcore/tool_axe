@@ -72,6 +72,7 @@ int main()
   VERIFY(x == 0x162CC949);
 
   VERIFY(endin(p) == 0);
+  VERIFY(x == 0x162CC949);
 
   return 0;
 }
