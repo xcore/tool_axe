@@ -18,6 +18,7 @@
 
 // MII uses a 25MHz clock.
 const uint32_t ethernetPhyHalfPeriod = CYCLES_PER_TICK * 2;
+const uint32_t ethernetPhyPeriod = ethernetPhyHalfPeriod * 2;
 const unsigned interframeGap = (12 * 8) / 4; // Time to transmit 12 bytes.
 const uint32_t CRC32Poly = 0xEDB88320;
 /// Minimum frame size (including CRC).
@@ -171,49 +172,55 @@ void EthernetPhyTx::run(ticks_t time)
     }
   }
   if (TX_ENValue == 1 || TX_ENSignal.isClock()) {
-    scheduler.push(*this, time + ethernetPhyHalfPeriod * 2);
+    scheduler.push(*this, time + ethernetPhyPeriod);
   }
 }
 
-class EthernetPhyRx {
+class EthernetPhyRx : public Runnable {
+  RunnableQueue &scheduler;
   NetworkLink *link;
   Port *RX_CLK;
   Port *RXD;
   Port *RX_DV;
   Port *RX_ER;
-  unsigned RX_CLKValue;
+  Signal RX_CLKSignal;
   uint32_t RXDValue;
   uint8_t frame[NetworkLink::maxFrameSize];
   unsigned frameSize;
   unsigned nibblesReceieved;
-  unsigned interFrameNibblesRemaining;
   enum State {
     IDLE,
     TX_SFD2,
     TX_FRAME,
     TX_EFD,
-    INTER_FRAME,
   } state;
   void appendCRC32();
   bool receiveFrame();
   void setRXD(unsigned value, ticks_t time);
 public:
-  EthernetPhyRx(Port *rxclk, Port *rxd, Port *rxdv, Port *rxer);
+  EthernetPhyRx(RunnableQueue &s, Port *rxclk, Port *rxd, Port *rxdv,
+                Port *rxer);
 
   void setLink(NetworkLink *value) { link = value; }
-  void clock(ticks_t time);
+  void run(ticks_t time);
 };
 
-EthernetPhyRx::EthernetPhyRx(Port *rxclk, Port *rxd, Port *rxdv, Port *rxer) :
+EthernetPhyRx::
+EthernetPhyRx(RunnableQueue &s, Port *rxclk, Port *rxd, Port *rxdv,
+              Port *rxer) :
+  scheduler(s),
   link(0),
   RX_CLK(rxclk),
   RXD(rxd),
   RX_DV(rxdv),
   RX_ER(rxer),
-  RX_CLKValue(0),
+  RX_CLKSignal(0, ethernetPhyHalfPeriod),
   RXDValue(0),
   state(IDLE)
 {
+  RX_CLK->seePinsChange(RX_CLKSignal, 0);
+  ticks_t fallingEdgeTime = RX_CLKSignal.getNextEdge(0, Edge::FALLING).time;
+  scheduler.push(*this, fallingEdgeTime);
 }
 
 void EthernetPhyRx::appendCRC32()
@@ -254,62 +261,53 @@ void EthernetPhyRx::setRXD(unsigned value, ticks_t time)
   RXDValue = value;
 }
 
-void EthernetPhyRx::clock(ticks_t time)
+void EthernetPhyRx::run(ticks_t time)
 {
-  RX_CLKValue = !RX_CLKValue;
-  RX_CLK->seePinsChange(Signal(RX_CLKValue), time);
-  if (RX_CLKValue == 0) {
-    // Drive on falling edge.
-    switch (state) {
-    case IDLE:
-      if (receiveFrame()) {
-        setRXD(0x5, time);
-        RX_DV->seePinsChange(Signal(1), time);
-        state = TX_SFD2;
-      }
-      break;
-    case TX_SFD2:
-      setRXD(0xd, time);
-      nibblesReceieved = 0;
-      state = TX_FRAME;
-      break;
-    case TX_FRAME:
-      {
-        unsigned byteNum = nibblesReceieved / 2;
-        unsigned nibbleNum = nibblesReceieved % 2;
-        unsigned data = (frame[byteNum] >> (nibbleNum * 4)) & 0xff;
-        setRXD(data, time);
-        ++nibblesReceieved;
-        if (nibblesReceieved == frameSize * 2) {
-          state = TX_EFD;
-        }
-      }
-      break;
-    case TX_EFD:
-      setRXD(0, time);
-      RX_DV->seePinsChange(Signal(0), time);
-      state = INTER_FRAME;
-      interFrameNibblesRemaining = interframeGap;
-      break;
-    case INTER_FRAME:
-      if (--interFrameNibblesRemaining == 0) {
-        state = IDLE;
-      }
-      break;
+  ticks_t nextTime = time + ethernetPhyPeriod;
+  // Drive on falling edge.
+  switch (state) {
+  case IDLE:
+    if (receiveFrame()) {
+      setRXD(0x5, time);
+      RX_DV->seePinsChange(Signal(1), time);
+      state = TX_SFD2;
     }
+    break;
+  case TX_SFD2:
+    setRXD(0xd, time);
+    nibblesReceieved = 0;
+    state = TX_FRAME;
+    break;
+  case TX_FRAME:
+    {
+      unsigned byteNum = nibblesReceieved / 2;
+      unsigned nibbleNum = nibblesReceieved % 2;
+      unsigned data = (frame[byteNum] >> (nibbleNum * 4)) & 0xff;
+      setRXD(data, time);
+      ++nibblesReceieved;
+      if (nibblesReceieved == frameSize * 2) {
+        state = TX_EFD;
+      }
+    }
+    break;
+  case TX_EFD:
+    setRXD(0, time);
+    RX_DV->seePinsChange(Signal(0), time);
+    state = IDLE;
+    nextTime = time + ethernetPhyPeriod * interframeGap;
+    break;
   }
+  scheduler.push(*this, nextTime);
 }
 
-class EthernetPhy : public Peripheral, public Runnable {
+class EthernetPhy : public Peripheral {
   std::auto_ptr<NetworkLink> link;
   EthernetPhyRx rx;
   EthernetPhyTx tx;
-  RunnableQueue &scheduler;
 public:
   EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
               Port *RX_DV, Port *RX_ER);
   EthernetPhyTx &getTX() { return tx; }
-  void run(ticks_t time);
 };
 
 
@@ -317,19 +315,11 @@ EthernetPhy::
 EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
             Port *RX_DV, Port *RX_ER) :
   link(createNetworkLinkTap()),
-  rx(RX_CLK, RXD, RX_DV, RX_ER),
-  tx(s, TX_CLK),
-  scheduler(s)
+  rx(s, RX_CLK, RXD, RX_DV, RX_ER),
+  tx(s, TX_CLK)
 {
   rx.setLink(link.get());
   tx.setLink(link.get());
-  scheduler.push(*this, ethernetPhyHalfPeriod);
-}
-
-void EthernetPhy::run(ticks_t time)
-{
-  rx.clock(time);
-  scheduler.push(*this, time + ethernetPhyHalfPeriod);
 }
 
 static Peripheral *
