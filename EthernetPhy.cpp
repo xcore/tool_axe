@@ -23,17 +23,18 @@ const uint32_t CRC32Poly = 0xEDB88320;
 /// Minimum frame size (including CRC).
 const unsigned minFrameSize = 64;
 
-class EthernetPhyTx {
+class EthernetPhyTx : public Runnable {
   void seeTXDChange(const Signal &value, ticks_t time);
   void seeTX_ENChange(const Signal &value, ticks_t time);
   void seeTX_ERChange(const Signal &value, ticks_t time);
 
+  RunnableQueue &scheduler;
   NetworkLink *link;
   Port *TX_CLK;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TXDProxy;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TX_ENProxy;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TX_ERProxy;
-  unsigned TX_CLKValue;
+  Signal TX_CLKSignal;
   Signal TXDSignal;
   Signal TX_ENSignal;
   Signal TX_ERSignal;
@@ -46,28 +47,30 @@ class EthernetPhyTx {
 
   void reset();
   bool transmitFrame();
+  bool possibleSFD();
 public:
   EthernetPhyTx(RunnableQueue &sched, Port *MISO);
   void setLink(NetworkLink *value) { link = value; }
   void connectTXD(Port *p) { p->setLoopback(&TXDProxy); }
   void connectTX_EN(Port *p) { p->setLoopback(&TX_ENProxy); }
   void connectTX_ER(Port *p) { p->setLoopback(&TX_ERProxy); }
-  virtual void clock(ticks_t time);
+  void run(ticks_t time);
 };
 
 EthernetPhyTx::EthernetPhyTx(RunnableQueue &s, Port *txclk) :
+  scheduler(s),
   link(0),
   TX_CLK(txclk),
   TXDProxy(*this, &EthernetPhyTx::seeTXDChange),
   TX_ENProxy(*this, &EthernetPhyTx::seeTX_ENChange),
   TX_ERProxy(*this, &EthernetPhyTx::seeTX_ERChange),
-  TX_CLKValue(0),
+  TX_CLKSignal(0, ethernetPhyHalfPeriod),
   TXDSignal(0),
   TX_ENSignal(0),
   TX_ERSignal(0)
 {
   reset();
-  TX_CLK->seePinsChange(Signal(0, CYCLES_PER_TICK * 2), 0);
+  TX_CLK->seePinsChange(TX_CLKSignal, 0);
 }
 
 void EthernetPhyTx::reset()
@@ -99,14 +102,30 @@ bool EthernetPhyTx::transmitFrame()
   return true;
 }
 
+bool EthernetPhyTx::possibleSFD()
+{
+  if (TX_ENSignal.isClock() || TX_ENSignal.getValue(0) == 1) {
+    return TXDSignal.getValue(0) == 0xd;
+  }
+  return false;
+}
+
 void EthernetPhyTx::seeTXDChange(const Signal &value, ticks_t time)
 {
   TXDSignal = value;
+  if (!inFrame && possibleSFD()) {
+    Edge nextRisingEdge = TX_CLKSignal.getNextEdge(time - 1, Edge::RISING);
+    scheduler.push(*this, nextRisingEdge.time);
+  }
 }
 
 void EthernetPhyTx::seeTX_ENChange(const Signal &value, ticks_t time)
 {
   TX_ENSignal = value;
+  if (!inFrame && possibleSFD()) {
+    Edge nextRisingEdge = TX_CLKSignal.getNextEdge(time - 1, Edge::RISING);
+    scheduler.push(*this, nextRisingEdge.time);
+  }
 }
 
 void EthernetPhyTx::seeTX_ERChange(const Signal &value, ticks_t time)
@@ -114,46 +133,45 @@ void EthernetPhyTx::seeTX_ERChange(const Signal &value, ticks_t time)
   TX_ERSignal = value;
 }
 
-void EthernetPhyTx::clock(ticks_t time)
+void EthernetPhyTx::run(ticks_t time)
 {
-  TX_CLKValue = !TX_CLKValue;
-  TX_CLK->seePinsChange(Signal(TX_CLKValue), time);
-  if (TX_CLKValue) {
-    // Sample on rising edge.
-    uint32_t TXDValue = TXDSignal.getValue(time);
-    uint32_t TX_ENValue = TX_ENSignal.getValue(time);
-    uint32_t TX_ERValue = TX_ERSignal.getValue(time);
-    if (inFrame) {
-      if (TX_ENValue) {
-        if (TX_ERValue) {
-          hadError = true;
-        } else {
-          // Receive data
-          if (hasPrevNibble) {
-            frame.push_back((TXDValue << 4) | prevNibble);
-            hasPrevNibble = false;
-          } else {
-            prevNibble = TXDValue;
-            hasPrevNibble = true;
-          }
-        }
+  // Sample on rising edge.
+  uint32_t TXDValue = TXDSignal.getValue(time);
+  uint32_t TX_ENValue = TX_ENSignal.getValue(time);
+  uint32_t TX_ERValue = TX_ERSignal.getValue(time);
+  if (inFrame) {
+    if (TX_ENValue) {
+      if (TX_ERValue) {
+        hadError = true;
       } else {
-        // End of frame.
-        if (!hadError) {
-          transmitFrame();
+        // Receive data
+        if (hasPrevNibble) {
+          frame.push_back((TXDValue << 4) | prevNibble);
+          hasPrevNibble = false;
+        } else {
+          prevNibble = TXDValue;
+          hasPrevNibble = true;
         }
-        reset();
       }
     } else {
-      // Look for the second Start Frame Delimiter nibble.
-      // TODO should we be checking for the preamble before this as well?
-      // sc_ethernet seems to emit a longer preamble than is specified in the
-      // 802.3 standard (12 octets including SFD instead of 8). 
-      if (TX_ENValue && TXDValue == 0xd) {
-        inFrame = true;
-        hadError = TX_ERValue;
+      // End of frame.
+      if (!hadError) {
+        transmitFrame();
       }
+      reset();
     }
+  } else {
+    // Look for the second Start Frame Delimiter nibble.
+    // TODO should we be checking for the preamble before this as well?
+    // sc_ethernet seems to emit a longer preamble than is specified in the
+    // 802.3 standard (12 octets including SFD instead of 8).
+    if (TX_ENValue && TXDValue == 0xd) {
+      inFrame = true;
+      hadError = TX_ERValue;
+    }
+  }
+  if (TX_ENValue == 1 || TX_ENSignal.isClock()) {
+    scheduler.push(*this, time + ethernetPhyHalfPeriod * 2);
   }
 }
 
@@ -311,7 +329,6 @@ EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
 void EthernetPhy::run(ticks_t time)
 {
   rx.clock(time);
-  tx.clock(time);
   scheduler.push(*this, time + ethernetPhyHalfPeriod);
 }
 

@@ -129,6 +129,13 @@ struct Signal {
   EdgeIterator getEdgeIterator(ticks_t time) const {
     return EdgeIterator(getNextEdge(time), halfPeriod);
   }
+  Edge getNextEdge(ticks_t time, Edge::Type type) const {
+    EdgeIterator it = getEdgeIterator(time);
+    if (it->type != type) {
+      ++it;
+    }
+    return *it;
+  }
   void changeFrequency(ticks_t time, uint32_t hp) {
     changeFrequency(time, getValue(time), hp);
   }
