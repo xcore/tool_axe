@@ -30,6 +30,14 @@ add_executable(genHex
   genHex.c
   )
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(NETWORK_LINK_TAP_FILES "NetworkLinkTapLinux.cpp")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(NETWORK_LINK_TAP_FILES "NetworkLinkTapOSX.cpp")
+else()
+  set(NETWORK_LINK_TAP_FILES "NetworkLinkTapDefault.cpp")
+endif()
+
 add_executable(axe
   AccessSecondIterator.h
   BitManip.h
@@ -74,7 +82,7 @@ add_executable(axe
   main.cpp
   NetworkLink.h
   NetworkLink.cpp
-  NetworkLinkTap.cpp
+  ${NETWORK_LINK_TAP_FILES}
   Node.h
   Node.cpp
   Options.h
