@@ -14,6 +14,7 @@
 #include "NetworkLink.h"
 #include "CRC.h"
 #include <memory>
+#include <cstring>
 
 // MII uses a 25MHz clock.
 const uint32_t ethernetPhyHalfPeriod = CYCLES_PER_TICK * 2;

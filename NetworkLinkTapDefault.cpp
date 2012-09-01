@@ -3,11 +3,12 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#if defined(__linux__)
-#include "NetworkLinkTapLinux.cpp"
-#elif defined(__APPLE__)
-#include "NetworkLinkTapOSX.cpp"
-#else
-// TODO Windows
-#include "NetworkLinkTapDefault.cpp"
-#endif
+#include "NetworkLink.h"
+#include <iostream>
+#include <cstdlib>
+
+std::auto_ptr<NetworkLink> createNetworkLinkTap()
+{
+  std::cerr << "error: network TAP not supported on this platform\n";
+  std::exit(1);
+}
