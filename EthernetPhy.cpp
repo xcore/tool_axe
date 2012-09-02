@@ -306,15 +306,15 @@ class EthernetPhy : public Peripheral {
   EthernetPhyTx tx;
 public:
   EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
-              Port *RX_DV, Port *RX_ER);
+              Port *RX_DV, Port *RX_ER, const std::string &ifname);
   EthernetPhyTx &getTX() { return tx; }
 };
 
 
 EthernetPhy::
 EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
-            Port *RX_DV, Port *RX_ER) :
-  link(createNetworkLinkTap()),
+            Port *RX_DV, Port *RX_ER, const std::string &ifname) :
+  link(createNetworkLinkTap(ifname)),
   rx(s, RX_CLK, RXD, RX_DV, RX_ER),
   tx(s, TX_CLK)
 {
@@ -338,8 +338,12 @@ createEthernetPhy(SystemState &system, const PortAliases &portAliases,
     properties.get("rx_dv")->getAsPort().lookup(system, portAliases);
   Port *RX_ER =
     properties.get("rx_er")->getAsPort().lookup(system, portAliases);
+  std::string ifname;
+  if (const Property *property = properties.get("ifname"))
+    ifname = property->getAsString();
   EthernetPhy *p =
-    new EthernetPhy(system.getScheduler(), TX_CLK, RX_CLK, RXD, RX_DV, RX_ER);
+    new EthernetPhy(system.getScheduler(), TX_CLK, RX_CLK, RXD, RX_DV, RX_ER,
+                    ifname);
   p->getTX().connectTXD(TXD);
   p->getTX().connectTX_EN(TX_EN);
   if (const Property *property = properties.get("tx_er"))
@@ -359,5 +363,6 @@ std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy()
   p->addProperty(PropertyDescriptor::portProperty("rx_dv")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("rx_clk")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("rx_er")).setRequired(true);
+  p->addProperty(PropertyDescriptor::stringProperty("ifname"));
   return p;
 }

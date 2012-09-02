@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <memory>
+#include <string>
 
 class NetworkLink {
 public:
@@ -17,6 +18,6 @@ public:
   virtual bool receiveFrame(uint8_t *data, unsigned &size) = 0;
 };
 
-std::auto_ptr<NetworkLink> createNetworkLinkTap();
+std::auto_ptr<NetworkLink> createNetworkLinkTap(const std::string &ifname);
 
 #endif // _NetworkLink_h

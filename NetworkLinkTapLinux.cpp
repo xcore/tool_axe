@@ -22,7 +22,7 @@
 class NetworkLinkTap : public NetworkLink {
   int fd;
 public:
-  NetworkLinkTap();
+  NetworkLinkTap(const std::string &ifname);
   virtual void transmitFrame(const uint8_t *data, unsigned size);
   virtual bool receiveFrame(uint8_t *data, unsigned &size);
 };
@@ -53,9 +53,9 @@ static int tun_alloc(std::string &dev)
   return fd;
 }
 
-NetworkLinkTap::NetworkLinkTap()
+NetworkLinkTap::NetworkLinkTap(const std::string &ifname)
 {
-  std::string name;
+  std::string name(ifname);
   fd = tun_alloc(name);
   if (fd < 0) {
     std::perror("opening tap interface");
@@ -91,7 +91,7 @@ bool NetworkLinkTap::receiveFrame(uint8_t *data, unsigned &size)
   return true;
 }
 
-std::auto_ptr<NetworkLink> createNetworkLinkTap()
+std::auto_ptr<NetworkLink> createNetworkLinkTap(const std::string &ifname)
 {
-  return std::auto_ptr<NetworkLink>(new NetworkLinkTap);
+  return std::auto_ptr<NetworkLink>(new NetworkLinkTap(ifname));
 }
