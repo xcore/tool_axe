@@ -31,9 +31,9 @@ installed from http://tuntaposx.sourceforge.net.
 When run with no additional arguments AXE will try and open the first
 available TAP device, starting with tap0. You can specify a device to use
 with the -ifname=<name> option. The network interface is created when the
-device is opened and it can be configured using ifconfig. For example:
+device is opened and it can be configured using ifconfig. For example::
 
-ifconfig tap0 <host ip address> up
+  ifconfig tap0 <host ip address> up
 
 Linux
 =====
@@ -44,9 +44,9 @@ device. You can specify a device to use with the -ifname=<name> option. This
 can be used to open an existing TAP device created by, for example,
 tunctl (from UML utilities) or openvpn --mktun (from OpenVPN).
 
-The TAP interface can be configured using ifconfig. For example:
+The TAP interface can be configured using ifconfig. For example::
 
-ifconfig tap0 <host-ip address> up
+  ifconfig tap0 <host-ip address> up
 
 It is also possible to add the TAP interface to an ethernet bridge. This can
 be used to connect two instances of AXE or to allow AXE to communicate with
