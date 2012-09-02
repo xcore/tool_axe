@@ -13,8 +13,16 @@ AXE is designed for fast simulation of XCore programs. AXE doesn't attempt to
 be cycle accurate. Instruction execution timing is approximate. AXE is
 experimental and likely to contain bugs.
 
+Peripherals
+===========
+AXE supports emulation of the following peripherals:
+
+* UART (RX only)
+* SPI Flash (Read command only)
+* Ethernet PHY supporting MII interface (see NETWORKING.rst)
+
 Known Issues
-====================
+============
 
 * No simulation of debug.
 * No support for configurable delays on ports / clocks.
