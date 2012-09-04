@@ -205,7 +205,7 @@ seePinsChange(const Signal &value, ticks_t time)
 {
   update(time);
   pinsInputValue = value;
-  if (outputPort)
+  if (isInUse() && outputPort)
     return;
   handlePinsChange(value, time);
   scheduleUpdateIfNeeded();
