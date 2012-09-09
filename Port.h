@@ -290,7 +290,8 @@ public:
     (readyMode == STROBED && masterSlave == MASTER);
   }
 
-  bool nextReadyOut();
+  bool computeReadyOut();
+  bool readyOutIsInSteadyState();
 
   void clearReadyOut(ticks_t time);
   void updateReadyOut(ticks_t time);
