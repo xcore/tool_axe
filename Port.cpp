@@ -65,6 +65,7 @@ bool Port::setCInUse(Thread &thread, bool val, ticks_t newTime)
     portShiftCount = 1;
     time = newTime;
     portCounter = 0;
+    readyIn = false;
     readyMode = NOREADY;
     // TODO check.
     masterSlave = MASTER;
@@ -335,7 +336,7 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
         timeRegValid = false;
         validShiftRegEntries = 0;
       }
-      if (!useReadyIn() || clock->getReadyInValue(time) != 0) {
+      if (!useReadyIn() || readyIn) {
         uint32_t nextShiftReg = shiftReg;
         bool nextOutputPort = outputPort;
         if (validShiftRegEntries > 0) {
@@ -385,9 +386,10 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
     updateReadyOut(time);
   }
   if (edgeType == samplingEdge) {
+    readyIn = clock->getReadyInValue(time);
     if (!outputPort &&
         (!useReadyOut() || (readyOut && !timeRegValid)) &&
-        (!useReadyIn() || clock->getReadyInValue(time) != 0)) {
+        (!useReadyIn() || readyIn)) {
       uint32_t currentValue = getEffectiveDataPortInputPinsValue(time);
       shiftReg >>= getPortWidth();
       shiftReg |= currentValue << (getTransferWidth() - getPortWidth());

@@ -68,6 +68,8 @@ private:
   uint16_t timeReg;
   /// Value of ready out on the last falling edge.
   bool readyOut;
+  /// Value of ready in on the last sampling edge.
+  bool readyIn;
   /// Transfer width
   unsigned transferWidth;
   /// Has the port time register been set?
