@@ -268,6 +268,7 @@ public:
   uint32_t nextShiftRegOutputPort(uint32_t old);
 
   void seeEdge(Edge::Type edgeType, ticks_t time);
+  void seeEdge(EdgeIterator it) { seeEdge(it->type, it->time); }
 
   bool seeOwnerEventEnable();
 

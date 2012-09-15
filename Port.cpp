@@ -213,6 +213,10 @@ seePinsChange(const Signal &value, ticks_t time)
 
 void Port::update(ticks_t newTime)
 {
+  // Note updating the current port may result in callbacks for other ports /
+  // clocks being called. These callbacks may in turn call callbacks for the
+  // current port. Because of this we must ensure the port time and nextEdge are
+  // updated before any callback is called.
   assert(newTime >= time);
   if (!isInUse() || !clock->isFixedFrequency() || portType != DATAPORT) {
     time = newTime;
@@ -223,8 +227,7 @@ void Port::update(ticks_t newTime)
     time = newTime;
     return;
   }
-  seeEdge(nextEdge->type, nextEdge->time);
-  ++nextEdge;
+  seeEdge(nextEdge++);
   if (nextEdge->time > newTime) {
     time = newTime;
     return;
@@ -237,8 +240,7 @@ void Port::update(ticks_t newTime)
   }
   // Align to rising edge.
   if (nextEdge->type == Edge::RISING) {
-    seeEdge(nextEdge->type, nextEdge->time);
-    ++nextEdge;
+    seeEdge(nextEdge++);
     if (nextEdge->time > newTime) {
       time = newTime;
       return;
@@ -255,8 +257,7 @@ void Port::update(ticks_t newTime)
       unsigned numSignificantEdges = 2 * numSignificantFallingEdges - 1;
       if ((nextEdge + (numSignificantEdges - 1))->time <= newTime) {
         while (numSignificantEdges != 0) {
-          seeEdge(nextEdge->type, nextEdge->time);
-          ++nextEdge;
+          seeEdge(nextEdge++);
           --numSignificantEdges;
         }
         unsigned skippedEdges = clock->getEdgeIterator(newTime) - nextEdge;
@@ -286,8 +287,7 @@ void Port::update(ticks_t newTime)
 void Port::updateAux(ticks_t newTime)
 {
   while (nextEdge->time <= newTime) {
-    seeEdge(nextEdge->type, nextEdge->time);
-    ++nextEdge;
+    seeEdge(nextEdge++);
   }
   time = newTime;
 }
