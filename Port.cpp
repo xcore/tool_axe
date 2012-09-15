@@ -222,6 +222,7 @@ void Port::update(ticks_t newTime)
     time = newTime;
     return;
   }
+  assert(nextEdge == clock->getValue().getEdgeIterator(time));
   // Handle the first edge.
   if (nextEdge->time > newTime) {
     time = newTime;

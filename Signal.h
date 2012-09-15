@@ -86,10 +86,10 @@ public:
   const Edge *operator->() const {
     return &**this;
   }
-  bool operator==(const EdgeIterator &other) {
+  bool operator==(const EdgeIterator &other) const {
     return edge.time == other.edge.time;
   }
-  bool operator!=(const EdgeIterator &other) {
+  bool operator!=(const EdgeIterator &other) const {
     return !(*this == other);
   }
   const Edge &operator*() { return edge; }
