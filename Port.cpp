@@ -45,7 +45,7 @@ Signal Port::getPinsValue() const {
   return pinsInputValue;
 }
 
-bool Port::setCInUse(Thread &thread, bool val, ticks_t time)
+bool Port::setCInUse(Thread &thread, bool val, ticks_t newTime)
 {
   // TODO call update()?
   if (val) {
@@ -63,7 +63,7 @@ bool Port::setCInUse(Thread &thread, bool val, ticks_t time)
     shiftReg = 0;
     shiftRegEntries = 1;
     portShiftCount = 1;
-    time = thread.time;
+    time = newTime;
     portCounter = 0;
     readyMode = NOREADY;
     // TODO check.
