@@ -834,6 +834,8 @@ bool Port::setPortType(Thread &thread, PortType type, ticks_t time)
   portType = type;
   if (type == DATAPORT) {
     outputPort = true;
+    if (clock->isFixedFrequency())
+      nextEdge = clock->getEdgeIterator(time);
   }
   Signal newValue = getPinsOutputValue();
   if (newValue != oldValue || !oldOutputPort)
