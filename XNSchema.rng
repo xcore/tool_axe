@@ -10,7 +10,7 @@
           <element>
             <anyName>
               <except>
-                <name ns="">Packages</name>
+                <name>Packages</name>
               </except>
             </anyName>
             <ref name="anyContent"/>
@@ -21,7 +21,7 @@
   </start>
 
   <define name="Packages">
-    <element name="Packages">
+    <element name="Packages" ns="http://www.xmos.com">
       <ref name="anyAttributes"/>
       <interleave>
         <oneOrMore>
@@ -42,7 +42,7 @@
   </define>
 
   <define name="Package">
-    <element name="Package">
+    <element name="Package" ns="http://www.xmos.com">
       <ref name="anyAttributes"/>
       <interleave>
         <oneOrMore>
@@ -63,7 +63,7 @@
   </define>
 
   <define name="Nodes">
-    <element name="Nodes">
+    <element name="Nodes" ns="http://www.xmos.com">
       <ref name="anyAttributes"/>
       <interleave>
         <oneOrMore>
@@ -84,7 +84,7 @@
   </define>
 
   <define name="Node">
-    <element name="Node">
+    <element name="Node" ns="http://www.xmos.com">
       <ref name="anyAttributes"/>
       <interleave>
         <oneOrMore>
@@ -105,7 +105,7 @@
   </define>
 
   <define name="Core">
-    <element name="Core">
+    <element name="Core" ns="http://www.xmos.com">
       <attribute name="Reference">
         <ref name="identifier"/>
       </attribute>
@@ -113,7 +113,7 @@
         <attribute>
           <anyName>
             <except>
-              <name>Reference</name>
+              <name ns="">Reference</name>
             </except>
           </anyName>
         </attribute>
@@ -137,7 +137,7 @@
   </define>
 
   <define name="Port">
-    <element name="Port">
+    <element name="Port" ns="http://www.xmos.com">
       <attribute name="Location">
         <ref name="identifier"/>
       </attribute>
@@ -148,8 +148,8 @@
         <attribute>
           <anyName>
             <except>
-              <name>Location</name>
-              <name>Name</name>
+              <name ns="">Location</name>
+              <name ns="">Name</name>
             </except>
           </anyName>
         </attribute>
