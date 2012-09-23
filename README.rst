@@ -62,5 +62,5 @@ before running the tests.
 .. _CMake: http://www.cmake.org
 .. _libelf: http://www.mr511.de/software/english.html
 .. _libxml2: http://www.xmlsoft.org
-.. _LLVM: http://llvm.org/
-.. _Python: http://www.python.org/
+.. _LLVM: http://llvm.org
+.. _Python: http://www.python.org
