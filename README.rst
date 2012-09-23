@@ -38,6 +38,10 @@ Dependencies
 * LLVM_
 * Python_ (for running tests)
 
+A `CMake superproject <https://github.com/rlsosborne/axe_superproject>`_ is
+also available which can be used to download and build AXE and its
+dependencies.
+
 Building
 ========
 
