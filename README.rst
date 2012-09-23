@@ -32,11 +32,11 @@ Known Issues
 Dependencies
 ============
 
-* CMake
-* libelf
-* libxml2
-* LLVM
-* python (for running tests)
+* CMake_
+* libelf_
+* libxml2_
+* LLVM_
+* Python_ (for running tests)
 
 Building
 ========
@@ -54,3 +54,9 @@ Running tests
 The "check" target runs the testsuite. An install of the XMOS tools is required.
 Run the SetupEnv script provided with the XMOS tools to add xcc to the path
 before running the tests.
+
+.. _CMake: http://www.cmake.org
+.. _libelf: http://www.mr511.de/software/english.html
+.. _libxml2: http://www.xmlsoft.org
+.. _LLVM: http://llvm.org/
+.. _Python: http://www.python.org/
