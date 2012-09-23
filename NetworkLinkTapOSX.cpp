@@ -68,7 +68,7 @@ bool NetworkLinkTap::receiveFrame(uint8_t *data, unsigned &size)
   if (nread < 0) {
     if (errno == EAGAIN)
       return false;
-    // EIO is returned is device is not yet configured.
+    // EIO is returned if the device is not yet configured.
     if (errno == EIO)
       return false;
     std::perror("reading from interface");
