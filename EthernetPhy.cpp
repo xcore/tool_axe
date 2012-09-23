@@ -13,6 +13,7 @@
 #include "Config.h"
 #include "NetworkLink.h"
 #include "CRC.h"
+#include "BitManip.h"
 #include <memory>
 #include <cstring>
 
@@ -81,8 +82,6 @@ void EthernetPhyTx::reset()
   hasPrevNibble = false;
   frame.clear();
 }
-
-#include <iostream>
 
 bool EthernetPhyTx::transmitFrame()
 {
@@ -300,23 +299,239 @@ void EthernetPhyRx::run(ticks_t time)
   scheduler.push(*this, nextTime);
 }
 
+namespace Status {
+  enum {
+    EXTENDED_CAPABILLITY = 1 << 0,
+    JABBER_DETECT = 1 << 1,
+    LINK_STATUS = 1 << 2,
+    AUTO_NEGOTIATION_ABILITY = 1 << 3,
+    REMOTE_FAULT = 1 << 4,
+    AUTO_NEGOTIATION_COMPLETE = 1 << 5,
+    MF_PREAMBLE_SUPRESSION = 1 << 6,
+    UNIDIRECTIONAL_ABILITY = 1 << 7,
+    EXTENDED_STATUS = 1 << 8,
+    SUPPORTS_100BASE_T2_HALF_DUPLEX = 1 << 9,
+    SUPPORTS_100BASE_T2_FULL_DUPLEX = 1 << 10,
+    SUPPORTS_10_MBS_HALF_DUPLEX = 1 << 11,
+    SUPPORTS_10_MBS_FULL_DUPLEX = 1 << 12,
+    SUPPORTS_100BASE_X_HALF_DUPLEX = 1 << 13,
+    SUPPORTS_100BASE_X_FULL_DUPLEX = 1 << 14,
+    SUPPORTS_100BASE_T4 = 1 << 15
+  };
+}
+
+class EthernetPhyRegisters {
+  // Basic register set, as defined by 802.3 22.2.4
+  enum {
+    CONTROL = 0,
+    STATUS = 1
+  };
+  uint16_t readStatus();
+public:
+  void write(unsigned reg, uint16_t value);
+  uint16_t read(unsigned reg);
+};
+
+void EthernetPhyRegisters::write(unsigned reg, uint16_t value)
+{
+  switch (reg) {
+  default:
+    break;
+  case CONTROL:
+    // TODO
+    break;
+  }
+}
+
+uint16_t EthernetPhyRegisters::readStatus()
+{
+  uint16_t status = 0;
+  status |= Status::LINK_STATUS;
+  // TODO other status bits.
+  return status;
+}
+
+uint16_t EthernetPhyRegisters::read(unsigned reg)
+{
+  switch (reg) {
+  default:
+    return 0;
+  case CONTROL:
+    // TODO
+    return 0;
+    break;
+  case STATUS:
+    return readStatus();
+  }
+}
+
+class EthernetPhySMI {
+  Port *MDIO;
+  unsigned phyAddress;
+
+  bool outputMode;
+  Signal MDIOSignal;
+  uint32_t shiftReg;
+  unsigned shiftCount;
+  unsigned regNum;
+  EthernetPhyRegisters registers;
+
+  enum {
+    READ_OP = 2,
+    WRITE_OP = 1
+  };
+
+  enum State {
+    WAIT_FOR_PREAMBLE,
+    WAIT_FOR_FRAME_START,
+    FRAME_START,
+    WRITE,
+    READ1,
+    READ2,
+    READ3
+  } state;
+  PortInterfaceMemberFuncDelegate<EthernetPhySMI> MDCProxy;
+  PortInterfaceMemberFuncDelegate<EthernetPhySMI> MDIOProxy;
+  PortHandleClockProxy MDCHandleClock;
+  PortHandleClockProxy MDIOHandleClock;
+public:
+  EthernetPhySMI(RunnableQueue &scheduler, Port *mdc, Port *mdio);
+  void seeMDCChange(const Signal &value, ticks_t time);
+  void seeMDIOChange(const Signal &value, ticks_t time);
+};
+
+void EthernetPhySMI::seeMDCChange(const Signal &value, ticks_t time)
+{
+  if (value.getValue(time) && !outputMode) {
+    // Sample on rising edge.
+    unsigned MDIOValue = MDIOSignal.getValue(time);
+    shiftReg = (shiftReg << 1) | MDIOValue;
+    switch (state) {
+    default:
+      assert(0 && "Unexpected state");
+    case WAIT_FOR_PREAMBLE:
+      if (shiftReg == 0xffffffff)
+        state = WAIT_FOR_FRAME_START;
+      break;
+    case WAIT_FOR_FRAME_START:
+      if (MDIOValue == 0) {
+        shiftCount = 1;
+        state = FRAME_START;
+      }
+      break;
+    case FRAME_START:
+      if (++shiftCount == 2 + 2 + 5 + 5) {
+        // Extract
+        regNum = extractBits(shiftReg, 0, 5);
+        unsigned phy =extractBits(shiftReg, 5, 5);
+        unsigned operation = extractBits(shiftReg, 10, 2);
+        unsigned startOfFrame = extractBits(shiftReg, 12, 2);
+        if (startOfFrame != 1) {
+          state = WAIT_FOR_PREAMBLE;
+          break;
+        }
+        if (phy != 0 && phy != phyAddress) {
+          state = WAIT_FOR_PREAMBLE;
+          break;
+        }
+        switch (operation) {
+        default:
+          // Unknown operation.
+          state = WAIT_FOR_PREAMBLE;
+          break;
+        case 1:
+          // Write.
+          shiftCount = 0;
+          state = WRITE;
+          break;
+        case 2:
+          // Read.
+          state = READ1;
+          break;
+        }
+      }
+      break;
+    case WRITE:
+      if (++shiftCount == 16 + 2) {
+        registers.write(regNum, extractBits(shiftReg, 0, 16));
+        state = WAIT_FOR_PREAMBLE;
+      }
+      break;
+    case READ1:
+      // Switch to output on next falling edge.
+      outputMode = true;
+      state = READ2;
+      break;
+    }
+  } else if (value.getValue(time) == 0 && outputMode) {
+    // Drive on falling edge.
+    switch (state) {
+    default:
+      assert(0 && "Unexpected state");
+    case READ2:
+      // Drive zero on second falling edge.
+      MDIO->seePinsChange(Signal(0), time);
+      shiftReg = registers.read(regNum);
+      shiftCount = 0;
+      state = READ3;
+      break;
+    case READ3:
+      {
+        if (shiftCount == 16) {
+          // Switch to input.
+          outputMode = false;
+          state = WAIT_FOR_PREAMBLE;
+          shiftReg = 0;
+        }
+        MDIO->seePinsChange(Signal(extractBit(shiftReg, 16)), time);
+        shiftReg <<= 1;
+        ++shiftCount;
+      }
+    }
+  }
+}
+
+void EthernetPhySMI::seeMDIOChange(const Signal &value, ticks_t time)
+{
+  MDIOSignal = value;
+}
+
+EthernetPhySMI::
+EthernetPhySMI(RunnableQueue &scheduler, Port *mdc, Port *mdio) :
+  MDIO(mdio),
+  outputMode(false),
+  shiftReg(0),
+  state(WAIT_FOR_PREAMBLE),
+  MDCProxy(*this, &EthernetPhySMI::seeMDCChange),
+  MDIOProxy(*this, &EthernetPhySMI::seeMDIOChange),
+  MDCHandleClock(scheduler, MDCProxy),
+  MDIOHandleClock(scheduler, MDIOProxy)
+{
+  mdc->setLoopback(&MDCHandleClock);
+  mdio->setLoopback(&MDIOHandleClock);
+}
+
 class EthernetPhy : public Peripheral {
   std::auto_ptr<NetworkLink> link;
   EthernetPhyRx rx;
   EthernetPhyTx tx;
+  EthernetPhySMI smi;
 public:
   EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
-              Port *RX_DV, Port *RX_ER, const std::string &ifname);
+              Port *RX_DV, Port *RX_ER, Port *MDC, Port *MDIO,
+              const std::string &ifname);
   EthernetPhyTx &getTX() { return tx; }
 };
 
 
 EthernetPhy::
 EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
-            Port *RX_DV, Port *RX_ER, const std::string &ifname) :
+            Port *RX_DV, Port *RX_ER, Port *MDC, Port *MDIO,
+            const std::string &ifname) :
   link(createNetworkLinkTap(ifname)),
   rx(s, RX_CLK, RXD, RX_DV, RX_ER),
-  tx(s, TX_CLK)
+  tx(s, TX_CLK),
+  smi(s, MDC, MDIO)
 {
   rx.setLink(link.get());
   tx.setLink(link.get());
@@ -337,13 +552,17 @@ createEthernetPhy(SystemState &system, const PortAliases &portAliases,
   Port *RX_DV =
     properties.get("rx_dv")->getAsPort().lookup(system, portAliases);
   Port *RX_ER =
-    properties.get("rx_er")->getAsPort().lookup(system, portAliases);
+  properties.get("rx_er")->getAsPort().lookup(system, portAliases);
+  Port *MDC =
+    properties.get("mdc")->getAsPort().lookup(system, portAliases);
+  Port *MDIO =
+    properties.get("mdio")->getAsPort().lookup(system, portAliases);
   std::string ifname;
   if (const Property *property = properties.get("ifname"))
     ifname = property->getAsString();
   EthernetPhy *p =
     new EthernetPhy(system.getScheduler(), TX_CLK, RX_CLK, RXD, RX_DV, RX_ER,
-                    ifname);
+                    MDC, MDIO, ifname);
   p->getTX().connectTXD(TXD);
   p->getTX().connectTX_EN(TX_EN);
   if (const Property *property = properties.get("tx_er"))
@@ -363,6 +582,8 @@ std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy()
   p->addProperty(PropertyDescriptor::portProperty("rx_dv")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("rx_clk")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("rx_er")).setRequired(true);
+  p->addProperty(PropertyDescriptor::portProperty("mdio"));
+  p->addProperty(PropertyDescriptor::portProperty("mdc"));
   p->addProperty(PropertyDescriptor::stringProperty("ifname"));
   return p;
 }
