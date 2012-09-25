@@ -7,6 +7,7 @@
 #include "Peripheral.h"
 #include "PortInterface.h"
 #include "Port.h"
+#include "PortConnectionManager.h"
 #include "PortHandleClockProxy.h"
 #include "SystemState.h"
 #include "Property.h"
@@ -32,7 +33,7 @@ class EthernetPhyTx : public Runnable {
 
   RunnableQueue &scheduler;
   NetworkLink *link;
-  Port *TX_CLK;
+  PortInterface *TX_CLK;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TXDProxy;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TX_ENProxy;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TX_ERProxy;
@@ -51,18 +52,19 @@ class EthernetPhyTx : public Runnable {
   bool transmitFrame();
   bool possibleSFD();
 public:
-  EthernetPhyTx(RunnableQueue &sched, Port *MISO);
+  EthernetPhyTx(RunnableQueue &s, PortConnectionWrapper txd,
+                PortConnectionWrapper txer, PortConnectionWrapper txclk);
   void setLink(NetworkLink *value) { link = value; }
-  void connectTXD(Port *p) { p->setLoopback(&TXDProxy); }
-  void connectTX_EN(Port *p) { p->setLoopback(&TX_ENProxy); }
-  void connectTX_ER(Port *p) { p->setLoopback(&TX_ERProxy); }
+  void connectTX_ER(PortConnectionWrapper p) { p.attach(&TX_ERProxy); }
   void run(ticks_t time);
 };
 
-EthernetPhyTx::EthernetPhyTx(RunnableQueue &s, Port *txclk) :
+EthernetPhyTx::
+EthernetPhyTx(RunnableQueue &s, PortConnectionWrapper txd,
+              PortConnectionWrapper txen, PortConnectionWrapper txclk) :
   scheduler(s),
   link(0),
-  TX_CLK(txclk),
+  TX_CLK(txclk.getInterface()),
   TXDProxy(*this, &EthernetPhyTx::seeTXDChange),
   TX_ENProxy(*this, &EthernetPhyTx::seeTX_ENChange),
   TX_ERProxy(*this, &EthernetPhyTx::seeTX_ERChange),
@@ -73,6 +75,8 @@ EthernetPhyTx::EthernetPhyTx(RunnableQueue &s, Port *txclk) :
 {
   reset();
   TX_CLK->seePinsChange(TX_CLKSignal, 0);
+  txd.attach(&TXDProxy);
+  txen.attach(&TX_ENProxy);
 }
 
 void EthernetPhyTx::reset()
@@ -178,10 +182,10 @@ void EthernetPhyTx::run(ticks_t time)
 class EthernetPhyRx : public Runnable {
   RunnableQueue &scheduler;
   NetworkLink *link;
-  Port *RX_CLK;
-  Port *RXD;
-  Port *RX_DV;
-  Port *RX_ER;
+  PortInterface *RX_CLK;
+  PortInterface *RXD;
+  PortInterface *RX_DV;
+  PortInterface *RX_ER;
   Signal RX_CLKSignal;
   uint32_t RXDValue;
   uint8_t frame[NetworkLink::maxFrameSize];
@@ -197,22 +201,24 @@ class EthernetPhyRx : public Runnable {
   bool receiveFrame();
   void setRXD(unsigned value, ticks_t time);
 public:
-  EthernetPhyRx(RunnableQueue &s, Port *rxclk, Port *rxd, Port *rxdv,
-                Port *rxer);
+  EthernetPhyRx(RunnableQueue &s, PortConnectionWrapper rxclk,
+                PortConnectionWrapper rxd, PortConnectionWrapper rxdv,
+                PortConnectionWrapper rxer);
 
   void setLink(NetworkLink *value) { link = value; }
   void run(ticks_t time);
 };
 
 EthernetPhyRx::
-EthernetPhyRx(RunnableQueue &s, Port *rxclk, Port *rxd, Port *rxdv,
-              Port *rxer) :
+EthernetPhyRx(RunnableQueue &s, PortConnectionWrapper rxclk,
+              PortConnectionWrapper rxd, PortConnectionWrapper rxdv,
+              PortConnectionWrapper rxer) :
   scheduler(s),
   link(0),
-  RX_CLK(rxclk),
-  RXD(rxd),
-  RX_DV(rxdv),
-  RX_ER(rxer),
+  RX_CLK(rxclk.getInterface()),
+  RXD(rxd.getInterface()),
+  RX_DV(rxdv.getInterface()),
+  RX_ER(rxer.getInterface()),
   RX_CLKSignal(0, ethernetPhyHalfPeriod),
   RXDValue(0),
   state(IDLE)
@@ -366,7 +372,7 @@ uint16_t EthernetPhyRegisters::read(unsigned reg)
 }
 
 class EthernetPhySMI {
-  Port *MDIO;
+  PortInterface *MDIO;
   unsigned phyAddress;
 
   bool outputMode;
@@ -395,7 +401,8 @@ class EthernetPhySMI {
   PortHandleClockProxy MDCHandleClock;
   PortHandleClockProxy MDIOHandleClock;
 public:
-  EthernetPhySMI(RunnableQueue &scheduler, Port *mdc, Port *mdio);
+  EthernetPhySMI(RunnableQueue &scheduler, PortConnectionWrapper mdc,
+                 PortConnectionWrapper mdio);
   void seeMDCChange(const Signal &value, ticks_t time);
   void seeMDIOChange(const Signal &value, ticks_t time);
 };
@@ -497,8 +504,9 @@ void EthernetPhySMI::seeMDIOChange(const Signal &value, ticks_t time)
 }
 
 EthernetPhySMI::
-EthernetPhySMI(RunnableQueue &scheduler, Port *mdc, Port *mdio) :
-  MDIO(mdio),
+EthernetPhySMI(RunnableQueue &scheduler, PortConnectionWrapper mdc,
+               PortConnectionWrapper mdio) :
+  MDIO(mdio.getInterface()),
   outputMode(false),
   shiftReg(0),
   state(WAIT_FOR_PREAMBLE),
@@ -507,8 +515,8 @@ EthernetPhySMI(RunnableQueue &scheduler, Port *mdc, Port *mdio) :
   MDCHandleClock(scheduler, MDCProxy),
   MDIOHandleClock(scheduler, MDIOProxy)
 {
-  mdc->setLoopback(&MDCHandleClock);
-  mdio->setLoopback(&MDIOHandleClock);
+  mdc.attach(&MDCHandleClock);
+  mdio.attach(&MDIOHandleClock);
 }
 
 class EthernetPhy : public Peripheral {
@@ -517,20 +525,26 @@ class EthernetPhy : public Peripheral {
   EthernetPhyTx tx;
   EthernetPhySMI smi;
 public:
-  EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
-              Port *RX_DV, Port *RX_ER, Port *MDC, Port *MDIO,
+  EthernetPhy(RunnableQueue &s, PortConnectionWrapper TXD,
+              PortConnectionWrapper TX_EN, PortConnectionWrapper TX_CLK,
+              PortConnectionWrapper RX_CLK, PortConnectionWrapper RXD,
+              PortConnectionWrapper RX_DV, PortConnectionWrapper RX_ER,
+              PortConnectionWrapper MDC, PortConnectionWrapper MDIO,
               const std::string &ifname);
   EthernetPhyTx &getTX() { return tx; }
 };
 
 
 EthernetPhy::
-EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
-            Port *RX_DV, Port *RX_ER, Port *MDC, Port *MDIO,
+EthernetPhy(RunnableQueue &s, PortConnectionWrapper TXD,
+            PortConnectionWrapper TX_EN, PortConnectionWrapper TX_CLK,
+            PortConnectionWrapper RX_CLK, PortConnectionWrapper RXD,
+            PortConnectionWrapper RX_DV, PortConnectionWrapper RX_ER,
+            PortConnectionWrapper MDC, PortConnectionWrapper MDIO,
             const std::string &ifname) :
   link(createNetworkLinkTap(ifname)),
   rx(s, RX_CLK, RXD, RX_DV, RX_ER),
-  tx(s, TX_CLK),
+  tx(s, TXD, TX_EN, TX_CLK),
   smi(s, MDC, MDIO)
 {
   rx.setLink(link.get());
@@ -538,35 +552,26 @@ EthernetPhy(RunnableQueue &s, Port *TX_CLK, Port *RX_CLK, Port *RXD,
 }
 
 static Peripheral *
-createEthernetPhy(SystemState &system, const PortAliases &portAliases,
+createEthernetPhy(SystemState &system, PortConnectionManager &connectionManager,
                   const Properties &properties)
 {
-  Port *TXD = properties.get("txd")->getAsPort().lookup(system, portAliases);
-  Port *TX_EN =
-    properties.get("tx_en")->getAsPort().lookup(system, portAliases);
-  Port *TX_CLK =
-    properties.get("tx_clk")->getAsPort().lookup(system, portAliases);
-  Port *RX_CLK =
-    properties.get("rx_clk")->getAsPort().lookup(system, portAliases);
-  Port *RXD = properties.get("rxd")->getAsPort().lookup(system, portAliases);
-  Port *RX_DV =
-    properties.get("rx_dv")->getAsPort().lookup(system, portAliases);
-  Port *RX_ER =
-  properties.get("rx_er")->getAsPort().lookup(system, portAliases);
-  Port *MDC =
-    properties.get("mdc")->getAsPort().lookup(system, portAliases);
-  Port *MDIO =
-    properties.get("mdio")->getAsPort().lookup(system, portAliases);
+  PortConnectionWrapper TXD = connectionManager.get(properties, "txd");
+  PortConnectionWrapper TX_EN = connectionManager.get(properties, "tx_en");
+  PortConnectionWrapper TX_CLK = connectionManager.get(properties, "tx_clk");
+  PortConnectionWrapper RX_CLK = connectionManager.get(properties, "rx_clk");
+  PortConnectionWrapper RXD = connectionManager.get(properties, "rxd");
+  PortConnectionWrapper RX_DV = connectionManager.get(properties, "rx_dv");
+  PortConnectionWrapper RX_ER = connectionManager.get(properties, "rx_er");
+  PortConnectionWrapper MDC = connectionManager.get(properties, "mdc");
+  PortConnectionWrapper MDIO = connectionManager.get(properties, "mdio");
   std::string ifname;
   if (const Property *property = properties.get("ifname"))
     ifname = property->getAsString();
   EthernetPhy *p =
-    new EthernetPhy(system.getScheduler(), TX_CLK, RX_CLK, RXD, RX_DV, RX_ER,
-                    MDC, MDIO, ifname);
-  p->getTX().connectTXD(TXD);
-  p->getTX().connectTX_EN(TX_EN);
-  if (const Property *property = properties.get("tx_er"))
-    p->getTX().connectTX_ER(property->getAsPort().lookup(system, portAliases));
+    new EthernetPhy(system.getScheduler(), TXD, TX_EN, TX_CLK, RX_CLK, RXD,
+                    RX_DV, RX_ER, MDC, MDIO, ifname);
+  if (properties.get("tx_er"))
+    p->getTX().connectTX_ER(connectionManager.get(properties, "tx_er"));
   return p;
 }
 

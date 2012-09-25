@@ -10,6 +10,7 @@
 #include "Runnable.h"
 #include "PeripheralDescriptor.h"
 #include "Peripheral.h"
+#include "PortConnectionManager.h"
 #include "Property.h"
 #include "SystemState.h"
 #include "Node.h"
@@ -32,7 +33,7 @@ class SPIFlash : public Peripheral {
   State state;
   unsigned char *mem;
   unsigned memSize;
-  Port *MISO;
+  PortInterface *MISO;
   PortInterfaceMemberFuncDelegate<SPIFlash> MOSIProxy;
   PortInterfaceMemberFuncDelegate<SPIFlash> SCLKProxy;
   PortInterfaceMemberFuncDelegate<SPIFlash> SSProxy;
@@ -51,18 +52,20 @@ class SPIFlash : public Peripheral {
 
   void reset();
 public:
-  SPIFlash(RunnableQueue &scheduler, Port *MISO);
+  SPIFlash(RunnableQueue &scheduler, PortConnectionWrapper MISO,
+           PortConnectionWrapper MOSI, PortConnectionWrapper SCLK,
+           PortConnectionWrapper SS);
   ~SPIFlash();
   void openFile(const std::string &s);
-  void connectMOSI(Port *p) { p->setLoopback(&MOSIProxy); }
-  void connectSCLK(Port *p) { p->setLoopback(&SCLKHandleClock); }
-  void connectSS(Port *p) { p->setLoopback(&SSHandleClock); }
 };
 
-SPIFlash::SPIFlash(RunnableQueue &scheduler, Port *p) :
+SPIFlash::
+SPIFlash(RunnableQueue &scheduler, PortConnectionWrapper miso,
+         PortConnectionWrapper mosi, PortConnectionWrapper sclk,
+         PortConnectionWrapper ss) :
   mem(0),
   memSize(0),
-  MISO(p),
+  MISO(miso.getInterface()),
   MOSIProxy(*this, &SPIFlash::seeMOSIChange),
   SCLKProxy(*this, &SPIFlash::seeSCLKChange),
   SSProxy(*this, &SPIFlash::seeSSChange),
@@ -73,6 +76,9 @@ SPIFlash::SPIFlash(RunnableQueue &scheduler, Port *p) :
   SCLKValue(0),
   SSValue(0)
 {
+  mosi.attach(&MOSIProxy);
+  sclk.attach(&SCLKHandleClock);
+  ss.attach(&SSHandleClock);
   reset();
 }
 
@@ -180,19 +186,16 @@ void SPIFlash::openFile(const std::string &s)
 }
 
 static Peripheral *
-createSPIFlash(SystemState &system, const PortAliases &portAliases,
+createSPIFlash(SystemState &system, PortConnectionManager &connectionManager,
                const Properties &properties)
 {
-  Port *MISO = properties.get("miso")->getAsPort().lookup(system, portAliases);
-  Port *MOSI = properties.get("mosi")->getAsPort().lookup(system, portAliases);
-  Port *SCLK = properties.get("sclk")->getAsPort().lookup(system, portAliases);
-  Port *SS = properties.get("ss")->getAsPort().lookup(system, portAliases);
+  PortConnectionWrapper MISO = connectionManager.get(properties, "miso");
+  PortConnectionWrapper MOSI = connectionManager.get(properties, "mosi");
+  PortConnectionWrapper SCLK = connectionManager.get(properties, "sclk");
+  PortConnectionWrapper SS = connectionManager.get(properties, "ss");
   std::string file = properties.get("filename")->getAsString();
-  SPIFlash *p = new SPIFlash(system.getScheduler(), MISO);
+  SPIFlash *p = new SPIFlash(system.getScheduler(), MISO, MOSI, SCLK, SS);
   p->openFile(file);
-  p->connectMOSI(MOSI);
-  p->connectSCLK(SCLK);
-  p->connectSS(SS);
   return p;
 }
 

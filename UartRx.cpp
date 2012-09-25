@@ -8,6 +8,7 @@
 #include "RunnableQueue.h"
 #include "PortInterface.h"
 #include "Runnable.h"
+#include "PortConnectionManager.h"
 #include "PeripheralDescriptor.h"
 #include "Peripheral.h"
 #include "Property.h"
@@ -48,12 +49,12 @@ private:
   void receiveByte(unsigned byte);
   void scheduleUpdate(ticks_t time);
 public:
-  UartRx(RunnableQueue &s, ticks_t bitTime);
+  UartRx(RunnableQueue &s, PortConnectionWrapper p, ticks_t bitTime);
   virtual void seePinsChange(const Signal &value, ticks_t time);
   virtual void run(ticks_t time);
 };
 
-UartRx::UartRx(RunnableQueue &s, ticks_t bt) :
+UartRx::UartRx(RunnableQueue &s, PortConnectionWrapper p, ticks_t bt) :
   scheduler(s),
   currentPinValue(0),
   bitTime(bt),
@@ -62,6 +63,7 @@ UartRx::UartRx(RunnableQueue &s, ticks_t bt) :
   parity(NONE),
   state(WAIT_FOR_HIGH)
 {
+  p.attach(this);
 }
 
 void UartRx::scheduleUpdate(ticks_t time)
@@ -154,17 +156,16 @@ void UartRx::run(ticks_t time)
 }
 
 static Peripheral *
-createUartRx(SystemState &system, const PortAliases &portAliases,
+createUartRx(SystemState &system, PortConnectionManager &connectionManager,
              const Properties &properties)
 {
   int32_t bitrate = DEFAULT_BIT_RATE;
   if (const Property *p = properties.get("bitrate"))
     bitrate =  p->getAsInteger();
   ticks_t bitTime = (CYCLES_PER_TICK*100000000)/bitrate;
-  UartRx *p = new UartRx(system.getScheduler(), bitTime) ;
-  PortArg portArg = properties.get("port")->getAsPort();
-  Port *port = portArg.lookup(system, portAliases);
-  port->setLoopback(p);
+  PortConnectionWrapper port = connectionManager.get(properties, "port");
+  UartRx *p =
+    new UartRx(system.getScheduler(), port, bitTime);
   return p;
 }
 

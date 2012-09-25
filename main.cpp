@@ -36,6 +36,7 @@
 #include "Options.h"
 #include "BootSequence.h"
 #include "PortAliases.h"
+#include "PortConnectionManager.h"
 
 const char configSchema[] = {
 #include "ConfigSchema.inc"
@@ -70,27 +71,27 @@ static xmlAttr *findAttribute(xmlNode *node, const char *name)
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
 static bool
-connectLoopbackPorts(SystemState &state, const PortAliases &portAliases,
+connectLoopbackPorts(PortConnectionManager &connectionManager,
                      const LoopbackPorts &ports)
 {
   for (LoopbackPorts::const_iterator it = ports.begin(), e = ports.end();
        it != e; ++it) {
-    Port *first = it->first.lookup(state, portAliases);
+    PortConnectionWrapper first = connectionManager.get(it->first);
     if (!first) {
       std::cerr << "Error: Invalid port ";
       it->first.dump(std::cerr);
       std::cerr << '\n';
       return false;
     }
-    Port *second = it->second.lookup(state, portAliases);
+    PortConnectionWrapper second = connectionManager.get(it->second);
     if (!second) {
       std::cerr << "Error: Invalid port ";
       it->second.dump(std::cerr);
       std::cerr << '\n';
       return false;
     }
-    first->setLoopback(second);
-    second->setLoopback(first);
+    first.attach(second.getInterface());
+    second.attach(first.getInterface());
   }
   return true;
 }
@@ -344,7 +345,7 @@ readXE(XE &xe, const char *filename)
 }
 
 static bool
-checkPeripheralPorts(SystemState &sys, const PortAliases &portAliases,
+checkPeripheralPorts(PortConnectionManager &connectionManager,
                      const PeripheralDescriptor *descriptor,
                      const Properties &properties)
 {
@@ -356,7 +357,7 @@ checkPeripheralPorts(SystemState &sys, const PortAliases &portAliases,
     if (!property)
       continue;
     const PortArg &portArg = property->getAsPort();
-    if (!portArg.lookup(sys, portAliases)) {
+    if (!connectionManager.get(portArg)) {
       std::cerr << "Error: Invalid port ";
       portArg.dump(std::cerr);
       std::cerr << '\n';
@@ -485,10 +486,10 @@ loop(const Options &options)
   std::auto_ptr<SystemState> statePtr = readXE(xe, options.file);
   PortAliases portAliases;
   readPortAliases(portAliases, xe, options.file);
-  
   SystemState &sys = *statePtr;
+  PortConnectionManager connectionManager(sys, portAliases);
 
-  if (!connectLoopbackPorts(sys, portAliases, options.loopbackPorts)) {
+  if (!connectLoopbackPorts(connectionManager, options.loopbackPorts)) {
     std::exit(1);
   }
 
@@ -496,10 +497,10 @@ loop(const Options &options)
     options.peripherals;
   for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
        e = peripherals.end(); it != e; ++it) {
-    if (!checkPeripheralPorts(sys, portAliases, it->first, it->second)) {
+    if (!checkPeripheralPorts(connectionManager, it->first, it->second)) {
       std::exit(1);
     }
-    it->first->createInstance(sys, portAliases, it->second);
+    it->first->createInstance(sys, connectionManager, it->second);
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;

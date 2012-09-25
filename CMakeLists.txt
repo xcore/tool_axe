@@ -101,6 +101,8 @@ add_executable(axe
   PortAliases.cpp
   PortArg.h
   PortArg.cpp
+  PortConnectionManager.h
+  PortConnectionManager.cpp
   PortInterface.h
   PortHandleClockProxy.h
   PortHandleClockProxy.cpp
