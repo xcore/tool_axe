@@ -5,25 +5,23 @@
 
 #include "Property.h"
 
-Property Property::integerProperty(const PropertyDescriptor *d, int32_t value)
-{
-  Property p(d);
-  p.setInteger(value);
-  return p;
+int32_t Property::getAsInteger() const {
+  assert(descriptor->getType() == PropertyDescriptor::INTEGER);
+  return static_cast<const IntegerProperty*>(this)->getValue();
+}
+std::string Property::getAsString() const {
+  assert(descriptor->getType() == PropertyDescriptor::STRING);
+  return static_cast<const StringProperty*>(this)->getValue();
+}
+const PortArg &Property::getAsPort() const {
+  assert(descriptor->getType() == PropertyDescriptor::PORT);
+  return static_cast<const PortProperty*>(this)->getValue();
 }
 
-Property Property::
-stringProperty(const PropertyDescriptor *d, const std::string &value)
+Properties::~Properties()
 {
-  Property p(d);
-  p.setString(value);
-  return p;
-}
-
-Property Property::
-portProperty(const PropertyDescriptor *d, const PortArg &value)
-{
-  Property p(d);
-  p.setPort(value);
-  return p;
+  for (std::map<std::string,Property*>::iterator it = properties.begin(),
+       e = properties.end(); it != e; ++it) {
+    delete it->second;
+  }
 }

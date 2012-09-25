@@ -60,7 +60,7 @@ static void loopbackOption(const char *a, const char *b, LoopbackPorts &loopback
   loopbackPorts.push_back(std::make_pair(firstArg, secondArg));
 }
 
-static Property
+static uint32_t
 parseIntegerProperty(const PropertyDescriptor *prop, const std::string &s)
 {
   char *endp;
@@ -70,10 +70,10 @@ parseIntegerProperty(const PropertyDescriptor *prop, const std::string &s)
     std::cerr << " requires an integer argument\n";
     std::exit(1);
   }
-  return Property::integerProperty(prop, value);
+  return value;
 }
 
-static Property
+static PortArg
 parsePortProperty(const PropertyDescriptor *prop, const std::string &s)
 {
   PortArg portArg;
@@ -82,7 +82,7 @@ parsePortProperty(const PropertyDescriptor *prop, const std::string &s)
     std::cerr << " requires an port argument\n";
     std::exit(1);
   }
-  return Property::portProperty(prop, portArg);
+  return portArg;
 }
 
 static void
@@ -117,13 +117,14 @@ parseProperties(const std::string &str, const PeripheralDescriptor *periph,
         default:
           assert(0 && "Unexpected property type");
         case PropertyDescriptor::INTEGER:
-          properties.set(parseIntegerProperty(prop, value));
+          properties.setIntegerProperty(prop,
+                                        parseIntegerProperty(prop, value));
           break;
         case PropertyDescriptor::STRING:
-          properties.set(Property::stringProperty(prop, value));
+          properties.setStringProperty(prop, value);
           break;
         case PropertyDescriptor::PORT:
-          properties.set(parsePortProperty(prop, value));
+          properties.setPortProperty(prop, parsePortProperty(prop, value));
           break;
       }
     } else {

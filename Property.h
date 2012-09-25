@@ -14,53 +14,50 @@
 
 class Property {
   const PropertyDescriptor *descriptor;
-  int32_t integer;
-  std::string string;
-  PortArg port;
-  Property(const PropertyDescriptor *d) : descriptor(d), integer(0) {}
-  void setInteger(int32_t value) {
-    assert(descriptor->getType() == PropertyDescriptor::INTEGER);
-    integer = value;
-  }
-  void setString(const std::string &value) {
-    assert(descriptor->getType() == PropertyDescriptor::STRING);
-    string = value;
-  }
-  void setPort(const PortArg &value) {
-    assert(descriptor->getType() == PropertyDescriptor::PORT);
-    port = value;
-  }
+protected:
+  Property(const PropertyDescriptor *d) : descriptor(d) {}
 public:
-  static Property integerProperty(const PropertyDescriptor *d, int32_t value);
-  static Property stringProperty(const PropertyDescriptor *d,
-                                 const std::string &value);
-  static Property portProperty(const PropertyDescriptor *d,
-                               const PortArg &value);
   const PropertyDescriptor *getDescriptor() const { return descriptor; }
-  int32_t getAsInteger() const {
-    assert(descriptor->getType() == PropertyDescriptor::INTEGER);
-    return integer;
-  }
-  std::string getAsString() const {
-    assert(descriptor->getType() == PropertyDescriptor::STRING);
-    return string;
-  }
-  const PortArg &getAsPort() const {
-    assert(descriptor->getType() == PropertyDescriptor::PORT);
-    return port;
-  }
+  int32_t getAsInteger() const;
+  std::string getAsString() const;
+  const PortArg &getAsPort() const;
 };
 
-class Properties {
-  std::map<std::string,Property> properties;
+template <typename T>
+class ConcreteProperty : public Property {
+  T value;
 public:
-  void set(const Property &p) {
-    properties.insert(std::make_pair(p.getDescriptor()->getName(), p));
+  ConcreteProperty(const PropertyDescriptor *d, const T &v) :
+    Property(d), value(v) {}
+
+  const T &getValue() const { return value; }
+};
+
+typedef ConcreteProperty<int32_t> IntegerProperty;
+typedef ConcreteProperty<std::string> StringProperty;
+typedef ConcreteProperty<PortArg> PortProperty;
+
+class Properties {
+  std::map<std::string,Property*> properties;
+public:
+  ~Properties();
+  void setIntegerProperty(const PropertyDescriptor *d, int32_t value) {
+    properties.insert(std::make_pair(d->getName(),
+                                     new IntegerProperty(d, value)));
+  }
+  void setStringProperty(const PropertyDescriptor *d,
+                         const std::string &value) {
+    properties.insert(std::make_pair(d->getName(),
+                                     new StringProperty(d, value)));
+  }
+  void setPortProperty(const PropertyDescriptor *d, const PortArg &value) {
+    properties.insert(std::make_pair(d->getName(),
+                                     new PortProperty(d, value)));
   }
   const Property *get(const std::string &name) const {
-    std::map<std::string,Property>::const_iterator it = properties.find(name);
+    std::map<std::string,Property*>::const_iterator it = properties.find(name);
     if (it != properties.end()) {
-      return &it->second;
+      return it->second;
     }
     return 0;
   }
