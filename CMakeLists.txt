@@ -107,8 +107,6 @@ add_executable(axe
   PortInterface.h
   PortNames.h
   PortNames.cpp
-  PortSplitter.h
-  PortSplitter.cpp
   Register.h
   registerAllPeripherals.h
   registerAllPeripherals.cpp
