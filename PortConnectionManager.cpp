@@ -8,12 +8,23 @@
 #include "Port.h"
 #include "Property.h"
 
+bool PortConnectionWrapper::isEntirePort() const
+{
+  if (!port)
+    return true;
+  return beginOffset == 0 && endOffset == port->getPortWidth();
+}
+
 void PortConnectionWrapper::attach(PortInterface *p) {
-  port->setLoopback(p);
+  if (isEntirePort())
+    port->setLoopback(p);
+  assert(0 && "TODO");
 }
 
 PortInterface *PortConnectionWrapper::getInterface() {
-  return port;
+  if (isEntirePort())
+    return port;
+  assert(0 && "TODO");
 }
 
 PortConnectionManager::
@@ -24,7 +35,14 @@ PortConnectionManager(SystemState &sys, PortAliases &aliases) :
 
 PortConnectionWrapper PortConnectionManager::get(const PortArg &arg)
 {
-  return PortConnectionWrapper(arg.lookup(system, portAliases));
+  Port *p;
+  unsigned beginOffset;
+  unsigned endOffset;
+  bool ok = arg.lookup(system, portAliases, p, beginOffset, endOffset);
+  assert(ok);
+  // Silence compiler warning.
+  (void)ok;
+  return PortConnectionWrapper(this, p, beginOffset, endOffset);
 }
 
 PortConnectionWrapper PortConnectionManager::
@@ -32,6 +50,6 @@ get(const Properties &properties, const std::string &name)
 {
   const Property *property = properties.get(name);
   if (!property)
-    return PortConnectionWrapper(0);
+    return PortConnectionWrapper(this, 0, 0, 0);
   return get(property->getAsPort());
 }

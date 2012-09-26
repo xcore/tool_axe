@@ -16,11 +16,20 @@ class PortAliases;
 class PortArg {
   std::string core;
   std::string port;
+  /// Beginning offset of this slice of the port (inclusive).
+  signed char beginOffset;
+  /// End offset of this slice of the port (exclusive).
+  signed char endOffset;
+  
+  Port *lookupPort(SystemState &system, const PortAliases &portAliases) const;
 public:
-  PortArg() {}
-  PortArg(const std::string &c, const std::string &p) : core(c), port(p) {}
+  PortArg() : beginOffset(0), endOffset(0) {}
+  PortArg(const std::string &c, const std::string &p, signed char begin,
+          signed char end) :
+    core(c), port(p), beginOffset(begin), endOffset(end) {}
   static bool parse(const std::string &s, PortArg &arg);
-  Port *lookup(SystemState &system, const PortAliases &portAliases) const;
+  bool lookup(SystemState &system, const PortAliases &portAliases, Port *&p,
+              unsigned &beginOffset, unsigned &endOffset) const;
   void dump(std::ostream &s) const;
 };
 

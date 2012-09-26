@@ -7,25 +7,81 @@
 #include "PortNames.h"
 #include <iostream>
 #include <cstdlib>
+#include <cerrno>
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
 #include "PortAliases.h"
 
+static bool parsePortOffset(const std::string &s, signed char &result)
+{
+  char *endp;
+  errno = 0;
+  long value = std::strtol(s.c_str(), &endp, 10);
+  if (errno != 0 || *endp != '\0')
+    return false;
+  if (value < 0 || value > 127)
+    return false;
+  result = value;
+  return true;
+}
+
 bool PortArg::parse(const std::string &s, PortArg &arg)
 {
   size_t pos;
-  std::string core;
+  
+  std::string index;
   std::string port;
-  if ((pos = s.find_first_of(':')) != std::string::npos) {
-    port = s.substr(pos + 1);
-    if (port.find_first_of(':') != std::string::npos)
+  if ((pos = s.find_first_of('[')) != std::string::npos) {
+    size_t openPos = pos;
+    size_t closePos = s.find_first_of(']', openPos);
+    if (closePos == std::string::npos)
       return false;
-    core = s.substr(0, pos);
+    if (closePos + 1 != s.length())
+      return false;
+    port = s.substr(0, openPos);
+    index = s.substr(openPos + 1, closePos - (openPos + 1));
+    if (index.empty())
+      return false;
   } else {
     port = s;
   }
-  arg = PortArg(core, port);
+
+  signed char lowerBound = 0;
+  signed char upperBound = -1;
+  if (!index.empty()) {
+    std::string lowerBoundStr, upperBoundStr;
+    if ((pos = index.find_first_of(':')) != std::string::npos) {
+      lowerBoundStr = index.substr(0, pos);
+      upperBoundStr = index.substr(pos + 1);
+      if (lowerBoundStr.empty() || upperBoundStr.empty())
+        return false;
+    } else {
+      lowerBoundStr = index;
+    }
+    if (!parsePortOffset(lowerBoundStr, lowerBound))
+      return false;
+    if (upperBoundStr.empty()) {
+      upperBound = lowerBound + 1;
+    } else {
+      if (!parsePortOffset(upperBoundStr, upperBound))
+        return false;
+      if (upperBound <= lowerBound)
+        return false;
+    }
+  }
+
+  std::string core;
+  std::string identifier;
+  if ((pos = port.find_first_of(':')) != std::string::npos) {
+    identifier = port.substr(pos + 1);
+    core = port.substr(0, pos);
+    if (core.empty())
+      return false;
+  } else {
+    identifier = port;
+  }
+  arg = PortArg(core, identifier, lowerBound, upperBound);
   return true;
 };
 
@@ -63,7 +119,8 @@ static Core *findMatchingCore(const std::string &s, SystemState &system)
 }
 
 static Port *
-lookupAux(SystemState &system, const std::string &core, const std::string &port)
+lookupPortAux(SystemState &system, const std::string &core,
+              const std::string &port)
 {
   Core *c = findMatchingCore(core, system);
   if (!c)
@@ -77,14 +134,35 @@ lookupAux(SystemState &system, const std::string &core, const std::string &port)
   return static_cast<Port*>(res);
 }
 
-Port *PortArg::lookup(SystemState &system, const PortAliases &portAliases) const
+Port *PortArg::
+lookupPort(SystemState &system, const PortAliases &portAliases) const
 {
   if (core.empty()) {
     std::string actualCore, actualPort;
     if (portAliases.lookup(port, actualCore, actualPort))
-      return lookupAux(system, actualCore, actualPort);
+      return lookupPortAux(system, actualCore, actualPort);
   }
-  return lookupAux(system, core, port);
+  return lookupPortAux(system, core, port);
+}
+
+bool PortArg::
+lookup(SystemState &system, const PortAliases &portAliases, Port *&portResult,
+       unsigned &beginOffsetResult, unsigned &endOffsetResult) const
+{
+  Port *p = lookupPort(system, portAliases);
+  if (!p)
+    return false;
+  signed char adjustedEndOffset = endOffset;
+  if (adjustedEndOffset == -1)
+    adjustedEndOffset = p->getPortWidth();
+  else if ((unsigned)adjustedEndOffset > p->getPortWidth())
+    return false;
+  if (beginOffset >= adjustedEndOffset)
+    return false;
+  portResult = p;
+  beginOffsetResult = beginOffset;
+  endOffsetResult = adjustedEndOffset;
+  return true;
 }
 
 void PortArg::dump(std::ostream &s) const

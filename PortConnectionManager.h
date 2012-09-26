@@ -14,11 +14,18 @@ class PortAliases;
 class PortArg;
 class PortInterface;
 class Properties;
+class PortConnectionManager;
 
 class PortConnectionWrapper {
   friend class PortConnectionManager;
+  PortConnectionManager *parent;
   Port *port;
-  PortConnectionWrapper(Port *p) : port(p) {}
+  unsigned beginOffset;
+  unsigned endOffset;
+  PortConnectionWrapper(PortConnectionManager *cm, Port *p, unsigned begin,
+                        unsigned end) :
+    parent(cm), port(p), beginOffset(begin), endOffset(end) {}
+  bool isEntirePort() const;
 public:
   void attach(PortInterface *p);
   PortInterface *getInterface();
