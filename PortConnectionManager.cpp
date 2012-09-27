@@ -7,24 +7,15 @@
 #include "PortArg.h"
 #include "Port.h"
 #include "Property.h"
+#include "PortSplitter.h"
+#include "PortCombiner.h"
 
-bool PortConnectionWrapper::isEntirePort() const
-{
-  if (!port)
-    return true;
-  return beginOffset == 0 && endOffset == port->getPortWidth();
-}
-
-void PortConnectionWrapper::attach(PortInterface *p) {
-  if (isEntirePort())
-    port->setLoopback(p);
-  assert(0 && "TODO");
+void PortConnectionWrapper::attach(PortInterface *to) {
+  parent->attach(to, port, beginOffset, endOffset);
 }
 
 PortInterface *PortConnectionWrapper::getInterface() {
-  if (isEntirePort())
-    return port;
-  assert(0 && "TODO");
+  return parent->getInterface(port, beginOffset, endOffset);
 }
 
 PortConnectionManager::
@@ -33,15 +24,60 @@ PortConnectionManager(SystemState &sys, PortAliases &aliases) :
 {
 }
 
+PortConnectionManager::~PortConnectionManager()
+{
+  for (std::map<Port*,PortSplitter*>::iterator it = splitters.begin(),
+       e = splitters.end(); it != e; ++it) {
+    delete it->second;
+  }
+  for (std::map<Port*,PortCombiner*>::iterator it = combiners.begin(),
+       e = combiners.end(); it != e; ++it) {
+    delete it->second;
+  }
+}
+
+bool PortConnectionManager::
+isEntirePort(Port *p, unsigned beginOffset, unsigned endOffset) const
+{
+  if (!p)
+    return true;
+  return beginOffset == 0 && endOffset == p->getPortWidth();
+}
+
+void PortConnectionManager::
+attach(PortInterface *to, Port *from, unsigned beginOffset, unsigned endOffset)
+{
+  if (isEntirePort(from, beginOffset, endOffset)) {
+    from->setLoopback(to);
+    return;
+  }
+  PortCombiner *&combiner = combiners[from];
+  if (!combiner) {
+    combiner = new PortCombiner();
+    from->setLoopback(combiner);
+  }
+  combiner->attach(to, beginOffset, endOffset);
+}
+
+PortInterface *PortConnectionManager::
+getInterface(Port *p, unsigned beginOffset, unsigned endOffset)
+{
+  if (isEntirePort(p, beginOffset, endOffset))
+    return p;
+  PortSplitter *&splitter = splitters[p];
+  if (!splitter) {
+    splitter = new PortSplitter(p);
+  }
+  return splitter->getInterface(beginOffset, endOffset);
+}
+
 PortConnectionWrapper PortConnectionManager::get(const PortArg &arg)
 {
   Port *p;
   unsigned beginOffset;
   unsigned endOffset;
-  bool ok = arg.lookup(system, portAliases, p, beginOffset, endOffset);
-  assert(ok);
-  // Silence compiler warning.
-  (void)ok;
+  if (!arg.lookup(system, portAliases, p, beginOffset, endOffset))
+    return PortConnectionWrapper(this, 0, 0, 0);
   return PortConnectionWrapper(this, p, beginOffset, endOffset);
 }
 

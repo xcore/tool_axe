@@ -167,5 +167,14 @@ lookup(SystemState &system, const PortAliases &portAliases, Port *&portResult,
 
 void PortArg::dump(std::ostream &s) const
 {
+  if (!core.empty())
+    s << core << ':';
   s << port;
+  if (beginOffset != 0 || endOffset != -1) {
+    s << '[' << (unsigned)beginOffset;
+    if (endOffset != beginOffset + 1) {
+      s << ':' << (unsigned)endOffset;
+    }
+    s << ']';
+  }
 }

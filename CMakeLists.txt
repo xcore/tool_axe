@@ -101,6 +101,8 @@ add_executable(axe
   PortAliases.cpp
   PortArg.h
   PortArg.cpp
+  PortCombiner.h
+  PortCombiner.cpp
   PortConnectionManager.h
   PortConnectionManager.cpp
   PortInterface.h
@@ -109,6 +111,8 @@ add_executable(axe
   PortInterface.h
   PortNames.h
   PortNames.cpp
+  PortSplitter.h
+  PortSplitter.cpp
   Register.h
   registerAllPeripherals.h
   registerAllPeripherals.cpp

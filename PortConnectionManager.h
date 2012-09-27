@@ -7,6 +7,7 @@
 #define _PortConnectionManager_
 
 #include <string>
+#include <map>
 
 class Port;
 class SystemState;
@@ -15,6 +16,8 @@ class PortArg;
 class PortInterface;
 class Properties;
 class PortConnectionManager;
+class PortSplitter;
+class PortCombiner;
 
 class PortConnectionWrapper {
   friend class PortConnectionManager;
@@ -25,7 +28,6 @@ class PortConnectionWrapper {
   PortConnectionWrapper(PortConnectionManager *cm, Port *p, unsigned begin,
                         unsigned end) :
     parent(cm), port(p), beginOffset(begin), endOffset(end) {}
-  bool isEntirePort() const;
 public:
   void attach(PortInterface *p);
   PortInterface *getInterface();
@@ -36,8 +38,17 @@ class PortConnectionManager {
   friend class PortConnectionWrapper;
   SystemState &system;
   const PortAliases &portAliases;
+  std::map<Port*,PortSplitter*> splitters;
+  std::map<Port*,PortCombiner*> combiners;
+
+  bool isEntirePort(Port *p, unsigned beginOffset, unsigned endOffset) const;
+  void attach(PortInterface *to, Port *from, unsigned beginOffset,
+              unsigned endOffset);
+  PortInterface *getInterface(Port *p, unsigned beginOffset,
+                              unsigned endOffset);
 public:
   PortConnectionManager(SystemState &sys, PortAliases &aliases);
+  ~PortConnectionManager();
   PortConnectionWrapper get(const PortArg &arg);
   PortConnectionWrapper get(const Properties &properties,
                             const std::string &name);
