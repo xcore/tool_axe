@@ -17,13 +17,6 @@
 
 class Synchroniser;
 
-class ExitException {
-  unsigned status;
-public:
-  ExitException(unsigned s) : status(s) {}
-  unsigned getStatus() const { return status; }
-};
-
 extern const char *registerNames[];
 
 inline const char *getRegisterName(unsigned RegNum) {

@@ -15,6 +15,13 @@ class Node;
 class ChanEndpoint;
 class DecodeCache;
 
+class ExitException {
+  unsigned status;
+public:
+  ExitException(unsigned s) : status(s) {}
+  unsigned getStatus() const { return status; }
+};
+
 class SystemState {
   std::vector<Node*> nodes;
   RunnableQueue scheduler;

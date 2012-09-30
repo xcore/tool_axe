@@ -8,6 +8,7 @@
 #include "UartRx.h"
 #include "SPIFlash.h"
 #include "EthernetPhy.h"
+#include "LCDScreen.h"
 #include "PeripheralDescriptor.h"
 
 void registerAllPeripherals()
@@ -15,4 +16,7 @@ void registerAllPeripherals()
   PeripheralRegistry::add(getPeripheralDescriptorUartRx());
   PeripheralRegistry::add(getPeripheralDescriptorSPIFlash());
   PeripheralRegistry::add(getPeripheralDescriptorEthernetPhy());
+#ifdef AXE_ENABLE_SDL
+  PeripheralRegistry::add(getPeripheralDescriptorLCDScreen());
+#endif
 }

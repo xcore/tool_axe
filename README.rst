@@ -20,6 +20,7 @@ AXE supports emulation of the following peripherals:
 * UART (RX only)
 * SPI Flash (Read command only)
 * Ethernet PHY supporting MII interface (see NETWORKING.rst)
+* LCD Screen
 
 Known Issues
 ============
@@ -41,6 +42,13 @@ Dependencies
 A `CMake superproject <https://github.com/rlsosborne/axe_superproject>`_ is
 also available which can be used to download and build AXE and its
 dependencies.
+
+Optional Libraries
+==================
+
+AXE can be configured to link against the following libraries:
+
+* SDL_ (for LCD Screen peripheral)
 
 Building
 ========
@@ -64,3 +72,4 @@ before running the tests.
 .. _libxml2: http://www.xmlsoft.org
 .. _LLVM: http://llvm.org
 .. _Python: http://www.python.org
+.. _SDL: http://www.libsdl.org

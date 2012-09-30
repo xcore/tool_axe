@@ -38,6 +38,12 @@
 #include "PortAliases.h"
 #include "PortConnectionManager.h"
 
+// SDL must be included before main so that SDL can substitute main() with
+// SDL_main() is required.
+#ifdef AXE_ENABLE_SDL
+#include <SDL.h>
+#endif
+
 const char configSchema[] = {
 #include "ConfigSchema.inc"
 };

@@ -13,10 +13,36 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules"
   )
 
+option(AXE_ENABLE_SDL "Use SDL if available" ON)
+
 find_package(LibXml2 REQUIRED)
 find_package(LibElf REQUIRED)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
+list(APPEND
+  AXE_LINK_LIBRARIES
+  ${LIBELF_LIBRARIES}
+  ${LIBXML2_LIBRARIES}
+  ${LLVM_LIBRARIES})
+include_directories(
+  ${LIBELF_INCLUDE_DIRS}
+  ${LIBXML2_INCLUDE_DIR})
+
+if(AXE_ENABLE_SDL)
+  find_package(SDL)
+  if(NOT SDL_FOUND)
+    set(AXE_ENABLE_SDL 0)
+  endif()
+endif()
+
+if(AXE_ENABLE_SDL)
+  message(STATUS "SDL enabled")
+  include_directories(${SDL_INCLUDE_DIR})
+  list(APPEND AXE_LINK_LIBRARIES ${SDL_LIBRARY})
+  add_definitions(-DAXE_ENABLE_SDL)
+else()
+  message(STATUS "SDL disabled")
+endif()
 
 add_executable(not
   not.cpp
@@ -36,6 +62,13 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(NETWORK_LINK_TAP_FILES "NetworkLinkTapOSX.cpp")
 else()
   set(NETWORK_LINK_TAP_FILES "NetworkLinkTapDefault.cpp")
+endif()
+
+if(AXE_ENABLE_SDL)
+list(APPEND
+  AXE_OPTIONAL_FILES
+  LCDScreen.h
+  LCDScreen.cpp)
 endif()
 
 add_executable(axe
@@ -154,6 +187,7 @@ add_executable(axe
   XE.h
   XE.cpp
   XNSchema.rng
+  ${AXE_OPTIONAL_FILES}
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc
   ${AXE_BINARY_DIR}/XNSchema.inc
@@ -235,7 +269,7 @@ if (MSVC)
 endif()
 
 target_link_libraries(
-  axe ${LIBELF_LIBRARIES} ${LIBXML2_LIBRARIES} ${LLVM_LIBRARIES})
+  axe ${AXE_LINK_LIBRARIES})
 
 set_target_properties(axe PROPERTIES LINK_FLAGS ${LLVM_LDFLAGS})
 
