@@ -263,24 +263,12 @@ include_directories(
   ${LIBELF_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR})
 
-if (MSVC)
-  find_path(LIBICONV_INCLUDE_DIR iconv.h REQUIRED)
-  include_directories(${LIBICONV_INCLUDE_DIR})
-endif()
-
 target_link_libraries(
   axe ${AXE_LINK_LIBRARIES})
 
 set_target_properties(axe PROPERTIES LINK_FLAGS ${LLVM_LDFLAGS})
 
 install(TARGETS axe DESTINATION bin)
-if (MSVC)
-  find_file(LIBZLIB_DLL zlib1.dll REQUIRED)
-  find_file(LIBICONV_DLL iconv.dll REQUIRED)
-  find_file(LIBXML2_DLL libxml2.dll REQUIRED)
-  find_file(LIBELF_DLL libelf.dll REQUIRED)
-  install(FILES ${LIBZLIB_DLL} ${LIBICONV_DLL} ${LIBXML2_DLL} ${LIBELF_DLL} DESTINATION bin)
-endif()
 
 if (MSVC)
   SET(CPACK_GENERATOR "ZIP")
