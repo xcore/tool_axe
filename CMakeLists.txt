@@ -139,6 +139,7 @@ add_executable(axe
   PortConnectionManager.h
   PortConnectionManager.cpp
   PortInterface.h
+  PortInterface.cpp
   PortHandleClockProxy.h
   PortHandleClockProxy.cpp
   PortInterface.h

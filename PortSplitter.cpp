@@ -15,13 +15,8 @@ class PortSplitterSlice : public PortInterface {
 public:
   PortSplitterSlice(PortSplitter *p, unsigned s, uint32_t m) :
     parent(p), shift(s), mask(m) {}
-  virtual ~PortSplitterSlice();
   void seePinsChange(const Signal &value, ticks_t time);
 };
-
-PortSplitterSlice::~PortSplitterSlice()
-{
-}
 
 void PortSplitterSlice::seePinsChange(const Signal &signal, ticks_t time)
 {

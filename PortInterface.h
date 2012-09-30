@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2012, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
@@ -12,6 +12,7 @@ struct Signal;
 
 class PortInterface {
 public:
+  virtual ~PortInterface();
   virtual void seePinsChange(const Signal &value, ticks_t time) = 0;
 };
 
