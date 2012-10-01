@@ -65,7 +65,7 @@ bool SDLScreen::init() {
   SDL_SetEventFilter(&filterSDLEvents);
   SDL_WM_SetCaption("AXE", "AXE");
   
-  screen = SDL_SetVideoMode(width, heigth, 32, SDL_SWSURFACE | SDL_ANYFORMAT);
+  screen = SDL_SetVideoMode(width, heigth, 0, SDL_SWSURFACE | SDL_ANYFORMAT);
   if (!screen)
     return false;
   buffer =
