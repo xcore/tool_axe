@@ -9,6 +9,7 @@
 #include "Property.h"
 #include "PortSplitter.h"
 #include "PortCombiner.h"
+#include "SystemState.h"
 
 void PortConnectionWrapper::attach(PortInterface *to) {
   parent->attach(to, port, beginOffset, endOffset);
@@ -53,7 +54,7 @@ attach(PortInterface *to, Port *from, unsigned beginOffset, unsigned endOffset)
   }
   PortCombiner *&combiner = combiners[from];
   if (!combiner) {
-    combiner = new PortCombiner();
+    combiner = new PortCombiner(system.getScheduler());
     from->setLoopback(combiner);
   }
   combiner->attach(to, beginOffset, endOffset);
@@ -66,7 +67,7 @@ getInterface(Port *p, unsigned beginOffset, unsigned endOffset)
     return p;
   PortSplitter *&splitter = splitters[p];
   if (!splitter) {
-    splitter = new PortSplitter(p);
+    splitter = new PortSplitter(system.getScheduler(), p);
   }
   return splitter->getInterface(beginOffset, endOffset);
 }

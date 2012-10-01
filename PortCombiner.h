@@ -7,14 +7,14 @@
 #define _PortCombiner_
 
 #include <map>
-#include "PortInterface.h"
+#include "PortHandleClockMixin.h"
 
-class PortCombiner : public PortInterface {
+class PortCombiner : public PortHandleClockMixin<PortCombiner> {
   uint32_t value;
   std::map<std::pair<uint32_t,unsigned>,PortInterface*> slices;
 public:
-  PortCombiner();
-  void seePinsChange(const Signal &signal, ticks_t time);
+  PortCombiner(RunnableQueue &s);
+  void seePinsValueChange(uint32_t value, ticks_t time);
   void attach(PortInterface *to, unsigned beginOffset, unsigned endOffset);
 };
 

@@ -140,6 +140,7 @@ add_executable(axe
   PortConnectionManager.cpp
   PortInterface.h
   PortInterface.cpp
+  PortHandleClockMixin.h
   PortHandleClockProxy.h
   PortHandleClockProxy.cpp
   PortInterface.h

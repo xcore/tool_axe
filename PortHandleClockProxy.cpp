@@ -9,34 +9,7 @@
 
 PortHandleClockProxy::
 PortHandleClockProxy(RunnableQueue &s, PortInterface &p) :
-  scheduler(s),
-  next(p),
-  currentValue(0),
-  currentSignal(0)
+  PortHandleClockMixin<PortHandleClockProxy>(s),
+  next(p)
 {
-}
-
-void PortHandleClockProxy::seePinsChange(const Signal &newSignal, ticks_t time)
-{
-  uint32_t newValue = newSignal.getValue(time);
-  if (newValue != currentValue) {
-    next.seePinsChange(Signal(newValue), time);
-    currentValue = newValue;
-  }
-  currentSignal = newSignal;
-  if (currentSignal.isClock()) {
-    scheduler.push(*this, currentSignal.getNextEdge(time).time);
-  }
-}
-
-void PortHandleClockProxy::run(ticks_t time)
-{
-  if (!currentSignal.isClock())
-    return;
-  uint32_t newValue = currentSignal.getValue(time);
-  if (newValue != currentValue) {
-    next.seePinsChange(Signal(newValue), time);
-    currentValue = newValue;
-  }
-  scheduler.push(*this, currentSignal.getNextEdge(time).time);
 }

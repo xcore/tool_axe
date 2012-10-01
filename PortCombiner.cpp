@@ -7,12 +7,12 @@
 #include "Signal.h"
 #include "BitManip.h"
 
-PortCombiner::PortCombiner() : value(0) {}
+PortCombiner::PortCombiner(RunnableQueue &scheduler) :
+  PortHandleClockMixin<PortCombiner>(scheduler),
+  value(0) {}
 
-void PortCombiner::seePinsChange(const Signal &signal, ticks_t time)
+void PortCombiner::seePinsValueChange(uint32_t newValue, ticks_t time)
 {
-  assert(!signal.isClock());
-  uint32_t newValue = signal.getValue(time);
   for (std::map<std::pair<uint32_t,unsigned>,PortInterface*>::iterator
        it = slices.begin(), e = slices.end(); it != e; ++it) {
     uint32_t mask = it->first.first;

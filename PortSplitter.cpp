@@ -4,26 +4,31 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "PortSplitter.h"
-#include "PortInterface.h"
+#include "PortHandleClockMixin.h"
 #include "BitManip.h"
 #include <cassert>
 
-class PortSplitterSlice : public PortInterface {
+class PortSplitterSlice : public PortHandleClockMixin<PortSplitterSlice> {
   PortSplitter *parent;
   unsigned shift;
   uint32_t mask;
 public:
-  PortSplitterSlice(PortSplitter *p, unsigned s, uint32_t m) :
-    parent(p), shift(s), mask(m) {}
-  void seePinsChange(const Signal &value, ticks_t time);
+  PortSplitterSlice(PortSplitter *p, RunnableQueue &scheduler, unsigned s,
+                    uint32_t m) :
+    PortHandleClockMixin<PortSplitterSlice>(scheduler),
+    parent(p),
+    shift(s),
+    mask(m) {}
+  void seePinsValueChange(uint32_t value, ticks_t time);
 };
 
-void PortSplitterSlice::seePinsChange(const Signal &signal, ticks_t time)
+void PortSplitterSlice::seePinsValueChange(uint32_t value, ticks_t time)
 {
-  parent->seePinsChange(signal, time, shift, mask);
+  parent->seePinsValueChange(value, time, shift, mask);
 }
 
-PortSplitter::PortSplitter(PortInterface *p) :
+PortSplitter::PortSplitter(RunnableQueue &s, PortInterface *p) :
+  scheduler(s),
   port(p),
   value(0)
 {
@@ -44,17 +49,17 @@ getInterface(unsigned beginOffset, unsigned endOffset)
   if (!slice) {
     unsigned shift = beginOffset;
     uint32_t mask = makeMask(endOffset - beginOffset) << beginOffset;
-    slice = new PortSplitterSlice(this, shift, mask);
+    slice = new PortSplitterSlice(this, scheduler, shift, mask);
   }
   return slice;
 }
 
-void PortSplitter::seePinsChange(const Signal &signal, ticks_t time, unsigned shift,
-                                 uint32_t mask)
+void PortSplitter::
+seePinsValueChange(uint32_t sliceValue, ticks_t time, unsigned shift,
+                   uint32_t mask)
 {
-  assert(!signal.isClock());
   uint32_t newValue = value;
-  newValue ^= ((signal.getValue(time) << shift) ^ newValue) & mask;
+  newValue ^= ((sliceValue << shift) ^ newValue) & mask;
   if (newValue != value) {
     value = newValue;
     port->seePinsChange(Signal(value), time);

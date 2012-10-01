@@ -11,17 +11,19 @@
 
 class PortInterface;
 class PortSplitterSlice;
+class RunnableQueue;
 
 class PortSplitter {
+  RunnableQueue &scheduler;
   PortInterface *port;
   uint32_t value;
   std::map<std::pair<unsigned,unsigned>,PortSplitterSlice*> slices;
 public:
-  PortSplitter(PortInterface *p);
+  PortSplitter(RunnableQueue &s, PortInterface *p);
   ~PortSplitter();
   PortInterface *getInterface(unsigned beginOffset, unsigned endOffset);
-  void seePinsChange(const Signal &signal, ticks_t time, unsigned shift,
-                     uint32_t mask);
+  void seePinsValueChange(uint32_t value, ticks_t time, unsigned shift,
+                          uint32_t mask);
 };
 
 #endif // _PortSplitter_

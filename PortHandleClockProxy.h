@@ -6,21 +6,16 @@
 #ifndef _PortHandleClockProxy_h_
 #define _PortHandleClockProxy_h_
 
-#include "PortInterface.h"
-#include "Runnable.h"
 #include "Signal.h"
+#include "PortHandleClockMixin.h"
 
-class RunnableQueue;
-
-class PortHandleClockProxy : public PortInterface, public Runnable {
-  RunnableQueue &scheduler;
+class PortHandleClockProxy : public PortHandleClockMixin<PortHandleClockProxy> {
   PortInterface &next;
-  uint32_t currentValue;
-  Signal currentSignal;
 public:
   PortHandleClockProxy(RunnableQueue &scheduler, PortInterface &next);
-  void seePinsChange(const Signal &value, ticks_t time);
-  void run(ticks_t time);
+  void seePinsValueChange(uint32_t value, ticks_t time) {
+    next.seePinsChange(Signal(value), time);
+  }
 };
 
 #endif // _PortHandleClockProxy_h_
