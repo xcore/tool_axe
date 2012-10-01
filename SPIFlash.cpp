@@ -11,6 +11,7 @@
 #include "PeripheralDescriptor.h"
 #include "Peripheral.h"
 #include "PortConnectionManager.h"
+#include "PortSignalTracker.h"
 #include "Property.h"
 #include "SystemState.h"
 #include "Node.h"
@@ -21,7 +22,6 @@
 #include <cstdlib>
 
 class SPIFlash : public Peripheral {
-  void seeMOSIChange(const Signal &value, ticks_t time);
   void seeSCLKChange(const Signal &value, ticks_t time);
   void seeSSChange(const Signal &value, ticks_t time);
   enum State {
@@ -34,13 +34,12 @@ class SPIFlash : public Peripheral {
   unsigned char *mem;
   unsigned memSize;
   PortInterface *MISO;
-  PortInterfaceMemberFuncDelegate<SPIFlash> MOSIProxy;
+  PortSignalTracker MOSITracker;
   PortInterfaceMemberFuncDelegate<SPIFlash> SCLKProxy;
   PortInterfaceMemberFuncDelegate<SPIFlash> SSProxy;
   PortHandleClockProxy SCLKHandleClock;
   PortHandleClockProxy SSHandleClock;
   unsigned MISOValue;
-  Signal MOSIValue;
   unsigned SCLKValue;
   unsigned SSValue;
   uint8_t receiveReg;
@@ -66,17 +65,15 @@ SPIFlash(RunnableQueue &scheduler, PortConnectionWrapper miso,
   mem(0),
   memSize(0),
   MISO(miso.getInterface()),
-  MOSIProxy(*this, &SPIFlash::seeMOSIChange),
   SCLKProxy(*this, &SPIFlash::seeSCLKChange),
   SSProxy(*this, &SPIFlash::seeSSChange),
   SCLKHandleClock(scheduler, SCLKProxy),
   SSHandleClock(scheduler, SSProxy),
   MISOValue(0),
-  MOSIValue(0),
   SCLKValue(0),
   SSValue(0)
 {
-  mosi.attach(&MOSIProxy);
+  mosi.attach(&MOSITracker);
   sclk.attach(&SCLKHandleClock);
   ss.attach(&SSHandleClock);
   reset();
@@ -98,11 +95,6 @@ void SPIFlash::reset()
   sendBitsRemaining = 0;
 }
 
-void SPIFlash::seeMOSIChange(const Signal &value, ticks_t time)
-{
-  MOSIValue = value;
-}
-
 void SPIFlash::seeSCLKChange(const Signal &value, ticks_t time)
 {
   unsigned newValue = value.getValue(time);
@@ -113,7 +105,7 @@ void SPIFlash::seeSCLKChange(const Signal &value, ticks_t time)
     return;
   if (SCLKValue == 1) {
     // Rising edge.
-    receiveReg = (receiveReg << 1) | MOSIValue.getValue(time);
+    receiveReg = (receiveReg << 1) | MOSITracker.getSignal().getValue(time);
     if (++receivedBits == 8) {
       switch (state) {
       default: assert(0 && "Unexpected state");

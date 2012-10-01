@@ -9,6 +9,7 @@
 #include "Port.h"
 #include "PortConnectionManager.h"
 #include "PortHandleClockProxy.h"
+#include "PortSignalTracker.h"
 #include "SystemState.h"
 #include "Property.h"
 #include "Config.h"
@@ -29,18 +30,16 @@ const unsigned minFrameSize = 64;
 class EthernetPhyTx : public Runnable {
   void seeTXDChange(const Signal &value, ticks_t time);
   void seeTX_ENChange(const Signal &value, ticks_t time);
-  void seeTX_ERChange(const Signal &value, ticks_t time);
 
   RunnableQueue &scheduler;
   NetworkLink *link;
   PortInterface *TX_CLK;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TXDProxy;
   PortInterfaceMemberFuncDelegate<EthernetPhyTx> TX_ENProxy;
-  PortInterfaceMemberFuncDelegate<EthernetPhyTx> TX_ERProxy;
+  PortSignalTracker TX_ERTracker;
   Signal TX_CLKSignal;
   Signal TXDSignal;
   Signal TX_ENSignal;
-  Signal TX_ERSignal;
 
   bool inFrame;
   bool hadError;
@@ -55,7 +54,7 @@ public:
   EthernetPhyTx(RunnableQueue &s, PortConnectionWrapper txd,
                 PortConnectionWrapper txer, PortConnectionWrapper txclk);
   void setLink(NetworkLink *value) { link = value; }
-  void connectTX_ER(PortConnectionWrapper p) { p.attach(&TX_ERProxy); }
+  void connectTX_ER(PortConnectionWrapper p) { p.attach(&TX_ERTracker); }
   void run(ticks_t time);
 };
 
@@ -67,11 +66,9 @@ EthernetPhyTx(RunnableQueue &s, PortConnectionWrapper txd,
   TX_CLK(txclk.getInterface()),
   TXDProxy(*this, &EthernetPhyTx::seeTXDChange),
   TX_ENProxy(*this, &EthernetPhyTx::seeTX_ENChange),
-  TX_ERProxy(*this, &EthernetPhyTx::seeTX_ERChange),
   TX_CLKSignal(0, ethernetPhyHalfPeriod),
   TXDSignal(0),
-  TX_ENSignal(0),
-  TX_ERSignal(0)
+  TX_ENSignal(0)
 {
   reset();
   TX_CLK->seePinsChange(TX_CLKSignal, 0);
@@ -132,17 +129,12 @@ void EthernetPhyTx::seeTX_ENChange(const Signal &value, ticks_t time)
   }
 }
 
-void EthernetPhyTx::seeTX_ERChange(const Signal &value, ticks_t time)
-{
-  TX_ERSignal = value;
-}
-
 void EthernetPhyTx::run(ticks_t time)
 {
   // Sample on rising edge.
   uint32_t TXDValue = TXDSignal.getValue(time);
   uint32_t TX_ENValue = TX_ENSignal.getValue(time);
-  uint32_t TX_ERValue = TX_ERSignal.getValue(time);
+  uint32_t TX_ERValue = TX_ERTracker.getSignal().getValue(time);
   if (inFrame) {
     if (TX_ENValue) {
       if (TX_ERValue) {
@@ -397,21 +389,19 @@ class EthernetPhySMI {
     READ3
   } state;
   PortInterfaceMemberFuncDelegate<EthernetPhySMI> MDCProxy;
-  PortInterfaceMemberFuncDelegate<EthernetPhySMI> MDIOProxy;
+  PortSignalTracker MDIOTracker;
   PortHandleClockProxy MDCHandleClock;
-  PortHandleClockProxy MDIOHandleClock;
 public:
   EthernetPhySMI(RunnableQueue &scheduler, PortConnectionWrapper mdc,
                  PortConnectionWrapper mdio);
   void seeMDCChange(const Signal &value, ticks_t time);
-  void seeMDIOChange(const Signal &value, ticks_t time);
 };
 
 void EthernetPhySMI::seeMDCChange(const Signal &value, ticks_t time)
 {
   if (value.getValue(time) && !outputMode) {
     // Sample on rising edge.
-    unsigned MDIOValue = MDIOSignal.getValue(time);
+    unsigned MDIOValue = MDIOTracker.getSignal().getValue(time);
     shiftReg = (shiftReg << 1) | MDIOValue;
     switch (state) {
     default:
@@ -498,11 +488,6 @@ void EthernetPhySMI::seeMDCChange(const Signal &value, ticks_t time)
   }
 }
 
-void EthernetPhySMI::seeMDIOChange(const Signal &value, ticks_t time)
-{
-  MDIOSignal = value;
-}
-
 EthernetPhySMI::
 EthernetPhySMI(RunnableQueue &scheduler, PortConnectionWrapper mdc,
                PortConnectionWrapper mdio) :
@@ -511,12 +496,10 @@ EthernetPhySMI(RunnableQueue &scheduler, PortConnectionWrapper mdc,
   shiftReg(0),
   state(WAIT_FOR_PREAMBLE),
   MDCProxy(*this, &EthernetPhySMI::seeMDCChange),
-  MDIOProxy(*this, &EthernetPhySMI::seeMDIOChange),
-  MDCHandleClock(scheduler, MDCProxy),
-  MDIOHandleClock(scheduler, MDIOProxy)
+  MDCHandleClock(scheduler, MDCProxy)
 {
   mdc.attach(&MDCHandleClock);
-  mdio.attach(&MDIOHandleClock);
+  mdio.attach(&MDIOTracker);
 }
 
 class EthernetPhy : public Peripheral {

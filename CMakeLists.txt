@@ -146,6 +146,8 @@ add_executable(axe
   PortInterface.h
   PortNames.h
   PortNames.cpp
+  PortSignalTracker.h
+  PortSignalTracker.cpp
   PortSplitter.h
   PortSplitter.cpp
   Register.h

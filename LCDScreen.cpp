@@ -8,6 +8,7 @@
 #include "PortInterface.h"
 #include "PortConnectionManager.h"
 #include "PortHandleClockProxy.h"
+#include "PortSignalTracker.h"
 #include "PeripheralDescriptor.h"
 #include "Signal.h"
 #include "SystemState.h"
@@ -104,25 +105,17 @@ SDLScreen::~SDLScreen() {
 class LCDScreen : public Peripheral {
   SDLScreen screen;
   PortInterfaceMemberFuncDelegate<LCDScreen> CLKProxy;
-  PortInterfaceMemberFuncDelegate<LCDScreen> DataProxy;
-  PortInterfaceMemberFuncDelegate<LCDScreen> DEProxy;
-  PortInterfaceMemberFuncDelegate<LCDScreen> HSYNCProxy;
-  PortInterfaceMemberFuncDelegate<LCDScreen> VSYNCProxy;
+  PortSignalTracker DataTracker;
+  PortSignalTracker DETracker;
+  PortSignalTracker HSYNCTracker;
+  PortSignalTracker VSYNCTracker;
   PortHandleClockProxy CLKHandleClock;
-  Signal DataSignal;
-  Signal DESignal;
-  Signal VSYNCSignal;
-  Signal HSYNCSignal;
   unsigned x;
   unsigned y;
   unsigned edgeCounter;
   ticks_t lastDEHighEdge;
 
   void seeCLKChange(const Signal &value, ticks_t time);
-  void seeDataChange(const Signal &value, ticks_t time);
-  void seeDEChange(const Signal &value, ticks_t time);
-  void seeHSYNCChange(const Signal &value, ticks_t time);
-  void seeVSYNCChange(const Signal &value, ticks_t time);
 public:
   LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
             PortConnectionWrapper data, PortConnectionWrapper de,
@@ -130,23 +123,17 @@ public:
             unsigned width, unsigned height) :
     screen(width, height, 0x1f, (0x3f << 5), (0x1f << 11)),
     CLKProxy(*this, &LCDScreen::seeCLKChange),
-    DataProxy(*this, &LCDScreen::seeDataChange),
-    DEProxy(*this, &LCDScreen::seeDEChange),
-    HSYNCProxy(*this, &LCDScreen::seeHSYNCChange),
-    VSYNCProxy(*this, &LCDScreen::seeVSYNCChange),
     CLKHandleClock(s, CLKProxy),
-    DataSignal(0),
-    DESignal(0),
     x(0),
     y(0),
     edgeCounter(0),
     lastDEHighEdge(0)
   {
     clk.attach(&CLKHandleClock);
-    data.attach(&DataProxy);
-    de.attach(&DEProxy);
-    hsync.attach(&HSYNCProxy);
-    vsync.attach(&VSYNCProxy);
+    data.attach(&DataTracker);
+    de.attach(&DETracker);
+    hsync.attach(&HSYNCTracker);
+    vsync.attach(&VSYNCTracker);
     if (!screen.init()) {
       std::cerr << "Failed to initialize SDL screen\n";
       std::exit(1);
@@ -166,7 +153,7 @@ void LCDScreen::seeCLKChange(const Signal &value, ticks_t time)
     // TODO According to the AT043TN24 datasheet data should be sampled on the
     // falling edge. However the sc_lcd code drives on the falling edge so for
     // the moment sample on the rising to match that.
-    if (DESignal.getValue(time)) {
+    if (DETracker.getSignal().getValue(time)) {
       // thf + thp + thb
       const unsigned minHorizontalClks = 45;
       // tvf + tvp + tvb
@@ -182,31 +169,11 @@ void LCDScreen::seeCLKChange(const Signal &value, ticks_t time)
         ++y;
       }
       if (x < screen.getWidth() && y < screen.getHeigth()) {
-        screen.writePixel(x++, y, DataSignal.getValue(time));
+        screen.writePixel(x++, y, DataTracker.getSignal().getValue(time));
       }
       lastDEHighEdge = edgeCounter;
     }
   }
-}
-
-void LCDScreen::seeDataChange(const Signal &value, ticks_t time)
-{
-  DataSignal = value;
-}
-
-void LCDScreen::seeDEChange(const Signal &value, ticks_t time)
-{
-  DESignal = value;
-}
-
-void LCDScreen::seeHSYNCChange(const Signal &value, ticks_t time)
-{
-  HSYNCSignal = value;
-}
-
-void LCDScreen::seeVSYNCChange(const Signal &value, ticks_t time)
-{
-  VSYNCSignal = value;
 }
 
 static Peripheral *
