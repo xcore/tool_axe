@@ -29,15 +29,15 @@ static bool parsePortOffset(const std::string &s, signed char &result)
 bool PortArg::parse(const std::string &s, PortArg &arg)
 {
   size_t pos;
+  if (s.empty())
+    return false;
   
   std::string index;
   std::string port;
-  if ((pos = s.find_first_of('[')) != std::string::npos) {
-    size_t openPos = pos;
-    size_t closePos = s.find_first_of(']', openPos);
-    if (closePos == std::string::npos)
-      return false;
-    if (closePos + 1 != s.length())
+  if (s[s.length() - 1] == ']') {
+    size_t closePos = s.length() - 1;
+    size_t openPos = s.find_last_of('[', closePos - 1);
+    if (openPos == std::string::npos)
       return false;
     port = s.substr(0, openPos);
     index = s.substr(openPos + 1, closePos - (openPos + 1));
