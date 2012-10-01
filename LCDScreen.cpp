@@ -154,12 +154,12 @@ void LCDScreen::seeCLKChange(const Signal &value, ticks_t time)
     // falling edge. However the sc_lcd code drives on the falling edge so for
     // the moment sample on the rising to match that.
     if (DETracker.getSignal().getValue(time)) {
-      // thf + thp + thb
-      const unsigned minHorizontalClks = 45;
-      // tvf + tvp + tvb
-      const unsigned minVerticalMultiplier = 6;
+      // Thb
+      const unsigned minHorizontalClks = 40;
+      // Th * tvb
+      const unsigned minVerticalClks = 5 * 520;
       ticks_t lowEdges = edgeCounter - (lastDEHighEdge + 1);
-      if (lowEdges >= minVerticalMultiplier * minHorizontalClks) {
+      if (lowEdges >= minVerticalClks) {
         // VSync
         x = y = 0;
         screen.flip();
