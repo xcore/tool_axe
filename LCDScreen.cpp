@@ -45,10 +45,12 @@ class SDLScreen {
   Uint32 Bmask;
   SDL_Surface *screen;
   SDL_Surface *buffer;
+  Uint32 lastPollEvent;
 
 public:
   SDLScreen(unsigned w, unsigned h, Uint32 r, Uint32 g, Uint32 b) :
-    width(w), heigth(h), Rmask(r), Gmask(g), Bmask(b), screen(0), buffer(0) {}
+    width(w), heigth(h), Rmask(r), Gmask(g), Bmask(b), screen(0), buffer(0),
+    lastPollEvent(0) {}
   ~SDLScreen();
 
   bool init();
@@ -77,6 +79,11 @@ bool SDLScreen::init() {
 /// Handle pending SDL events. Returns whether a SDL_QUIT event was received.
 bool SDLScreen::update()
 {
+  // Don't poll for events more than 25 times a second.
+  Uint32 time = SDL_GetTicks();
+  if (time - lastPollEvent < 1000/25)
+    return false;
+  lastPollEvent = time;
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     if (event.type == SDL_QUIT)
