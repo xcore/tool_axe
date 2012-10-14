@@ -274,6 +274,7 @@ public:
 
   bool seeOwnerEventEnable();
 
+  void skipEdges(unsigned numEdges);
   void skipEdges(unsigned numFalling, unsigned numRising);
   
   /// Update the port to the specified time.

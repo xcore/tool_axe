@@ -212,32 +212,20 @@ seePinsChange(const Signal &value, ticks_t time)
   scheduleUpdateIfNeeded();
 }
 
-void Port::update(ticks_t newTime)
+void Port::skipEdges(unsigned numEdges)
 {
-  // Note updating the current port may result in callbacks for other ports /
-  // clocks being called. These callbacks may in turn call callbacks for the
-  // current port. Because of this we must ensure the port time and nextEdge are
-  // updated before any callback is called.
-  assert(newTime >= time);
-  if (!clock->isFixedFrequency() || !isInUse() || portType != DATAPORT) {
-    time = newTime;
+  if (numEdges == 0)
+    return;
+  bool slowMode = false;
+  if (slowMode || timeRegValid) {
+    updateSlow((nextEdge + (numEdges - 1))->time);
     return;
   }
-  assert(nextEdge == clock->getValue().getEdgeIterator(time));
-  // Handle the first edge.
-  if (nextEdge->time > newTime) {
-    time = newTime;
-    return;
-  }
+
+  ticks_t newTime = (nextEdge + (numEdges - 1))->time;
   seeEdge(nextEdge++);
   if (nextEdge->time > newTime) {
     time = newTime;
-    return;
-  }
-  const bool slowMode = false;
-  // TODO handle these cases.
-  if (slowMode || timeRegValid) {
-    updateSlow(newTime);
     return;
   }
   if (useReadyIn()) {
@@ -330,7 +318,7 @@ void Port::update(ticks_t newTime)
       // Optimisation to skip shifting out data which doesn't change the value on
       // the pins.
       unsigned numSignificantFallingEdges = validShiftRegEntries +
-                                            portShiftCount - 1;
+      portShiftCount - 1;
       if (pausedSync)
         numSignificantFallingEdges++;
       unsigned numSignificantEdges = 2 * numSignificantFallingEdges - 1;
@@ -361,6 +349,33 @@ void Port::update(ticks_t newTime)
     }
   }
   updateSlow(newTime);
+}
+
+void Port::update(ticks_t newTime)
+{
+  // Note updating the current port may result in callbacks for other ports /
+  // clocks being called. These callbacks may in turn call callbacks for the
+  // current port. Because of this we must ensure the port time and nextEdge are
+  // updated before any callback is called.
+  assert(newTime >= time);
+  if (!clock->isFixedFrequency() || !isInUse() || portType != DATAPORT) {
+    time = newTime;
+    return;
+  }
+  assert(nextEdge == clock->getValue().getEdgeIterator(time));
+  // Check there is at least one edge.
+  if (nextEdge->time > newTime) {
+    time = newTime;
+    return;
+  }
+  unsigned numEdges = clock->getValue().getEdgeIterator(newTime) - nextEdge;
+  // Skip all but the last edge. There can be no externally visisble changes in
+  // this time (otherwise the port would have been scheduled to run at en
+  // earlier time).
+  skipEdges(numEdges - 1);
+  // Handle the last edge.
+  seeEdge(nextEdge++);
+  time = newTime;
 }
 
 void Port::updateSlow(ticks_t newTime)
