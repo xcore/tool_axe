@@ -120,7 +120,7 @@ private:
   void handleReadyOutChange(bool value, ticks_t time);
   /// Update the port to the specified time. The port must be clocked off a
   /// fixed frequency clock.
-  void updateAux(ticks_t time);
+  void updateSlow(ticks_t time);
 
   /// Return whether the condition is met for the specified value.
   bool valueMeetsCondition(uint32_t value) const;

@@ -237,13 +237,13 @@ void Port::update(ticks_t newTime)
   const bool slowMode = false;
   // TODO handle these cases.
   if (slowMode || timeRegValid) {
-    updateAux(newTime);
+    updateSlow(newTime);
     return;
   }
   if (useReadyIn()) {
     // Don't try and optimize this case - it is unlikely to come up in practice.
     if (clock->getReadyInValue().isClock()) {
-      updateAux(newTime);
+      updateSlow(newTime);
       return;
     }
     bool pinsReadyInValue = clock->getReadyInValue().getValue(0);
@@ -360,10 +360,10 @@ void Port::update(ticks_t newTime)
       }
     }
   }
-  updateAux(newTime);
+  updateSlow(newTime);
 }
 
-void Port::updateAux(ticks_t newTime)
+void Port::updateSlow(ticks_t newTime)
 {
   while (nextEdge->time <= newTime) {
     seeEdge(nextEdge++);
