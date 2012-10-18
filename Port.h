@@ -40,8 +40,6 @@ private:
   std::set<ClockBlock*> readyInOf;
   Port *readyOutOf;
   uint16_t portCounter;
-  // Current value on the pins.
-  uint32_t shiftRegister;
   PortInterface *loopback;
   PortInterface *tracer;
   /// Ready out ports.
