@@ -212,143 +212,174 @@ seePinsChange(const Signal &value, ticks_t time)
   scheduleUpdateIfNeeded();
 }
 
-void Port::skipEdges(unsigned numEdges)
+void Port::updateNoExternalChange(unsigned numEdges)
 {
   if (numEdges == 0)
     return;
+  
   bool slowMode = false;
-  if (slowMode || timeRegValid) {
-    updateSlow((nextEdge + (numEdges - 1))->time);
+  ticks_t newTime = (nextEdge + (numEdges - 1))->time;
+  if (slowMode) {
+    bool oldOutputPort = outputPort;
+    Signal oldOutputValue = getPinsOutputValue();
+    bool oldReadyOut = readyOut;
+    updateSlow(newTime);
+    assert(oldOutputPort == outputPort);
+    assert(oldOutputValue == getPinsOutputValue());
+    assert(oldReadyOut == readyOut);
     return;
   }
 
-  ticks_t newTime = (nextEdge + (numEdges - 1))->time;
-  seeEdge(nextEdge++);
-  if (nextEdge->time > newTime) {
-    time = newTime;
-    return;
-  }
   if (useReadyIn()) {
-    // Don't try and optimize this case - it is unlikely to come up in practice.
     if (clock->getReadyInValue().isClock()) {
       updateSlow(newTime);
       return;
     }
-    bool pinsReadyInValue = clock->getReadyInValue().getValue(0);
-    if (readyIn != pinsReadyInValue) {
+    while (readyIn != clock->getReadyInValue(time)) {
       seeEdge(nextEdge++);
-      if (nextEdge->time > newTime) {
-        time = newTime;
+      if (--numEdges == 0)
         return;
-      }
     }
-    assert(readyIn == pinsReadyInValue);
     if (!readyIn) {
-      if (useReadyOut()) {
-        while (readyOut) {
-          seeEdge(nextEdge++);
-          if (nextEdge->time > newTime) {
-            time = newTime;
-            return;
-          }
+      unsigned numFalling = numEdges / 2;
+      if (numEdges % 2 && nextEdge->type == Edge::FALLING)
+        numFalling++;
+      if (timeRegValid && numEdges >= fallingEdgesUntilTimeMet()) {
+        // TODO is behaviour right if !outputPort && !useReadyOut()?. Should
+        // this be isBuffered (seeEdge would also need updating).
+        if (outputPort || useReadyOut()) {
+          timeRegValid = false;
+          validShiftRegEntries = 0;
         }
       }
-      unsigned numEdges = clock->getEdgeIterator(newTime) - nextEdge;
-      unsigned numFalling = numEdges / 2;
-      unsigned numRising = numFalling;
-      if (numEdges % 2) {
-        if (nextEdge->type == Edge::RISING)
-          numRising++;
-        else
-          numFalling++;
-      }
-      skipEdges(numFalling, numRising);
+      updatePortCounter(numEdges);
       nextEdge += numEdges;
       time = newTime;
       return;
     }
   }
-  if (useReadyOut()) {
-    // The following logic would need updating for timed inputs / outputs.
-    assert(!timeRegValid);
-    // Ensure we've seen a falling edge to give readyOut a chance to transition
-    // from 0 to 1.
-    if (nextEdge->type == Edge::FALLING) {
-      seeEdge(nextEdge++);
-      if (nextEdge->time > newTime) {
-        time = newTime;
-        return;
-      }
-    }
-    if (outputPort || condition == COND_FULL) {
-      // See edges until readyOut goes away.
-      while (readyOut) {
-        seeEdge(nextEdge++);
-        if (nextEdge->time > newTime) {
-          time = newTime;
-          return;
-        }
-      }
-      // At this point the port is in a steady state, skip ahead.
-      unsigned numEdges = clock->getEdgeIterator(newTime) - nextEdge;
-      unsigned numFalling = numEdges / 2;
-      unsigned numRising = numFalling;
-      if (numEdges % 2) {
-        if (nextEdge->type == Edge::RISING)
-          numRising++;
-        else
-          numFalling++;
-      }
-      skipEdges(numFalling, numRising);
-      nextEdge += numEdges;
-      time = newTime;
-      return;
-    }
-  }
-  // Align to rising edge.
-  if (nextEdge->type == Edge::RISING) {
-    seeEdge(nextEdge++);
-    if (nextEdge->time > newTime) {
-      time = newTime;
-      return;
-    }
-  }
+
   if (outputPort) {
-    if (!pausedIn) {
-      // Optimisation to skip shifting out data which doesn't change the value on
-      // the pins.
-      unsigned numSignificantFallingEdges = validShiftRegEntries +
-      portShiftCount - 1;
-      if (pausedSync)
-        numSignificantFallingEdges++;
-      unsigned numSignificantEdges = 2 * numSignificantFallingEdges - 1;
-      if ((nextEdge + (numSignificantEdges - 1))->time <= newTime) {
-        while (numSignificantEdges != 0) {
-          seeEdge(nextEdge++);
-          --numSignificantEdges;
-        }
-        unsigned skippedEdges = clock->getEdgeIterator(newTime) - nextEdge;
-        skipEdges(skippedEdges / 2, (skippedEdges + 1) / 2);
-        nextEdge += skippedEdges;
-        time = newTime;
+    while (validShiftRegEntries != 0 || portShiftCount != shiftRegEntries) {
+      seeEdge(nextEdge++);
+      if (--numEdges == 0)
         return;
+    }
+    if (!timeRegValid) {
+      updatePortCounter(numEdges);
+      nextEdge += numEdges;
+      time = newTime;
+      return;
+    }
+    unsigned numFalling = numEdges / 2;
+    if (numEdges % 2 && nextEdge->type == Edge::FALLING)
+      numFalling++;
+    unsigned fallingEdgesRemaining = fallingEdgesUntilTimeMet();
+    if (numFalling < fallingEdgesRemaining) {
+      portCounter += numFalling;
+      nextEdge += numEdges;
+      time = newTime;
+      return;
+    }
+    unsigned edgesRemaining = edgesUntilTimeMet();
+    portCounter += fallingEdgesRemaining - 1;
+    nextEdge += edgesRemaining - 1;
+    numEdges -= edgesRemaining - 1;
+    while (timeRegValid) {
+      seeEdge(nextEdge++);
+      if (--numEdges == 0)
+        return;
+    }
+    while (validShiftRegEntries != 0 || portShiftCount != shiftRegEntries) {
+      seeEdge(nextEdge++);
+      if (--numEdges == 0)
+        return;
+    }
+    updatePortCounter(numEdges);
+    nextEdge += numEdges;
+    time = newTime;
+    return;
+  }
+
+  if (pinsInputValue.isClock()) {
+    updateSlow(newTime);
+    return;
+  }
+  if (timeRegValid) {
+    if (!useReadyOut()) {
+      uint32_t steadyStateShiftReg = computeSteadyStateInputShiftReg();
+      while (shiftReg != steadyStateShiftReg ||
+             portShiftCount != shiftRegEntries) {
+        seeEdge(nextEdge++);
+        if (--numEdges == 0)
+          return;
       }
     }
-  } else {
-    if (!pausedOut) {
-      // Optimisation to skip shifting in data which will never seen.
-      // TODO handle portShiftCount.
-      unsigned numSignificantRisingEdges = shiftRegEntries * 2 - 1;
-      unsigned numSignificantEdges = 2 * numSignificantRisingEdges;
-      if ((nextEdge + (numSignificantEdges - 1))->time <= newTime) {
-        unsigned numEdges = clock->getEdgeIterator(newTime) - nextEdge;
-        unsigned skippedEdges = numEdges - numSignificantEdges;
-        skipEdges((skippedEdges + 1) /2, skippedEdges /2);
-        nextEdge += skippedEdges;
-      }
+    unsigned numFalling = numEdges / 2;
+    if (numEdges % 2 && nextEdge->type == Edge::FALLING)
+      numFalling++;
+    unsigned fallingEdgesRemaining = fallingEdgesUntilTimeMet();
+    if (numFalling < fallingEdgesRemaining) {
+      updatePortCounter(numEdges);
+      nextEdge += numEdges;
+      time = newTime;
+      return;
+    }
+    unsigned edgesRemaining = edgesUntilTimeMet();
+    updatePortCounter(edgesRemaining - 1);
+    nextEdge += edgesRemaining - 1;
+    numEdges -= edgesRemaining - 1;
+    while (timeRegValid) {
+      seeEdge(nextEdge++);
+      if (--numEdges == 0)
+        return;
     }
   }
-  updateSlow(newTime);
+
+  if (useReadyOut()) {
+    uint32_t steadyStateShiftReg = computeSteadyStateInputShiftReg();
+    if (!valueMeetsCondition(getEffectiveDataPortInputPinsValue(time))) {
+      while (shiftReg != steadyStateShiftReg ||
+             portShiftCount != shiftRegEntries) {
+        seeEdge(nextEdge++);
+        if (--numEdges == 0)
+          return;
+      }
+      updatePortCounter(numEdges);
+      updateInputValidShiftRegEntries(numEdges);
+      nextEdge += numEdges;
+      time = newTime;
+      return;
+    }
+    while (condition != COND_FULL) {
+      seeEdge(nextEdge++);
+      if (--numEdges == 0)
+        return;
+    }
+    while (!transferRegValid || portShiftCount != shiftRegEntries) {
+      seeEdge(nextEdge++);
+      if (--numEdges == 0)
+        return;
+    }
+    updatePortCounter(numEdges);
+    nextEdge += numEdges;
+    time = newTime;
+    return;
+  }
+  
+  uint32_t steadyStateShiftReg = computeSteadyStateInputShiftReg();
+  while (!transferRegValid || portShiftCount != shiftRegEntries ||
+         shiftReg != steadyStateShiftReg ||
+         transferReg != steadyStateShiftReg) {
+    seeEdge(nextEdge++);
+    if (--numEdges == 0)
+      return;
+  }
+  updatePortCounter(numEdges);
+  updateInputValidShiftRegEntries(numEdges);
+  nextEdge += numEdges;
+  time = newTime;
+  return;
 }
 
 void Port::update(ticks_t newTime)
@@ -372,10 +403,27 @@ void Port::update(ticks_t newTime)
   // Skip all but the last edge. There can be no externally visisble changes in
   // this time (otherwise the port would have been scheduled to run at en
   // earlier time).
-  skipEdges(numEdges - 1);
+  updateNoExternalChange(numEdges - 1);
   // Handle the last edge.
   seeEdge(nextEdge++);
   time = newTime;
+}
+
+
+uint32_t Port::computeSteadyStateInputShiftReg()
+{
+  Signal current = getEffectiveDataPortInputPinsValue();
+  assert(!current.isClock());
+  uint32_t val = current.getValue(time);
+  unsigned width = shiftRegEntries;
+  unsigned shift = getPortWidth();
+  while (width > 1) {
+    val = (val << shift) | val;
+    width >>= 1;
+    shift *= 2;
+  }
+  val &= makeMask(getTransferWidth());
+  return val;
 }
 
 void Port::updateSlow(ticks_t newTime)
@@ -521,27 +569,21 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
   }
 }
 
-void Port::skipEdges(unsigned numFalling, unsigned numRising)
+void Port::updatePortCounter(unsigned numEdges)
 {
+  unsigned numFalling = numEdges / 2;
+  if (numEdges % 2 && nextEdge->type == Edge::FALLING)
+    numFalling++;
   portCounter += numFalling;
-  if (readyIn) {
-    if (outputPort) {
-      if (numFalling > validShiftRegEntries)
-        validShiftRegEntries = 0;
-      else
-        validShiftRegEntries -= numFalling;
-    } else if (!useReadyOut() || !readyOut) {
-      if (portShiftCount != shiftRegEntries) {
-        if (validShiftRegEntries + numRising < portShiftCount) {
-          validShiftRegEntries += numRising;
-          return;
-        }
-        numRising -= portShiftCount;
-        portShiftCount = shiftRegEntries;
-      }
-      validShiftRegEntries = (validShiftRegEntries + numRising) % shiftRegEntries;
-    }
-  }
+}
+
+void Port::updateInputValidShiftRegEntries(unsigned numEdges)
+{
+  assert(!outputPort && (!useReadyIn() || readyIn));
+  unsigned numSampling = numEdges / 2;
+  if (numEdges % 2 && nextEdge->type == samplingEdge)
+    numSampling++;
+  validShiftRegEntries = (validShiftRegEntries + numSampling) % shiftRegEntries;
 }
 
 bool Port::seeOwnerEventEnable()
@@ -959,6 +1001,14 @@ unsigned Port::fallingEdgesUntilTimeMet() const
   return (uint16_t)(timeReg - (portCounter + 1)) + 1;
 }
 
+unsigned Port::edgesUntilTimeMet() const
+{
+  unsigned numFallingEdges = fallingEdgesUntilTimeMet();
+  if (nextEdge->type == Edge::FALLING)
+    return numFallingEdges * 2 - 1;
+  return numFallingEdges * 2;
+}
+
 void Port::scheduleUpdateIfNeededOutputPort()
 {
   // If the next edge is a falling edge unconditionally schedule an update.
@@ -967,13 +1017,12 @@ void Port::scheduleUpdateIfNeededOutputPort()
   if (nextEdge->type == Edge::FALLING) {
     return scheduleUpdate(nextEdge->time);
   }
-  if (!readyOutPorts.empty() && !readyOutIsInSteadyState()) {
+  if (!readyOutIsInSteadyState()) {
     return scheduleUpdate((nextEdge + 1)->time);
   }
   bool readyInKnownZero = useReadyIn() && clock->getReadyInValue() == Signal(0);
-  bool updateOnPinsChange = !sourceOf.empty() || loopback;
   if (!readyInKnownZero) {
-    if (updateOnPinsChange && nextShiftRegOutputPort(shiftReg) != shiftReg)
+    if (nextShiftRegOutputPort(shiftReg) != shiftReg)
       return scheduleUpdate((nextEdge + 1)->time);
     if (useReadyOut() && readyOut)
       return scheduleUpdate((nextEdge + 1)->time);
@@ -999,7 +1048,7 @@ void Port::scheduleUpdateIfNeededInputPort()
     return scheduleUpdate(nextEdge->time);
   }
   // Next edge is falling edge
-  if (!readyOutPorts.empty() && !readyOutIsInSteadyState()) {
+  if (!readyOutIsInSteadyState()) {
     return scheduleUpdate(nextEdge->time);
   }
   if (timeRegValid) {
@@ -1063,28 +1112,28 @@ bool Port::computeReadyOut()
 /// or condition being met.
 bool Port::readyOutIsInSteadyState()
 {
+  if (readyOut != computeReadyOut())
+    return false;
   if (!useReadyOut())
-    return readyOut == 0;
+    return true;
   if (outputPort) {
     if (readyOut)
       return false;
-    if (useReadyIn() && !readyIn && clock->getReadyInValue() == Signal(0))
+    if (validShiftRegEntries == 0)
       return true;
-    if (validShiftRegEntries != 0 || (transferRegValid && !timeReg))
-      return false;
-    return true;
+    assert(useReadyIn() && !readyIn);
+    return clock->getReadyInValue() == Signal(0);
   } else {
-    if (timeRegValid || condition != COND_FULL)
-      return readyOut;
-    if (readyOut) {
-      if (validShiftRegEntries == portShiftCount && transferRegValid)
-        return false;
-      if (useReadyIn() && !readyIn && clock->getReadyInValue() == Signal(0))
-        return true;
+    if (!readyOut)
+      return true;
+    if (timeRegValid)
       return false;
-    } else {
-      return validShiftRegEntries == portShiftCount && transferRegValid;
-    }
+    if (useReadyIn() && !readyIn && clock->getReadyInValue() == Signal(0))
+      return false;
+    if (readyOut && condition != COND_FULL &&
+        !valueMeetsCondition(getEffectiveDataPortInputPinsValue(time)))
+      return true;
+    return false;
   }
 }
 

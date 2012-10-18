@@ -116,6 +116,7 @@ private:
   void handlePinsChange(uint32_t value, ticks_t time);
   /// Called whenever the readyOut value changes.
   void handleReadyOutChange(bool value, ticks_t time);
+  uint32_t computeSteadyStateInputShiftReg();
   /// Update the port to the specified time. The port must be clocked off a
   /// fixed frequency clock.
   void updateSlow(ticks_t time);
@@ -142,6 +143,10 @@ private:
     transferRegValid = true;
   }
   unsigned fallingEdgesUntilTimeMet() const;
+  /// Return the number of edges until the time is met. The time is always
+  /// considered to be met on the falling edge at which the port counter is
+  /// incremented.
+  unsigned edgesUntilTimeMet() const;
   void scheduleUpdateIfNeededOutputPort();
   void scheduleUpdateIfNeededInputPort();
   void scheduleUpdateIfNeeded();
@@ -272,9 +277,10 @@ public:
 
   bool seeOwnerEventEnable();
 
-  void skipEdges(unsigned numEdges);
-  void skipEdges(unsigned numFalling, unsigned numRising);
-  
+  void updateNoExternalChange(unsigned numEdges);
+  void updatePortCounter(unsigned numEdges);
+  void updateInputValidShiftRegEntries(unsigned numEdges);
+
   /// Update the port to the specified time.
   /// \param current The currently executing thread, or 0 if none.
   void update(ticks_t time);
