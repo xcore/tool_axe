@@ -387,9 +387,9 @@ void Port::update(ticks_t newTime)
     return;
   }
   assert(nextEdge == clock->getValue().getEdgeIterator(time));
-  // Check there is at least one edge.
-  if (nextEdge->time > newTime) {
-    time = newTime;
+  // Don't try and optimize the case of 2 or less edges.
+  if ((nextEdge + 2)->time > newTime) {
+    updateSlow(newTime);
     return;
   }
   unsigned numEdges = clock->getValue().getEdgeIterator(newTime) - nextEdge;
