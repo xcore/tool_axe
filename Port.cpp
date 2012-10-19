@@ -241,9 +241,6 @@ void Port::updateNoExternalChange(unsigned numEdges)
         return;
     }
     if (!readyIn) {
-      unsigned numFalling = numEdges / 2;
-      if (numEdges % 2 && nextEdge->type == Edge::FALLING)
-        numFalling++;
       if (timeRegValid && numEdges >= fallingEdgesUntilTimeMet()) {
         // TODO is behaviour right if !outputPort && !useReadyOut()?. Should
         // this be isBuffered (seeEdge would also need updating).
@@ -271,9 +268,7 @@ void Port::updateNoExternalChange(unsigned numEdges)
       time = newTime;
       return;
     }
-    unsigned numFalling = numEdges / 2;
-    if (numEdges % 2 && nextEdge->type == Edge::FALLING)
-      numFalling++;
+    unsigned numFalling = (numEdges + (nextEdge->type == Edge::FALLING)) / 2;
     unsigned fallingEdgesRemaining = fallingEdgesUntilTimeMet();
     if (numFalling < fallingEdgesRemaining) {
       portCounter += numFalling;
@@ -315,9 +310,7 @@ void Port::updateNoExternalChange(unsigned numEdges)
           return;
       }
     }
-    unsigned numFalling = numEdges / 2;
-    if (numEdges % 2 && nextEdge->type == Edge::FALLING)
-      numFalling++;
+    unsigned numFalling = (numEdges + (nextEdge->type == Edge::FALLING)) / 2;
     unsigned fallingEdgesRemaining = fallingEdgesUntilTimeMet();
     if (numFalling < fallingEdgesRemaining) {
       updatePortCounter(numEdges);
@@ -571,18 +564,14 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
 
 void Port::updatePortCounter(unsigned numEdges)
 {
-  unsigned numFalling = numEdges / 2;
-  if (numEdges % 2 && nextEdge->type == Edge::FALLING)
-    numFalling++;
+  unsigned numFalling = (numEdges + (nextEdge->type == Edge::FALLING)) / 2;
   portCounter += numFalling;
 }
 
 void Port::updateInputValidShiftRegEntries(unsigned numEdges)
 {
   assert(!outputPort && (!useReadyIn() || readyIn));
-  unsigned numSampling = numEdges / 2;
-  if (numEdges % 2 && nextEdge->type == samplingEdge)
-    numSampling++;
+  unsigned numSampling = (numEdges + (nextEdge->type == samplingEdge)) / 2;
   validShiftRegEntries = (validShiftRegEntries + numSampling) % shiftRegEntries;
 }
 
