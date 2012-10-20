@@ -457,9 +457,8 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
 {
   assert(newTime >= time);
   time = newTime;
-  if (portType == READYPORT || portType == CLOCKPORT)
+  if (portType != DATAPORT)
     return;
-  assert(portType == DATAPORT);
   if (edgeType == Edge::FALLING) {
     portCounter++;
     if (outputPort) {
@@ -1099,12 +1098,11 @@ bool Port::computeReadyOut()
 /// Will the ready out signal change if port is clocked without there being any
 /// external changes. Excludes changes in ready out signal due to the port time
 /// or condition being met.
-bool Port::readyOutIsInSteadyState()
+bool Port::readyOutIsInSteadyStateSlowPath()
 {
+  assert(useReadyOut());
   if (readyOut != computeReadyOut())
     return false;
-  if (!useReadyOut())
-    return true;
   if (outputPort) {
     if (readyOut)
       return false;

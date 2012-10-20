@@ -296,7 +296,12 @@ public:
   }
 
   bool computeReadyOut();
-  bool readyOutIsInSteadyState();
+  bool readyOutIsInSteadyStateSlowPath();
+  bool readyOutIsInSteadyState() {
+    if (!useReadyOut())
+      return !readyOut;
+    return readyOutIsInSteadyStateSlowPath();
+  }
 
   void clearReadyOut(ticks_t time);
   void updateReadyOut(ticks_t time);
