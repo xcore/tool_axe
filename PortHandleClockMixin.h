@@ -34,28 +34,27 @@ template <class Derived>
 void PortHandleClockMixin<Derived>::
 seePinsChange(const Signal &newSignal, ticks_t time)
 {
-  uint32_t newValue = newSignal.getValue(time);
-  if (newValue != currentValue) {
-    static_cast<Derived*>(this)->seePinsValueChange(newValue, time);
-    currentValue = newValue;
-  }
+  bool wasClock = currentSignal.isClock();
   currentSignal = newSignal;
+  uint32_t newValue = currentSignal.getValue(time);
+  if (newValue != currentValue) {
+    currentValue = newValue;
+    static_cast<Derived*>(this)->seePinsValueChange(currentValue, time);
+  }
   if (currentSignal.isClock()) {
     scheduler.push(*this, currentSignal.getNextEdge(time).time);
+  } else if (wasClock) {
+    scheduler.remove(*this);
   }
 }
 
 template <class Derived>
 void PortHandleClockMixin<Derived>::run(ticks_t time)
 {
-  if (!currentSignal.isClock())
-    return;
-  uint32_t newValue = currentSignal.getValue(time);
-  if (newValue != currentValue) {
-    static_cast<Derived*>(this)->seePinsValueChange(newValue, time);
-    currentValue = newValue;
-  }
-  scheduler.push(*this, currentSignal.getNextEdge(time).time);
+  assert(currentSignal.isClock());
+  currentValue = !currentValue;
+  static_cast<Derived*>(this)->seePinsValueChange(currentValue, time);
+  scheduler.push(*this, time += currentSignal.getHalfPeriod());
 }
 
 #endif //_PortHandleClockMixin_h_
