@@ -109,77 +109,142 @@ SDLScreen::~SDLScreen() {
   SDL_Quit();
 }
 
-class LCDScreen : public Peripheral {
+const ticks_t minUpdateTicks = 10000;
+
+class LCDScreen : public Peripheral, Runnable {
   SDLScreen screen;
+  enum ScheduleReason {
+    SCHEDULE_SAMPLING_EDGE,
+    SCHEDULE_UPDATE
+  } scheduleReason;
+  RunnableQueue &scheduler;
+  Signal CLKSignal;
+  uint32_t CLKValue;
   PortInterfaceMemberFuncDelegate<LCDScreen> CLKProxy;
   PortSignalTracker DataTracker;
   PortSignalTracker DETracker;
   PortSignalTracker HSYNCTracker;
   PortSignalTracker VSYNCTracker;
-  PortHandleClockProxy CLKHandleClock;
   unsigned x;
   unsigned y;
   unsigned edgeCounter;
   ticks_t lastDEHighEdge;
 
+  void seeSamplingEdge(ticks_t time);
   void seeCLKChange(const Signal &value, ticks_t time);
+  void schedule(ScheduleReason reason, ticks_t time) {
+    scheduleReason = reason;
+    scheduler.push(*this, time);
+  }
+  void scheduleSamplingEdge(ticks_t time) {
+    schedule(SCHEDULE_SAMPLING_EDGE, time);
+  }
+  void scheduleUpdate(ticks_t time) {
+    schedule(SCHEDULE_UPDATE, time);
+  }
 public:
   LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
             PortConnectionWrapper data, PortConnectionWrapper de,
             PortConnectionWrapper hsync, PortConnectionWrapper vsync,
-            unsigned width, unsigned height) :
-    screen(width, height, 0x1f, (0x3f << 5), (0x1f << 11)),
-    CLKProxy(*this, &LCDScreen::seeCLKChange),
-    CLKHandleClock(s, CLKProxy),
-    x(0),
-    y(0),
-    edgeCounter(0),
-    lastDEHighEdge(0)
-  {
-    clk.attach(&CLKHandleClock);
-    data.attach(&DataTracker);
-    de.attach(&DETracker);
-    hsync.attach(&HSYNCTracker);
-    vsync.attach(&VSYNCTracker);
-    if (!screen.init()) {
-      std::cerr << "Failed to initialize SDL screen\n";
-      std::exit(1);
-    }
-  }
+            unsigned width, unsigned height);
+
+  void run(ticks_t time);
 };
 
-void LCDScreen::seeCLKChange(const Signal &value, ticks_t time)
+
+LCDScreen::
+LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
+          PortConnectionWrapper data, PortConnectionWrapper de,
+          PortConnectionWrapper hsync, PortConnectionWrapper vsync,
+          unsigned width, unsigned height) :
+screen(width, height, 0x1f, (0x3f << 5), (0x1f << 11)),
+scheduler(s),
+CLKSignal(0),
+CLKProxy(*this, &LCDScreen::seeCLKChange),
+x(0),
+y(0),
+edgeCounter(0),
+lastDEHighEdge(0)
 {
-  assert(!value.isClock());
+  clk.attach(&CLKProxy);
+  data.attach(&DataTracker);
+  de.attach(&DETracker);
+  hsync.attach(&HSYNCTracker);
+  vsync.attach(&VSYNCTracker);
+  if (!screen.init()) {
+    std::cerr << "Failed to initialize SDL screen\n";
+    std::exit(1);
+  }
+  scheduleUpdate(minUpdateTicks);
+}
+
+#include <iostream>
+
+void LCDScreen::seeSamplingEdge(ticks_t time)
+{
   if (screen.update()) {
     throw ExitException(0);
   }
-  if (value.getValue(time)) {
-    // Rising edge.
-    ++edgeCounter;
-    // TODO According to the AT043TN24 datasheet data should be sampled on the
-    // falling edge. However the sc_lcd code drives on the falling edge so for
-    // the moment sample on the rising to match that.
-    if (DETracker.getSignal().getValue(time)) {
-      // Thb
-      const unsigned minHorizontalClks = 40;
-      // Th * tvb
-      const unsigned minVerticalClks = 5 * 520;
-      ticks_t lowEdges = edgeCounter - (lastDEHighEdge + 1);
-      if (lowEdges >= minVerticalClks) {
-        // VSync
-        x = y = 0;
-        screen.flip();
-      } else if (lowEdges >= minHorizontalClks) {
-        // HSync
-        x = 0;
-        ++y;
-      }
-      if (x < screen.getWidth() && y < screen.getHeigth()) {
-        screen.writePixel(x++, y, DataTracker.getSignal().getValue(time));
-      }
-      lastDEHighEdge = edgeCounter;
+  
+  ++edgeCounter;
+  // TODO According to the AT043TN24 datasheet data should be sampled on the
+  // falling edge. However the sc_lcd code drives on the falling edge so for
+  // the moment sample on the rising to match that.
+  if (DETracker.getSignal().getValue(time)) {
+    // Thb
+    const unsigned minHorizontalClks = 40;
+    // Th * tvb
+    const unsigned minVerticalClks = 5 * 520;
+    ticks_t lowEdges = edgeCounter - (lastDEHighEdge + 1);
+    if (lowEdges >= minVerticalClks) {
+      // VSync
+      x = y = 0;
+      screen.flip();
+    } else if (lowEdges >= minHorizontalClks) {
+      // HSync
+      x = 0;
+      ++y;
     }
+    if (x < screen.getWidth() && y < screen.getHeigth()) {
+      screen.writePixel(x++, y, DataTracker.getSignal().getValue(time));
+    }
+    lastDEHighEdge = edgeCounter;
+  }
+}
+
+void LCDScreen::seeCLKChange(const Signal &newSignal, ticks_t time)
+{
+  CLKSignal = newSignal;
+  uint32_t newValue = CLKSignal.getValue(time);
+  if (newValue != CLKValue) {
+    CLKValue = newValue;
+    if (CLKValue)
+      seeSamplingEdge(time);
+  }
+  if (CLKSignal.isClock()) {
+    EdgeIterator nextEdge = CLKSignal.getEdgeIterator(time);
+    if (nextEdge->type != Edge::RISING)
+      ++nextEdge;
+    scheduleSamplingEdge(nextEdge->time);
+  } else if (scheduleReason != SCHEDULE_UPDATE) {
+    scheduleUpdate(time + minUpdateTicks);
+  }
+}
+
+void LCDScreen::run(ticks_t time)
+{
+  switch (scheduleReason) {
+  case SCHEDULE_SAMPLING_EDGE:
+    assert(CLKSignal.isClock());
+    seeSamplingEdge(time);
+    scheduleSamplingEdge(time + CLKSignal.getPeriod());
+    break;
+  case SCHEDULE_UPDATE:
+    if (screen.update()) {
+      throw ExitException(0);
+    }
+    scheduleUpdate(time + minUpdateTicks);
+    break;
   }
 }
 
