@@ -117,7 +117,7 @@ struct Signal {
     if (halfPeriod == 0)
       return value;
     time -= value;
-    return ((time % (halfPeriod * 2)) >= halfPeriod) ? 1 : 0;
+    return (time / halfPeriod) % 2;
   }
   Edge getNextEdge(ticks_t time) const {
     assert(halfPeriod != 0);
