@@ -227,6 +227,10 @@ void Port::updateNoExternalChange(unsigned numEdges)
     assert(oldOutputPort == outputPort);
     assert(oldOutputValue == getPinsOutputValue());
     assert(oldReadyOut == readyOut);
+    // Silence unused variable warnings.
+    (void)oldOutputPort;
+    (void)oldOutputValue;
+    (void)oldReadyOut;
     return;
   }
 
