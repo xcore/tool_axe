@@ -16,6 +16,8 @@
 #include <iostream>
 #include <cstdlib>
 
+const bool showFPS = false;
+
 static int filterSDLEvents(const SDL_Event *event)
 {
   return event->type == SDL_QUIT;
@@ -46,6 +48,8 @@ class SDLScreen {
   SDL_Surface *screen;
   SDL_Surface *buffer;
   Uint32 lastPollEvent;
+  Uint32 lastFrameTime;
+  unsigned frameCount;
 
 public:
   SDLScreen(unsigned w, unsigned h, Uint32 r, Uint32 g, Uint32 b) :
@@ -66,13 +70,17 @@ bool SDLScreen::init() {
     return false;
   SDL_SetEventFilter(&filterSDLEvents);
   SDL_WM_SetCaption("AXE", "AXE");
-  
+
   screen = SDL_SetVideoMode(width, heigth, 0, SDL_SWSURFACE | SDL_ANYFORMAT);
   if (!screen)
     return false;
   buffer =
     SDL_CreateRGBSurface(SDL_SWSURFACE, width, heigth, 16, Rmask, Gmask, Bmask,
                          0);
+  if (showFPS) {
+    lastFrameTime = SDL_GetTicks();
+    frameCount = 0;
+  }
   return true;
 }
 
@@ -94,6 +102,13 @@ bool SDLScreen::update()
 
 void SDLScreen::flip()
 {
+  if (showFPS && ++frameCount == 10) {
+    Uint32 newTime = SDL_GetTicks();
+    double fps = 10000.0 / (newTime - lastFrameTime);
+    std::cerr << fps << '\n';
+    frameCount = 0;
+    lastFrameTime = newTime;
+  }
   SDL_BlitSurface(buffer, NULL, screen, NULL);
   SDL_Flip(screen);
 }
