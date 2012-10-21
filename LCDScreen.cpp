@@ -58,7 +58,7 @@ public:
   ~SDLScreen();
 
   bool init();
-  bool update();
+  bool pollForEvents();
   void writePixel(unsigned x, unsigned, uint16_t);
   unsigned getWidth() const { return width; }
   unsigned getHeigth() const { return heigth; }
@@ -85,7 +85,7 @@ bool SDLScreen::init() {
 }
 
 /// Handle pending SDL events. Returns whether a SDL_QUIT event was received.
-bool SDLScreen::update()
+bool SDLScreen::pollForEvents()
 {
   // Don't poll for events more than 25 times a second.
   Uint32 time = SDL_GetTicks();
@@ -124,13 +124,13 @@ SDLScreen::~SDLScreen() {
   SDL_Quit();
 }
 
-const ticks_t minUpdateTicks = 10000;
+const ticks_t minUpdateTicks = 20000;
 
 class LCDScreen : public Peripheral, Runnable {
   SDLScreen screen;
   enum ScheduleReason {
     SCHEDULE_SAMPLING_EDGE,
-    SCHEDULE_UPDATE
+    SCHEDULE_POLL_FOR_EVENTS
   } scheduleReason;
   RunnableQueue &scheduler;
   Signal CLKSignal;
@@ -144,6 +144,7 @@ class LCDScreen : public Peripheral, Runnable {
   unsigned y;
   unsigned edgeCounter;
   ticks_t lastDEHighEdge;
+  ticks_t lastPollForEvents;
 
   void seeSamplingEdge(ticks_t time);
   void seeCLKChange(const Signal &value, ticks_t time);
@@ -154,8 +155,8 @@ class LCDScreen : public Peripheral, Runnable {
   void scheduleSamplingEdge(ticks_t time) {
     schedule(SCHEDULE_SAMPLING_EDGE, time);
   }
-  void scheduleUpdate(ticks_t time) {
-    schedule(SCHEDULE_UPDATE, time);
+  void schedulePollForEvents(ticks_t time) {
+    schedule(SCHEDULE_POLL_FOR_EVENTS, time);
   }
 public:
   LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
@@ -172,14 +173,15 @@ LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
           PortConnectionWrapper data, PortConnectionWrapper de,
           PortConnectionWrapper hsync, PortConnectionWrapper vsync,
           unsigned width, unsigned height) :
-screen(width, height, 0x1f, (0x3f << 5), (0x1f << 11)),
-scheduler(s),
-CLKSignal(0),
-CLKProxy(*this, &LCDScreen::seeCLKChange),
-x(0),
-y(0),
-edgeCounter(0),
-lastDEHighEdge(0)
+  screen(width, height, 0x1f, (0x3f << 5), (0x1f << 11)),
+  scheduler(s),
+  CLKSignal(0),
+  CLKProxy(*this, &LCDScreen::seeCLKChange),
+  x(0),
+  y(0),
+  edgeCounter(0),
+  lastDEHighEdge(0),
+  lastPollForEvents(0)
 {
   clk.attach(&CLKProxy);
   data.attach(&DataTracker);
@@ -190,17 +192,13 @@ lastDEHighEdge(0)
     std::cerr << "Failed to initialize SDL screen\n";
     std::exit(1);
   }
-  scheduleUpdate(minUpdateTicks);
+  schedulePollForEvents(minUpdateTicks);
 }
 
 #include <iostream>
 
 void LCDScreen::seeSamplingEdge(ticks_t time)
 {
-  if (screen.update()) {
-    throw ExitException(0);
-  }
-  
   ++edgeCounter;
   // TODO According to the AT043TN24 datasheet data should be sampled on the
   // falling edge. However the sc_lcd code drives on the falling edge so for
@@ -241,8 +239,8 @@ void LCDScreen::seeCLKChange(const Signal &newSignal, ticks_t time)
     if (nextEdge->type != Edge::RISING)
       ++nextEdge;
     scheduleSamplingEdge(nextEdge->time);
-  } else if (scheduleReason != SCHEDULE_UPDATE) {
-    scheduleUpdate(time + minUpdateTicks);
+  } else if (scheduleReason != SCHEDULE_POLL_FOR_EVENTS) {
+    schedulePollForEvents(time + minUpdateTicks);
   }
 }
 
@@ -252,13 +250,20 @@ void LCDScreen::run(ticks_t time)
   case SCHEDULE_SAMPLING_EDGE:
     assert(CLKSignal.isClock());
     seeSamplingEdge(time);
+    if (time - lastPollForEvents >= minUpdateTicks) {
+      if (screen.pollForEvents()) {
+        throw ExitException(0);
+      }
+      lastPollForEvents = time;
+    }
     scheduleSamplingEdge(time + CLKSignal.getPeriod());
     break;
-  case SCHEDULE_UPDATE:
-    if (screen.update()) {
+  case SCHEDULE_POLL_FOR_EVENTS:
+    if (screen.pollForEvents()) {
       throw ExitException(0);
     }
-    scheduleUpdate(time + minUpdateTicks);
+    schedulePollForEvents(time + minUpdateTicks);
+    lastPollForEvents = time;
     break;
   }
 }
