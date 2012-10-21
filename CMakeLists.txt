@@ -16,6 +16,7 @@ set(CMAKE_MODULE_PATH
 option(AXE_ENABLE_SDL "Use SDL if available" ON)
 
 find_package(LibXml2 REQUIRED)
+find_package(LibXslt REQUIRED)
 find_package(LibElf REQUIRED)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
@@ -23,10 +24,13 @@ list(APPEND
   AXE_LINK_LIBRARIES
   ${LIBELF_LIBRARIES}
   ${LIBXML2_LIBRARIES}
+  ${LIBXSLT_LIBRARIES}
   ${LLVM_LIBRARIES})
 include_directories(
   ${LIBELF_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR})
+add_definitions(
+  ${LIBXSLT_DEFINITIONS})
 
 if(AXE_ENABLE_SDL)
   find_package(SDL)
@@ -191,10 +195,12 @@ add_executable(axe
   XE.h
   XE.cpp
   XNSchema.rng
+  XNTransform.xslt
   ${AXE_OPTIONAL_FILES}
   ${AXE_BINARY_DIR}/InstructionGenOutput.inc
   ${AXE_BINARY_DIR}/ConfigSchema.inc
   ${AXE_BINARY_DIR}/XNSchema.inc
+  ${AXE_BINARY_DIR}/XNTransform.inc
   ${AXE_BINARY_DIR}/InstructionBitcode.inc
   )
 
@@ -248,6 +254,11 @@ add_custom_command(
  COMMAND ${GENHEX_EXE} ${AXE_SOURCE_DIR}/XNSchema.rng ${AXE_BINARY_DIR}/XNSchema.inc
  DEPENDS genHex XNSchema.rng
  )
+add_custom_command(
+ OUTPUT ${AXE_BINARY_DIR}/XNTransform.inc
+ COMMAND ${GENHEX_EXE} ${AXE_SOURCE_DIR}/XNTransform.xslt ${AXE_BINARY_DIR}/XNTransform.inc
+ DEPENDS genHex XNTransform.xslt
+ )
 
 if(COMPILER_IS_GCC_COMPATIBLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -W -Wno-unused-parameter")
@@ -265,7 +276,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
 
 include_directories(
   ${LIBELF_INCLUDE_DIRS}
-  ${LIBXML2_INCLUDE_DIR})
+  ${LIBXML2_INCLUDE_DIR}
+  ${LIBXSLT_INCLUDE_DIR})
 
 target_link_libraries(
   axe ${AXE_LINK_LIBRARIES})

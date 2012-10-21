@@ -36,6 +36,7 @@ Dependencies
 * CMake_
 * libelf_
 * libxml2_
+* libxslt_
 * LLVM_
 * Python_ (for running tests)
 
@@ -70,6 +71,7 @@ before running the tests.
 .. _CMake: http://www.cmake.org
 .. _libelf: http://www.mr511.de/software/english.html
 .. _libxml2: http://www.xmlsoft.org
+.. _libxslt: http://xmlsoft.org/XSLT
 .. _LLVM: http://llvm.org
 .. _Python: http://www.python.org
 .. _SDL: http://www.libsdl.org

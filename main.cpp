@@ -9,6 +9,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/relaxng.h>
+#include <libxslt/transform.h>
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
@@ -50,6 +51,12 @@ const char configSchema[] = {
 
 const char XNSchema[] = {
 #include "XNSchema.inc"
+};
+
+const char XNTransform[] = {
+#include "XNTransform.inc"
+  // Ensure null termination.
+  , '\0'
 };
 
 static xmlNode *findChild(xmlNode *node, const char *name)
@@ -215,6 +222,18 @@ lookupNodeChecked(const std::map<long,Node*> &nodeNumberMap, unsigned nodeID)
     std::exit(1);
   }
   return it->second;
+}
+
+
+static xmlDoc *
+applyXSLTTransform(xmlDoc *doc, const char *transformData)
+{
+  xmlDoc *transformDoc =
+    xmlReadDoc(BAD_CAST transformData, "XNTransform.xslt", NULL, 0);
+  xsltStylesheetPtr stylesheet = xsltParseStylesheetDoc(transformDoc);
+  xmlDoc *newDoc = xsltApplyStylesheet(stylesheet, doc, NULL);
+  xsltFreeStylesheet(stylesheet);
+  return newDoc;
 }
 
 static bool
@@ -440,7 +459,7 @@ static void readPortAliasesFromNodes(PortAliases &aliases, xmlNode *nodes)
       continue;
     for (xmlNode *core = node->children; core; core = core->next) {
       if (core->type != XML_ELEMENT_NODE ||
-          strcmp("Core", (char*)core->name) != 0)
+          strcmp("Tile", (char*)core->name) != 0)
         continue;
       readPortAliasesFromCore(aliases, core);
     }
@@ -477,12 +496,13 @@ readPortAliases(PortAliases &aliases, XE &xe, const std::string &filename)
   buf[length] = '\0';
   
   xmlDoc *doc = xmlReadDoc(BAD_CAST buf.get(), "platform_def.xn", NULL, 0);
-  
-  if (!checkDocAgainstSchema(doc, XNSchema, sizeof(XNSchema)))
+  xmlDoc *newDoc = applyXSLTTransform(doc, XNTransform);
+  xmlFreeDoc(doc);
+  if (!checkDocAgainstSchema(newDoc, XNSchema, sizeof(XNSchema)))
     std::exit(1);
 
-  readPortAliases(aliases, xmlDocGetRootElement(doc));
-  xmlFreeDoc(doc);
+  readPortAliases(aliases, xmlDocGetRootElement(newDoc));
+  xmlFreeDoc(newDoc);
 }
 
 int
@@ -636,6 +656,7 @@ main(int argc, char **argv) {
     Tracer::get().setTracingEnabled(true);
   }
   int retval = loop(options);
+  xsltCleanupGlobals();
   xmlCleanupParser();
   return retval;
 }

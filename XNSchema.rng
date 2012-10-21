@@ -88,13 +88,13 @@
       <ref name="anyAttributes"/>
       <interleave>
         <oneOrMore>
-          <ref name="Core"/>
+          <ref name="Tile"/>
         </oneOrMore>
         <zeroOrMore>
           <element>
             <anyName>
               <except>
-                <name>Core</name>
+                <name>Tile</name>
               </except>
             </anyName>
             <ref name="anyContent"/>
@@ -104,8 +104,8 @@
     </element>
   </define>
 
-  <define name="Core">
-    <element name="Core" ns="http://www.xmos.com">
+  <define name="Tile">
+    <element name="Tile" ns="http://www.xmos.com">
       <attribute name="Reference">
         <ref name="identifier"/>
       </attribute>
