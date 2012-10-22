@@ -1,5 +1,5 @@
 /*
- * RUN: xcc -target=XC-5 %s -o %t1.xe
+ * RUN: xcc -target=XK-1A %s -o %t1.xe
  * RUN: axe %t1.xe
  */
 

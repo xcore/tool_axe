@@ -1,4 +1,4 @@
-// RUN: xcc -O2 -target=XC-5 %s -o %t1.xe
+// RUN: xcc -O2 -target=XK-1A %s -o %t1.xe
 // RUN: axe %t1.xe --loopback 0x80000 0x80100
 
 #include <xs1.h>

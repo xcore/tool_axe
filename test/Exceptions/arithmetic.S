@@ -1,4 +1,4 @@
-// RUN: xcc -target=XC-5 %s %exception_expect -o %t1.xe
+// RUN: xcc -target=XK-1A %s %exception_expect -o %t1.xe
 // RUN: axe %t1.xe
 #include <xs1.h>
 

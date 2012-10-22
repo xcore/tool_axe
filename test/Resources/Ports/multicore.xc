@@ -1,4 +1,4 @@
-// RUN: xcc -target=XDK %s -o %t1.xe
+// RUN: xcc -target=XC-1A %s -o %t1.xe
 // RUN: axe %t1.xe --loopback stdcore[0]:XS1_PORT_1A stdcore[1]:XS1_PORT_1A
 
 #include <platform.h>

@@ -1,4 +1,4 @@
-//RUN: xcc -O2 %s -x xc %s -target=XC-5 -o %t1.xe
+//RUN: xcc -O2 %s -x xc %s -target=XK-1A -o %t1.xe
 //RUN: axe %t1.xe
 
 // To test LD/ST{SPC,SSR,SED,ET}
@@ -42,13 +42,15 @@ bar:
   waiteu
 
   retsp 0
+.globl bar.nstackwords
+.set bar.nstackwords, 5
 
 .align 4
 kernel:
   entsp 5
-  stw spc, sp[1] 
-  stw ssr, sp[2] 
-  stw sed, sp[3] 
+  stw spc, sp[1]
+  stw ssr, sp[2]
+  stw sed, sp[3]
   stw et,  sp[4]
   chkct res[r0], XS1_CT_END
   outct res[r0], XS1_CT_END

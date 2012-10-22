@@ -1,4 +1,4 @@
-//RUN: xcc -O2 %s -x xc %s -target=XC-5 -o %t1.xe
+//RUN: xcc -O2 %s -x xc %s -target=XK-1A -o %t1.xe
 //RUN: axe %t1.xe
 #ifdef __XC__
 #include <stdlib.h>
@@ -86,4 +86,6 @@ output:
   eq r10, r4, r5
   bf r10, output
   bu input
+.globl buffer.nstackwords
+.set buffer.nstackwords, 0
 #endif
