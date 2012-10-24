@@ -121,18 +121,16 @@ bool Thread::setSRSlowPath(sr_t enabled)
 {
   if (enabled[EEBLE]) {
     EventableResourceList &EER = eventEnabledResources;
-    for (EventableResourceList::iterator it = EER.begin(),
-         end = EER.end(); it != end; ++it) {
-      if ((*it)->seeOwnerEventEnable(time)) {
+    for (EventableResource *res : EER) {
+      if (res->seeOwnerEventEnable(time)) {
         return true;
       }
     }
   }
   if (enabled[IEBLE]) {
     EventableResourceList &IER = interruptEnabledResources;
-    for (EventableResourceList::iterator it = IER.begin(),
-         end = IER.end(); it != end; ++it) {
-      if ((*it)->seeOwnerEventEnable(time)) {
+    for (EventableResource *res : IER) {
+      if (res->seeOwnerEventEnable(time)) {
         return true;
       }
     }

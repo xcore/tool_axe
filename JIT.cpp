@@ -49,9 +49,8 @@ struct JITCoreInfo {
 
 JITCoreInfo::~JITCoreInfo()
 {
-  for (std::map<uint32_t,JITFunctionInfo*>::iterator it = functionMap.begin(),
-       e = functionMap.end(); it != e; ++it) {
-    delete it->second;
+  for (auto &entry : functionMap) {
+    delete entry.second;
   }
 }
 
@@ -128,9 +127,8 @@ JITImpl JITImpl::instance;
 
 JITImpl::~JITImpl()
 {
-  for (std::map<const Core*,JITCoreInfo*>::iterator it = jitCoreMap.begin(),
-       e = jitCoreMap.end(); it != e; ++it) {
-    delete it->second;
+  for (auto &entry : jitCoreMap) {
+    delete entry.second;
   }
 }
 
@@ -228,9 +226,8 @@ void JITImpl::reclaimUnreachableFunctions(JITCoreInfo &coreInfo)
 {
   std::vector<uint32_t> &unreachableFunctions = coreInfo.unreachableFunctions;
   std::map<uint32_t,JITFunctionInfo*> &functionMap = coreInfo.functionMap;
-  for (std::vector<uint32_t>::iterator it = unreachableFunctions.begin(),
-       e = unreachableFunctions.end(); it != e; ++it) {
-    std::map<uint32_t,JITFunctionInfo*>::iterator entry = functionMap.find(*it);
+  for (uint32_t addr : unreachableFunctions) {
+    auto entry = functionMap.find(addr);
     if (entry == functionMap.end())
       continue;
     LLVMValueRef value = entry->second->value;
@@ -245,9 +242,8 @@ void JITImpl::reclaimUnreachableFunctions(JITCoreInfo &coreInfo)
 
 void JITImpl::reclaimUnreachableFunctions()
 {
-  for (std::map<const Core*,JITCoreInfo*>::iterator it = jitCoreMap.begin(),
-       e = jitCoreMap.end(); it != e; ++it) {
-    reclaimUnreachableFunctions(*it->second);
+  for (auto &entry : jitCoreMap) {
+    reclaimUnreachableFunctions(*entry.second);
   }
 }
 
@@ -354,7 +350,7 @@ getSuccessors(InstructionOpcode opc, const Operands &operands,
 
 JITCoreInfo *JITImpl::getJITCoreInfo(const Core &c)
 {
-  std::map<const Core*,JITCoreInfo*>::iterator it = jitCoreMap.find(&c);
+  auto it = jitCoreMap.find(&c);
   if (it != jitCoreMap.end())
     return it->second;
   return 0;
@@ -519,8 +515,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
   assert(initialized);
   resetPerFunctionState();
 
-  std::map<uint32_t,JITFunctionInfo*>::iterator infoIt =
-    coreInfo.functionMap.find(startPc);
+  auto infoIt = coreInfo.functionMap.find(startPc);
   JITFunctionInfo *info =
     (infoIt == coreInfo.functionMap.end()) ? 0 : infoIt->second;
   if (info && !info->isStub) {
@@ -618,9 +613,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     LLVMVerifyFunction(f, LLVMAbortProcessAction);
   }
   // Optimize.
-  for (std::vector<LLVMValueRef>::iterator it = calls.begin(), e = calls.end();
-       it != e; ++it) {
-    LLVMExtraInlineFunction(*it);
+  for (LLVMValueRef call : calls) {
+    LLVMExtraInlineFunction(call);
   }
   LLVMRunFunctionPassManager(FPM, f);
   if (DEBUG_JIT) {
@@ -784,8 +778,7 @@ bool JITImpl::invalidate(Core &core, uint32_t pc)
   JITCoreInfo *coreInfo = getJITCoreInfo(core);
   if (!coreInfo)
     return false;
-  std::map<uint32_t,JITFunctionInfo*>::iterator entry =
-    coreInfo->functionMap.find(pc);
+  auto entry = coreInfo->functionMap.find(pc);
   if (entry == coreInfo->functionMap.end())
     return false;
 
@@ -796,16 +789,14 @@ bool JITImpl::invalidate(Core &core, uint32_t pc)
   do {
     JITFunctionInfo *info = worklist.back();
     worklist.pop_back();
-    for (std::set<JITFunctionInfo*>::iterator it = info->references.begin(),
-         e = info->references.end(); it != e; ++it) {
-      if (!toInvalidate.insert(*it).second)
+    for (JITFunctionInfo *ref : info->references) {
+      if (!toInvalidate.insert(ref).second)
         continue;
-      worklist.push_back(*it);
+      worklist.push_back(ref);
     }
   } while (!worklist.empty());
-  for (std::set<JITFunctionInfo*>::iterator it = toInvalidate.begin(),
-       e = toInvalidate.end(); it != e; ++it) {
-    uint32_t functionPc = (*it)->pc;
+  for (JITFunctionInfo *funcInfo : toInvalidate) {
+    uint32_t functionPc = funcInfo->pc;
     core.clearOpcode(functionPc);
     coreInfo->unreachableFunctions.push_back(functionPc);
   }

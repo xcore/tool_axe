@@ -55,7 +55,7 @@ public:
                                      new PortProperty(d, value)));
   }
   const Property *get(const std::string &name) const {
-    std::map<std::string,Property*>::const_iterator it = properties.find(name);
+    auto it = properties.find(name);
     if (it != properties.end()) {
       return it->second;
     }

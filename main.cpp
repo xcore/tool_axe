@@ -331,9 +331,8 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
   unsigned jtagIndex = node.getJtagIndex();
   const std::vector<Core*> &cores = node.getCores();
   unsigned coreNum = 0;
-  for (std::vector<Core*>::const_iterator it = cores.begin(), e = cores.end();
-       it != e; ++it) {
-    coreMap.insert(std::make_pair(std::make_pair(jtagIndex, coreNum), *it));
+  for (Core *core : cores) {
+    coreMap.insert(std::make_pair(std::make_pair(jtagIndex, coreNum), core));
     coreNum++;
   }
 }
@@ -422,11 +421,11 @@ adjustForBootMode(const Options &options, SystemState &sys,
     bootSequence.eraseAllButLastImage();
     bootSequence.overrideEntryPoint(romBaseAddress);
     bootSequence.setLoadImages(false);
-    for (SystemState::node_iterator outerIt = sys.node_begin(),
-         outerE = sys.node_end(); outerIt != outerE; ++outerIt) {
+    for (auto outerIt = sys.node_begin(), outerE = sys.node_end();
+         outerIt != outerE; ++outerIt) {
       Node &node = **outerIt;
-      for (Node::core_iterator innerIt = node.core_begin(),
-           innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+      for (auto innerIt = node.core_begin(), innerE = node.core_end();
+           innerIt != innerE; ++innerIt) {
         Core *core = *innerIt;
         core->setBootConfig(1 << 2);
       }
@@ -549,13 +548,11 @@ loop(const Options &options)
 
   std::set<Core*> gotoSectors;
   std::set<Core*> callSectors;
-  for (std::vector<const XESector *>::const_iterator
-       it = xe.getSectors().begin(), end = xe.getSectors().end(); it != end;
-       ++it) {
-    switch((*it)->getType()) {
+  for (const XESector *sector : xe.getSectors()) {
+    switch (sector->getType()) {
     case XESector::XE_SECTOR_ELF:
       {
-        const XEElfSector *elfSector = static_cast<const XEElfSector*>(*it);
+        const XEElfSector *elfSector = static_cast<const XEElfSector*>(sector);
         unsigned jtagIndex = elfSector->getNode();
         unsigned coreNum = elfSector->getCore();
         Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
@@ -578,7 +575,7 @@ loop(const Options &options)
     case XESector::XE_SECTOR_CALL:
       {
         const XECallOrGotoSector *callSector =
-        static_cast<const XECallOrGotoSector*>(*it);
+          static_cast<const XECallOrGotoSector*>(sector);
         if (!gotoSectors.empty()) {
           // Shouldn't happen.
           break;
@@ -601,7 +598,7 @@ loop(const Options &options)
     case XESector::XE_SECTOR_GOTO:
       {
         const XECallOrGotoSector *gotoSector =
-          static_cast<const XECallOrGotoSector*>(*it);
+          static_cast<const XECallOrGotoSector*>(sector);
         if (!callSectors.empty()) {
           // Handle calls.
           bootSequence.addRun(callSectors.size());

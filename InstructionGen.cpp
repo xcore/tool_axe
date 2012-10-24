@@ -316,9 +316,8 @@ public:
 InstructionRefs &InstructionRefs::
 addImplicitOp(ImplicitOp reg, OpType type)
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->addImplicitOp(reg, type);
+  for (Instruction *inst : refs) {
+    inst->addImplicitOp(reg, type);
   }
   return *this;
 }
@@ -326,9 +325,8 @@ addImplicitOp(ImplicitOp reg, OpType type)
 InstructionRefs &InstructionRefs::
 transform(const std::string &t, const std::string &rt)
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->transform(t, rt);
+  for (Instruction *inst : refs) {
+    inst->transform(t, rt);
   }
   return *this;
 }
@@ -336,9 +334,8 @@ transform(const std::string &t, const std::string &rt)
 InstructionRefs &InstructionRefs::
 setCycles(unsigned value)
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->setCycles(value);
+  for (Instruction *inst : refs) {
+    inst->setCycles(value);
   }
   return *this;
 }
@@ -346,9 +343,8 @@ setCycles(unsigned value)
 InstructionRefs &InstructionRefs::
 setYieldBefore()
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->setYieldBefore();
+  for (Instruction *inst : refs) {
+    inst->setYieldBefore();
   }
   return *this;
 }
@@ -356,9 +352,8 @@ setYieldBefore()
 InstructionRefs &InstructionRefs::
 setCanEvent()
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->setCanEvent();
+  for (Instruction *inst : refs) {
+    inst->setCanEvent();
   }
   return *this;
 }
@@ -366,9 +361,8 @@ setCanEvent()
 InstructionRefs &InstructionRefs::
 setUnimplemented()
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->setUnimplemented();
+  for (Instruction *inst : refs) {
+    inst->setUnimplemented();
   }
   return *this;
 }
@@ -376,9 +370,8 @@ setUnimplemented()
 InstructionRefs &InstructionRefs::
 setEnableMemCheckOpt()
 {
-  for (std::vector<Instruction*>::iterator it = refs.begin(), e = refs.end();
-       it != e; ++it) {
-    (*it)->setEnableMemCheckOpt();
+  for (Instruction *inst : refs) {
+    inst->setEnableMemCheckOpt();
   }
   return *this;
 }
@@ -1169,11 +1162,10 @@ emitTrace(Instruction &instruction)
   }
   std::cout << "TRACE(";
   bool needComma = false;
-  for (std::vector<std::string>::iterator it = args.begin(), e = args.end();
-       it != e; ++it) {
+  for (const std::string &arg : args) {
     if (needComma)
       std::cout << ", ";
-    std::cout << *it;
+    std::cout << arg;
     needComma = true;
   }
   std::cout << ");\n";
@@ -1268,9 +1260,8 @@ static void emitInstFunction(Instruction &inst, bool jit)
 static void emitInstFunctions()
 {
   std::cout << "#ifdef EMIT_INSTRUCTION_FUNCTIONS\n";
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
-    emitInstFunction(**it, false);
+  for (Instruction *inst : instructions) {
+    emitInstFunction(*inst, false);
   }
   std::cout << "#endif //EMIT_INSTRUCTION_FUNCTIONS\n";
 }
@@ -1278,9 +1269,8 @@ static void emitInstFunctions()
 static void emitJitInstFunctions()
 {
   std::cout << "#ifdef EMIT_JIT_INSTRUCTION_FUNCTIONS\n";
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
-    emitInstFunction(**it, true);
+  for (Instruction *inst : instructions) {
+    emitInstFunction(*inst, true);
   }
   std::cout << "#endif //EMIT_JIT_INSTRUCTION_FUNCTIONS\n";
 }
@@ -1293,9 +1283,8 @@ static void emitInstList(Instruction &instruction)
 static void emitInstList()
 {
   std::cout << "#ifdef EMIT_INSTRUCTION_LIST\n";
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
-    emitInstList(**it);
+  for (Instruction *inst : instructions) {
+    emitInstList(*inst);
   }
   std::cout << "#endif //EMIT_INSTRUCTION_LIST\n";
 }
@@ -1311,9 +1300,8 @@ static void analyzeInst(Instruction &inst) {
 static void analyze()
 {
   CodePropertyExtractor propertyExtractor;
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
-    analyzeInst(**it);
+  for (Instruction *inst : instructions) {
+    analyzeInst(*inst);
   }
 }
 
@@ -1447,17 +1435,15 @@ static void emitInstProperties(Instruction &inst)
 static void emitInstProperties()
 {
   std::cout << "#ifdef EMIT_INSTRUCTION_PROPERTIES\n";
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
-    emitInstPropertiesArrays(**it);
+  for (Instruction *inst : instructions) {
+    emitInstPropertiesArrays(*inst);
   }
   std::cout << "InstructionProperties instructionProperties[] = {\n";
   bool needComma = false;
-  for (std::vector<Instruction*>::iterator it = instructions.begin(),
-       e = instructions.end(); it != e; ++it) {
+  for (Instruction *inst : instructions) {
     if (needComma)
       std::cout << ",\n";
-    emitInstProperties(**it);
+    emitInstProperties(*inst);
     needComma = true;
   }
   std::cout << "\n};\n";

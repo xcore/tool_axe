@@ -352,11 +352,11 @@ void Tracer::dumpThreadSummary(const Core &core)
 
 void Tracer::dumpThreadSummary(const SystemState &system)
 {
-  for (SystemState::const_node_iterator outerIt = system.node_begin(),
-       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
+  for (auto outerIt = system.node_begin(), outerE = system.node_end();
+       outerIt != outerE; ++outerIt) {
     const Node &node = **outerIt;
-    for (Node::const_core_iterator innerIt = node.core_begin(),
-         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+    for (auto innerIt = node.core_begin(), innerE = node.core_end();
+         innerIt != innerE; ++innerIt) {
       dumpThreadSummary(**innerIt);
     }
   }

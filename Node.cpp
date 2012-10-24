@@ -50,9 +50,8 @@ Node::Node(Type t, unsigned numXLinks) :
 
 Node::~Node()
 {
-  for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
-       it != e; ++it) {
-    delete *it;
+  for (Core *core : cores) {
+    delete core;
   }
 }
 
@@ -65,10 +64,9 @@ void Node::finalize()
       directions[i] = i;
     }
   }
-  for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
-       it != e; ++it) {
-    (*it)->updateIDs();
-    (*it)->finalize();
+  for (Core *core : cores) {
+    core->updateIDs();
+    core->finalize();
   }
   sswitch.initRegisters();
 }
@@ -84,9 +82,8 @@ void Node::addCore(std::auto_ptr<Core> c)
 void Node::setNodeID(unsigned value)
 {
   nodeID = value;
-  for (std::vector<Core*>::iterator it = cores.begin(), e = cores.end();
-       it != e; ++it) {
-    (*it)->updateIDs();
+  for (Core *core : cores) {
+    core->updateIDs();
   }
 }
 
@@ -157,9 +154,8 @@ void Node::connectXLink(unsigned num, Node *destNode, unsigned destNum)
 
 XLink *Node::getXLinkForDirection(unsigned direction)
 {
-  for (unsigned i = 0, e = xLinks.size(); i != e; ++i) {
-    XLink &xLink = xLinks[i];
-    if (xLink.isEnabled() && xLinks[i].getDirection() == direction)
+  for (XLink &xLink : xLinks) {
+    if (xLink.isEnabled() && xLink.getDirection() == direction)
       return &xLink;
   }
   return 0;

@@ -36,9 +36,8 @@ PortSplitter::PortSplitter(RunnableQueue &s, PortInterface *p) :
 
 PortSplitter::~PortSplitter()
 {
-  for (std::map<std::pair<unsigned,unsigned>,PortSplitterSlice*>::iterator
-       it = slices.begin(), e = slices.end(); it != e; ++it) {
-    delete it->second;
+  for (auto &entry : slices) {
+    delete entry.second;
   }
 }
 

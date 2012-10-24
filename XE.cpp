@@ -63,19 +63,16 @@ XE::XE(const char *filename)
 
 XE::~XE()
 {
-  for (std::vector<const XESector *>::iterator it = sectors.begin(),
-                                               end = sectors.end();
-      it != end; ++it) {
-    delete (*it);
+  for (const XESector *sector : sectors) {
+    delete sector;
   }
 }
 
 const XESector *XE::getSector(XESector::XBSectorType type) const
 {
-  for (std::vector<const XESector *>::const_iterator it = sectors.begin(),
-       end = sectors.end(); it != end; ++it) {
-    if ((*it)->getType() == type)
-      return *it;
+  for (const XESector *sector : sectors) {
+    if (sector->getType() == type)
+      return sector;
   }
   return 0;
 }

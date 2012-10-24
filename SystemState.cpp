@@ -16,16 +16,16 @@ SystemState::SystemState() : currentRunnable(0), rom(0) {
 
 SystemState::~SystemState()
 {
-  for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
-    delete *it;
+  for (Node *node : nodes) {
+    delete node;
   }
   delete[] rom;
 }
 
 void SystemState::finalize()
 {
-  for (node_iterator it = nodes.begin(), e = nodes.end(); it != e; ++it) {
-    (*it)->finalize();
+  for (Node *node : nodes) {
+    node->finalize();
   }
 }
 
@@ -85,12 +85,9 @@ setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize)
   rom = new uint8_t[romSize];
   std::memcpy(rom, data, romSize);
   romDecodeCache.reset(new DecodeCache(romSize, romBase, false));
-  for (node_iterator outerIt = node_begin(),
-       outerE = node_end(); outerIt != outerE; ++outerIt) {
-    Node &node = **outerIt;
-    for (Node::core_iterator innerIt = node.core_begin(),
-         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
-      Core *core = *innerIt;
+  for (Node *node : nodes) {
+    for (auto it = node->core_begin(), e = node->core_end(); it != e; ++it) {
+      Core *core = *it;
       core->setRom(rom, 0xffffc000, romSize);
     }
   }

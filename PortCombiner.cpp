@@ -13,11 +13,10 @@ PortCombiner::PortCombiner(RunnableQueue &scheduler) :
 
 void PortCombiner::seePinsValueChange(uint32_t newValue, ticks_t time)
 {
-  for (std::map<std::pair<uint32_t,unsigned>,PortInterface*>::iterator
-       it = slices.begin(), e = slices.end(); it != e; ++it) {
-    uint32_t mask = it->first.first;
-    unsigned shift = it->first.second;
-    PortInterface *next = it->second;
+  for (auto &entry : slices) {
+    uint32_t mask = entry.first.first;
+    unsigned shift = entry.first.second;
+    PortInterface *next = entry.second;
     uint32_t oldSliceValue = (value & mask) >> shift;
     uint32_t newSliceValue = (newValue & mask) >> shift;
     if (newSliceValue != oldSliceValue) {

@@ -126,9 +126,8 @@ dumpPortValue(const std::string &identifier, Port *port, uint32_t value)
 void WaveformTracer::dumpInitialValues()
 {
   out << "$dumpvars\n";
-  for (std::vector<WaveformTracerPort>::iterator it = ports.begin(),
-       e = ports.end(); it != e; ++it) {
-    dumpPortValue(it->getIdentifier(), it->getPort(), 0);
+  for (WaveformTracerPort &port : ports) {
+    dumpPortValue(port.getIdentifier(), port.getPort(), 0);
   }
   out << "$end\n";
 }
@@ -138,18 +137,16 @@ void WaveformTracer::finalizePorts()
   assert(!portsFinalized);
   portsFinalized = true;
   emitDeclarations();
-  for (ModuleMap::iterator it = modules.begin(), e = modules.end(); it != e;
-       ++it) {
-    const std::string &moduleName = it->first;
+  for (auto &entry : modules) {
+    const std::string &moduleName = entry.first;
     if (!moduleName.empty()) {
       out << "$scope\n";
       out << "  module " << moduleName << '\n';
       out << "$end\n";
     }
-    const std::vector<unsigned> &modulePorts = it->second;
-    for (std::vector<unsigned>::const_iterator it = modulePorts.begin(),
-         e = modulePorts.end(); it != e; ++it) {
-      WaveformTracerPort &waveformTracerPort = ports[*it];
+    const std::vector<unsigned> &modulePorts = entry.second;
+    for (unsigned index : modulePorts) {
+      WaveformTracerPort &waveformTracerPort = ports[index];
       Port *port = waveformTracerPort.getPort();
       port->setTracer(&waveformTracerPort);
       out << "$var\n";

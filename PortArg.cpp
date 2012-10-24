@@ -105,11 +105,11 @@ static bool convertPortString(const std::string &s, uint32_t &id)
 /// code reference is empty then the first core is returned.
 static Core *findMatchingCore(const std::string &s, SystemState &system)
 {
-  for (SystemState::node_iterator outerIt = system.node_begin(),
-       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
+  for (auto outerIt = system.node_begin(), outerE = system.node_end();
+       outerIt != outerE; ++outerIt) {
     Node &node = **outerIt;
-    for (Node::core_iterator innerIt = node.core_begin(),
-         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
+    for (auto innerIt = node.core_begin(), innerE = node.core_end();
+         innerIt != innerE; ++innerIt) {
       Core *core = *innerIt;
       if (s.empty() || core->getCodeReference() == s)
         return core;

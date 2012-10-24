@@ -173,13 +173,11 @@ handlePinsChange(Signal value, ticks_t time)
 {
   if (isInUse()) {
     Signal effectiveValue = getEffectiveValue(value);
-    for (std::set<ClockBlock*>::iterator it = sourceOf.begin(),
-         e = sourceOf.end(); it != e; ++it) {
-      (*it)->setValue(effectiveValue, time);
+    for (ClockBlock *clk : sourceOf) {
+      clk->setValue(effectiveValue, time);
     }
-    for (std::set<ClockBlock*>::iterator it = readyInOf.begin(),
-         e = readyInOf.end(); it != e; ++it) {
-      (*it)->setReadyInValue(effectiveValue, time);
+    for (ClockBlock *clk : readyInOf) {
+      clk->setReadyInValue(effectiveValue, time);
     }
   }
   if (tracer)
@@ -195,9 +193,8 @@ handlePinsChange(uint32_t val, ticks_t time)
 void Port::
 handleReadyOutChange(bool value, ticks_t time)
 {
-  for (std::set<Port*>::iterator it = readyOutPorts.begin(),
-       e = readyOutPorts.end(); it != e; ++it) {
-    (*it)->outputValue(getEffectiveValue(value), time);
+  for (Port *port : readyOutPorts) {
+    port->outputValue(getEffectiveValue(value), time);
   }
 }
 

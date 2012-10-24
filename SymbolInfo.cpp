@@ -22,7 +22,7 @@ struct ElfSymbolGreater {
 
 const ElfSymbol *CoreSymbolInfo::getGlobalSymbol(const std::string &name) const
 {
-  std::map<std::string,ElfSymbol*>::const_iterator it = symNameMap.find(name);
+  auto it = symNameMap.find(name);
   if (it == symNameMap.end())
     return 0;
   return it->second;
@@ -31,7 +31,7 @@ const ElfSymbol *CoreSymbolInfo::getGlobalSymbol(const std::string &name) const
 const ElfSymbol *CoreSymbolInfo::
 getSymbol(const SymbolAddressMap &symbols, uint32_t address)
 {
-  SymbolAddressMap::const_iterator it = symbols.lower_bound(address);
+  auto it = symbols.lower_bound(address);
   if (it == symbols.end())
     return 0;
   return it->second;
@@ -58,35 +58,32 @@ std::auto_ptr<CoreSymbolInfo> CoreSymbolInfoBuilder::getSymbolInfo()
   std::auto_ptr<CoreSymbolInfo> retval(new CoreSymbolInfo);
 
   std::swap(symbols, retval->symbols);
-  for (std::vector<ElfSymbol>::iterator it = retval->symbols.begin(),
-       e = retval->symbols.end(); it != e; ++it) {
-    ElfSymbol *sym = &*it;
-    switch (ELF32_ST_TYPE(sym->info)) {
+  for (ElfSymbol &sym : retval->symbols) {
+    switch (ELF32_ST_TYPE(sym.info)) {
     case STT_FUNC:
       // Could replace an existing symbol.
-      retval->functionSymbols[sym->value] = sym;
+      retval->functionSymbols[sym.value] = &sym;
       break;
     case STT_OBJECT:
       // Could replace an existing symbol.
-      retval->dataSymbols[sym->value] = sym;
+      retval->dataSymbols[sym.value] = &sym;
       break;
     case STT_NOTYPE:
       // Only inserted if no other symbol at that address.
-      retval->functionSymbols.insert(std::make_pair(sym->value, sym));
-      retval->dataSymbols.insert(std::make_pair(sym->value, sym));
+      retval->functionSymbols.insert(std::make_pair(sym.value, &sym));
+      retval->dataSymbols.insert(std::make_pair(sym.value, &sym));
       break;
     }
-    if (ELF32_ST_BIND(sym->info) != STB_LOCAL)
-      retval->symNameMap.insert(std::make_pair(sym->name, sym));
+    if (ELF32_ST_BIND(sym.info) != STB_LOCAL)
+      retval->symNameMap.insert(std::make_pair(sym.name, &sym));
   }
   return retval;
 }
 
 SymbolInfo::~SymbolInfo()
 {
-  for (std::map<const Core*,CoreSymbolInfo*>::iterator it = coreMap.begin(),
-       e = coreMap.end(); it != e; ++it) {
-    delete it->second;
+  for (auto &entry : coreMap) {
+    delete entry.second;
   }
 }
 
@@ -101,8 +98,7 @@ void SymbolInfo::add(const Core *core, std::auto_ptr<CoreSymbolInfo> info)
 
 CoreSymbolInfo *SymbolInfo::getCoreSymbolInfo(const Core *core) const
 {
-  std::map<const Core*,CoreSymbolInfo*>::const_iterator it =
-    coreMap.find(core);
+  auto it = coreMap.find(core);
   if (it == coreMap.end())
     return 0;
   return it->second;

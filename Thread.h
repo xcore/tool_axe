@@ -309,9 +309,8 @@ public:
     eeble() = false;
     inenb() = false;
     EventableResourceList &EER = eventEnabledResources;
-    for (EventableResourceList::iterator it = EER.begin(),
-         end = EER.end(); it != end; ++it) {
-      (*it)->eventDisable(*this);
+    for (EventableResource *res : EER) {
+      res->eventDisable(*this);
     }
   }
   bool isExecuting() const;

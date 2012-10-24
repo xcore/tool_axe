@@ -10,7 +10,7 @@ struct PortNames {
   }
   PortNames();
   bool getPortName(uint32_t id, std::string &name) {
-    std::map<uint32_t,std::string>::iterator it = portNames.find(id);
+    auto it = portNames.find(id);
     if (it == portNames.end()) {
       return false;
     }
@@ -18,7 +18,7 @@ struct PortNames {
     return true;
   }
   bool getPortId(const std::string &name, uint32_t &id) {
-    std::map<std::string,uint32_t>::iterator it = portIds.find(name);
+    auto it = portIds.find(name);
     if (it == portIds.end()) {
       return false;
     }

@@ -17,9 +17,8 @@ ClockBlock::ClockBlock() :
 
 void ClockBlock::updateAttachedPorts(ticks_t time)
 {
-  for (std::set<Port*>::iterator it = ports.begin(), e = ports.end();
-       it != e; ++it) {
-    (*it)->update(time);
+  for (Port *port : ports) {
+    port->update(time);
   }
 }
 
@@ -28,17 +27,15 @@ seeChangeOnAttachedPorts(ticks_t time)
 {
   if (!running)
     return;
-  for (std::set<Port*>::iterator it = ports.begin(), e = ports.end();
-       it != e; ++it) {
-    (*it)->seeClockChange(time);
+  for (Port *port : ports) {
+    port->seeClockChange(time);
   }
 }
 
 void ClockBlock::
 seeEdgeOnAttachedPorts(Edge::Type edgeType, ticks_t time) {
-  for (std::set<Port*>::iterator it = ports.begin(), e = ports.end();
-       it != e; ++it) {
-    (*it)->seeEdge(edgeType, time);
+  for (Port *port : ports) {
+    port->seeEdge(edgeType, time);
   }
 }
   
@@ -155,10 +152,9 @@ void ClockBlock::start(Thread &thread, ticks_t time)
   if (!source) {
     value.changeFrequency(time, 0, getHalfPeriod());
   }
-  for (std::set<Port*>::iterator it = ports.begin(), e = ports.end();
-       it != e; ++it) {
+  for (Port *port : ports) {
     // Update ports to current time
-    (*it)->seeClockStart(time);
+    port->seeClockStart(time);
   }
 }
 

@@ -231,9 +231,8 @@ int BootSequenceStepRun::execute(SystemState &sys)
 }
 
 BootSequence::~BootSequence() {
-  for (std::vector<BootSequenceStep*>::iterator it = steps.begin(),
-       e = steps.end(); it != e; ++it) {
-    delete *it;
+  for (BootSequenceStep *step : steps) {
+    delete step;
   }
 }
 
@@ -253,7 +252,7 @@ static std::vector<BootSequenceStep*>::iterator
 getPenultimateRunStep(std::vector<BootSequenceStep*>::iterator begin,
                       std::vector<BootSequenceStep*>::iterator end)
 {
-  std::vector<BootSequenceStep*>::iterator it = end;
+  auto it = end;
   unsigned count = 0;
   while (it != begin) {
     --it;
@@ -268,13 +267,13 @@ getPenultimateRunStep(std::vector<BootSequenceStep*>::iterator begin,
 void BootSequence::overrideEntryPoint(uint32_t address)
 {
   std::vector<BootSequenceStep*> newSteps;
-  for (std::vector<BootSequenceStep*>::iterator it = steps.begin(),
-       e = steps.end(); it != e; ++it) {
-    newSteps.push_back(*it);
-    if ((*it)->getType() == BootSequenceStep::ELF) {
-      BootSequenceStepElf *step = static_cast<BootSequenceStepElf*>(*it);
-      step->setUseElfEntryPoint(false);
-      newSteps.push_back(new BootSequenceStepSchedule(step->getCore(), address));
+  for (BootSequenceStep *step : steps) {
+    newSteps.push_back(step);
+    if (step->getType() == BootSequenceStep::ELF) {
+      BootSequenceStepElf *elfStep = static_cast<BootSequenceStepElf*>(step);
+      elfStep->setUseElfEntryPoint(false);
+      newSteps.push_back(new BootSequenceStepSchedule(elfStep->getCore(),
+                                                      address));
     }
   }
   std::swap(steps, newSteps);
@@ -282,12 +281,10 @@ void BootSequence::overrideEntryPoint(uint32_t address)
 
 void BootSequence::eraseAllButLastImage()
 {
-  std::vector<BootSequenceStep*>::iterator eraseTo =
-    getPenultimateRunStep(steps.begin(), steps.end());
+  auto eraseTo = getPenultimateRunStep(steps.begin(), steps.end());
   if (eraseTo == steps.end())
     return;
-  for (std::vector<BootSequenceStep*>::iterator it = steps.begin();
-       it != eraseTo; ++it) {
+  for (auto it = steps.begin(); it != eraseTo; ++it) {
     delete *it;
   }
   steps.erase(steps.begin(), eraseTo);
@@ -295,10 +292,9 @@ void BootSequence::eraseAllButLastImage()
 
 void BootSequence::setLoadImages(bool value)
 {
-  for (std::vector<BootSequenceStep*>::iterator it = steps.begin(),
-       e = steps.end(); it != e; ++it) {
-    if ((*it)->getType() == BootSequenceStep::ELF) {
-      static_cast<BootSequenceStepElf*>(*it)->setLoadImage(value);
+  for (BootSequenceStep *step : steps) {
+    if (step->getType() == BootSequenceStep::ELF) {
+      static_cast<BootSequenceStepElf*>(step)->setLoadImage(value);
     }
   }
 }
@@ -309,9 +305,8 @@ int BootSequence::execute() {
     << elf_errmsg(-1) << std::endl;
     std::exit(1);
   }
-  for (std::vector<BootSequenceStep*>::iterator it = steps.begin(),
-       e = steps.end(); it != e; ++it) {
-    int status = (*it)->execute(sys);
+  for (BootSequenceStep *step : steps) {
+    int status = step->execute(sys);
     if (status != 0)
       return status;
   }

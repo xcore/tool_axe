@@ -18,8 +18,7 @@ void PeripheralRegistry::add(std::auto_ptr<PeripheralDescriptor> p)
 
 PeripheralDescriptor *PeripheralRegistry::get(const std::string &name)
 {
-  std::map<std::string,PeripheralDescriptor*>::iterator it =
-  peripherals.find(name);
+  auto it = peripherals.find(name);
   if (it == peripherals.end())
     return 0;
   return it->second;

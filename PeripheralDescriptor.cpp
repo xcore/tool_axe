@@ -14,8 +14,7 @@ addProperty(const PropertyDescriptor &p)
 const PropertyDescriptor *PeripheralDescriptor::
 getProperty(const std::string &name) const
 {
-  std::map<std::string,PropertyDescriptor>::const_iterator it =
-    properties.find(name);
+  auto it = properties.find(name);
   if (it == properties.end())
     return 0;
   return &it->second;

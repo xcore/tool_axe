@@ -27,13 +27,11 @@ PortConnectionManager(SystemState &sys, PortAliases &aliases) :
 
 PortConnectionManager::~PortConnectionManager()
 {
-  for (std::map<Port*,PortSplitter*>::iterator it = splitters.begin(),
-       e = splitters.end(); it != e; ++it) {
-    delete it->second;
+  for (auto &entry : splitters) {
+    delete entry.second;
   }
-  for (std::map<Port*,PortCombiner*>::iterator it = combiners.begin(),
-       e = combiners.end(); it != e; ++it) {
-    delete it->second;
+  for (auto &entry : combiners) {
+    delete entry.second;
   }
 }
 
