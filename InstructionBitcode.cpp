@@ -5,7 +5,7 @@
 
 #include "InstructionBitcode.h"
 
-const char instructionBitcode[] = {
+const unsigned char instructionBitcode[] = {
 #include "InstructionBitcode.inc"
   , 0x00 // Ensure null termination.
 };

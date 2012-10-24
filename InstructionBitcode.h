@@ -8,7 +8,7 @@
 
 #include <cstring>
 
-extern const char instructionBitcode[];
+extern const unsigned char instructionBitcode[];
 extern size_t instructionBitcodeSize;
 
 #endif //_InstructionBitcode_h_

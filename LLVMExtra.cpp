@@ -17,9 +17,10 @@
 using namespace llvm;
 
 LLVMMemoryBufferRef
-LLVMExtraCreateMemoryBufferWithPtr(const char *ptr, size_t length)
+LLVMExtraCreateMemoryBufferWithPtr(const unsigned char *ptr, size_t length)
 {
-  return wrap(MemoryBuffer::getMemBuffer(StringRef(ptr, length)));
+  return wrap(MemoryBuffer::getMemBuffer(
+   StringRef(reinterpret_cast<const char *>(ptr), length)));
 }
 
 LLVMBool LLVMExtraInlineFunction(LLVMValueRef call)

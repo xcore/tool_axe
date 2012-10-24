@@ -129,10 +129,10 @@ out(Thread &thread, uint32_t value, ticks_t time)
   }
   // Channels are big endian
   uint8_t tokens[4] = {
-    value >> 24,
-    value >> 16,
-    value >> 8,
-    value
+    static_cast<uint8_t>(value >> 24),
+    static_cast<uint8_t>(value >> 16),
+    static_cast<uint8_t>(value >> 8),
+    static_cast<uint8_t>(value)
   };
   dest->receiveDataTokens(time, tokens, 4);
   return CONTINUE;
