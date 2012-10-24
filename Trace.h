@@ -129,6 +129,14 @@ private:
 
   void dumpThreadSummary(const Core &core);
   void dumpThreadSummary(const SystemState &system);
+  
+  void traceAux() { }
+  template<typename T, typename... Args>
+  void traceAux(T op0, Args... args)
+  {
+    printOperand(op0);
+    traceAux(args...);
+  }
 public:
 
   void setTracingEnabled(bool enable) { tracingEnabled = enable; }
@@ -136,170 +144,11 @@ public:
   SymbolInfo *getSymbolInfo() { return &symInfo; }
   void setColour(bool enable);
 
-  template<typename T0>
-  void trace(const Thread &t, T0 op0)
+  template<typename... Args>
+  void trace(const Thread &t, Args... args)
   {
     printInstructionStart(t);
-    printOperand(op0);
-  }
-
-  template<typename T0, typename T1>
-  void trace(const Thread &t, T0 op0, T1 op1)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-  }
-
-  template<typename T0, typename T1, typename T2>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2,
-             T3 op3)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-  typename T5>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-           typename T5, typename T6>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5, T6 op6)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-    printOperand(op6);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-           typename T5, typename T6, typename T7>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5, T6 op6, T7 op7)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-    printOperand(op6);
-    printOperand(op7);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-  typename T5, typename T6, typename T7, typename T8>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5, T6 op6, T7 op7, T8 op8)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-    printOperand(op6);
-    printOperand(op7);
-    printOperand(op8);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-  typename T5, typename T6, typename T7, typename T8, typename T9>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5, T6 op6, T7 op7, T8 op8, T9 op9)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-    printOperand(op6);
-    printOperand(op7);
-    printOperand(op8);
-    printOperand(op9);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-  typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5, T6 op6, T7 op7, T8 op8, T9 op9, T10 op10)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-    printOperand(op6);
-    printOperand(op7);
-    printOperand(op8);
-    printOperand(op9);
-    printOperand(op10);
-  }
-
-  template<typename T0, typename T1, typename T2, typename T3, typename T4,
-  typename T5, typename T6, typename T7, typename T8, typename T9, typename T10,
-  typename T11>
-  void trace(const Thread &t, T0 op0, T1 op1, T2 op2, T3 op3, T4 op4,
-             T5 op5, T6 op6, T7 op7, T8 op8, T9 op9, T10 op10, T11 op11)
-  {
-    printInstructionStart(t);
-    printOperand(op0);
-    printOperand(op1);
-    printOperand(op2);
-    printOperand(op3);
-    printOperand(op4);
-    printOperand(op5);
-    printOperand(op6);
-    printOperand(op7);
-    printOperand(op8);
-    printOperand(op9);
-    printOperand(op10);
-    printOperand(op11);
+    traceAux(args...);
   }
 
   void regWrite(Register::Reg reg, uint32_t value);
