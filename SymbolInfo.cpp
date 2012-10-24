@@ -8,18 +8,6 @@
 #include <algorithm>
 #include <cstring>
 
-struct ElfSymbolLess {
-  bool operator()(const ElfSymbol *sym1, const ElfSymbol *sym2) {
-    return sym1->value < sym2->value;
-  }
-};
-
-struct ElfSymbolGreater {
-  bool operator()(const ElfSymbol *sym1, const ElfSymbol *sym2) {
-    return sym1->value > sym2->value;
-  }
-};
-
 const ElfSymbol *CoreSymbolInfo::getGlobalSymbol(const std::string &name) const
 {
   auto it = symNameMap.find(name);
