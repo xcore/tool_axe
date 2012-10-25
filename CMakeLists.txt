@@ -7,6 +7,31 @@ elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(COMPILER_IS_GCC_COMPATIBLE ON)
 endif()
 
+if(COMPILER_IS_GCC_COMPATIBLE)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-std=c++11" SUPPORTS_CPLUS_CLUS_11)
+  if(SUPPORTS_CPLUS_CLUS_11)
+    message(STATUS "-std=c++11 is supported.")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  else()
+    check_cxx_compiler_flag("-std=c++0x" SUPPORTS_CPLUS_CLUS_11)
+    if(SUPPORTS_CPLUS_CLUS_11)
+      message(STATUS "-std=c++0x is supported.")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+    else()
+      message(FATAL_ERROR "C++11 is unsupported.")
+    endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -W -Wno-unused-parameter")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W -Wno-unused-parameter")
+  endif()
+elseif(MSVC)
+# Disable the following warnings:
+# C4355 'this' : used in base member initializer list.
+# Deprecation warnings for less secure CRT functions.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4355 /D_CRT_SECURE_NO_WARNINGS=1")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /D_CRT_SECURE_NO_WARNINGS=1")
+endif()
+
 # Add path for custom modules
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
@@ -229,9 +254,10 @@ set(CLANG_INCLUDE_FLAGS "")
 foreach(dir ${INCLUDES_DIRS})
   set(CLANG_INCLUDE_FLAGS ${CLANG_INCLUDE_FLAGS} "-I${dir}")
 endforeach()
+string(REPLACE " " ";" CLANG_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 add_custom_command(
   OUTPUT ${AXE_BINARY_DIR}/InstructionBitcode.bc
-  COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CMAKE_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
+  COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CLANG_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
   -c -emit-llvm ${AXE_SOURCE_DIR}/InstructionDefinitions.cpp
   -o ${AXE_BINARY_DIR}/InstructionBitcode.bc
   DEPENDS ${AXE_BINARY_DIR}/InstructionGenOutput.inc
@@ -260,17 +286,6 @@ add_custom_command(
  COMMAND ${GENHEX_EXE} ${AXE_SOURCE_DIR}/XNTransform.xslt ${AXE_BINARY_DIR}/XNTransform.inc
  DEPENDS genHex XNTransform.xslt
  )
-
-if(COMPILER_IS_GCC_COMPATIBLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -W -Wno-unused-parameter")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W -Wno-unused-parameter")
-elseif(MSVC)
-# Disable the following warnings:
-# C4355 'this' : used in base member initializer list.
-# Deprecation warnings for less secure CRT functions.
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4355 /D_CRT_SECURE_NO_WARNINGS=1")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /D_CRT_SECURE_NO_WARNINGS=1")
-endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CFLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
