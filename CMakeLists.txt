@@ -56,6 +56,11 @@ include_directories(
   ${LIBXML2_INCLUDE_DIR})
 add_definitions(
   ${LIBXSLT_DEFINITIONS})
+if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
+  # On Linux LibXslt requires librt.
+  find_package(LibRt REQUIRED)
+  list(APPEND AXE_LINK_LIBRARIES ${LIBRT_LIBRARIES})
+endif()
 
 if(AXE_ENABLE_SDL)
   find_package(SDL)
