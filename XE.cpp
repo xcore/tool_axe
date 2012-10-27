@@ -40,9 +40,10 @@ XECallOrGotoSector(XE &xe, uint64_t off, uint16_t type, uint64_t len)
   address = xe.ReadU64();
 }
 
-XE::XE(const char *filename)
-  : s(filename, std::ifstream::in | std::ifstream::binary),
-    error(false)
+XE::XE(const std::string &fname) :
+  filename(fname),
+  s(fname.c_str(), std::ifstream::in | std::ifstream::binary),
+  error(false)
 {
   if (!s) {
     error = true;

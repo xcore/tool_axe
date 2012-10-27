@@ -68,6 +68,7 @@ public:
 class XE {
   
 private:
+  std::string filename;
   uint16_t version;
   std::ifstream s;
   std::vector<const XESector *>sectors;
@@ -84,8 +85,9 @@ private:
   friend class XEElfSector;
   friend class XECallOrGotoSector;
 public:
-  XE(const char *filename);
+  XE(const std::string &fname);
   ~XE();
+  const std::string &getFileName() const { return filename; }
   const std::vector<const XESector *> &getSectors() { return sectors; }
   const XESector *getConfigSector() const {
     return getSector(XESector::XE_SECTOR_CONFIG);

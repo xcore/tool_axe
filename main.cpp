@@ -252,7 +252,8 @@ checkDocAgainstSchema(xmlDoc *doc, const char *schemaData, size_t schemaSize)
 }
 
 static inline std::auto_ptr<SystemState>
-createSystemFromConfig(const char *filename, const XESector *configSector)
+createSystemFromConfig(const std::string &filename,
+                       const XESector *configSector)
 {
   uint64_t length = configSector->getLength();
   const scoped_array<char> buf(new char[length + 1]);
@@ -348,23 +349,22 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
   }
 }
 
-static inline std::auto_ptr<SystemState>
-readXE(XE &xe, const char *filename)
+static inline std::auto_ptr<SystemState> readXE(XE &xe)
 {
   // Load the file into memory.
   if (!xe) {
-    std::cerr << "Error opening \"" << filename << "\"" << std::endl;
+    std::cerr << "Error opening \"" << xe.getFileName() << "\"" << std::endl;
     std::exit(1);
   }
   // TODO handle XEs / XBs without a config sector.
   const XESector *configSector = xe.getConfigSector();
   if (!configSector) {
     std::cerr << "Error: No config file found in \"";
-    std::cerr << filename << "\"" << std::endl;
+    std::cerr << xe.getFileName() << "\"" << std::endl;
     std::exit(1);
   }
   std::auto_ptr<SystemState> system =
-    createSystemFromConfig(filename, configSector);
+    createSystemFromConfig(xe.getFileName(), configSector);
   return system;
 }
 
@@ -476,7 +476,7 @@ static void readPortAliases(PortAliases &aliases, xmlNode *root) {
 }
 
 static void
-readPortAliases(PortAliases &aliases, XE &xe, const std::string &filename)
+readPortAliases(PortAliases &aliases, XE &xe)
 {
   const XESector *XNSector = xe.getXNSector();
   if (!XNSector)
@@ -484,7 +484,8 @@ readPortAliases(PortAliases &aliases, XE &xe, const std::string &filename)
   uint64_t length = XNSector->getLength();
   const scoped_array<char> buf(new char[length + 1]);
   if (!XNSector->getData(buf.get())) {
-    std::cerr << "Error reading XN from \"" << filename << "\"" << std::endl;
+    std::cerr << "Error reading XN from \"" << xe.getFileName() << "\"";
+    std::cerr << std::endl;
     std::exit(1);
   }
   if (length < 8) {
@@ -596,9 +597,9 @@ int
 loop(const Options &options)
 {
   XE xe(options.file);
-  std::auto_ptr<SystemState> statePtr = readXE(xe, options.file);
+  std::auto_ptr<SystemState> statePtr = readXE(xe);
   PortAliases portAliases;
-  readPortAliases(portAliases, xe, options.file);
+  readPortAliases(portAliases, xe);
   SystemState &sys = *statePtr;
   PortConnectionManager connectionManager(sys, portAliases);
 
