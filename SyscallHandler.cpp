@@ -38,7 +38,6 @@ using namespace Register;
 class SyscallHandlerImpl {
 private:
   const scoped_array<int> fds;
-  bool tracing;
   unsigned doneSyscallsRequired;
   char *getString(Thread &thread, uint32_t address);
   const void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
@@ -103,7 +102,7 @@ enum OpenFlags {
 const unsigned MAX_FDS = 512;
 
 SyscallHandlerImpl::SyscallHandlerImpl() :
-  fds(new int[MAX_FDS]), tracing(false), doneSyscallsRequired(1)
+  fds(new int[MAX_FDS]), doneSyscallsRequired(1)
 {
   // Duplicate the standard file descriptors.
   fds[0] = dup(STDIN_FILENO);
