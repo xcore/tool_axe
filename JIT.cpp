@@ -72,6 +72,7 @@ class axe::JITImpl {
     void init(LLVMModuleRef mod);
   };
   Functions functions;
+  LLVMContextRef context;
   LLVMModuleRef module;
   LLVMBuilderRef builder;
   LLVMExecutionEngineRef executionEngine;
@@ -99,6 +100,7 @@ class axe::JITImpl {
   void checkReturnValue(LLVMValueRef call, InstructionProperties &properties);
   void emitCondBrToBlock(LLVMValueRef cond, LLVMBasicBlockRef trueBB);
   void ensureEarlyReturnBB(LLVMTypeRef phiType);
+  LLVMBasicBlockRef appendBBToCurrentFunction(const char *name);
   LLVMValueRef emitCallToBeInlined(LLVMValueRef fn, LLVMValueRef *args,
                                    unsigned numArgs);
   JITCoreInfo *getJITCoreInfo(const Core &);
@@ -128,6 +130,12 @@ public:
 
 JITImpl::~JITImpl()
 {
+  if (initialized) {
+    LLVMDisposePassManager(FPM);
+    LLVMDisposeBuilder(builder);
+    LLVMDisposeExecutionEngine(executionEngine);
+    LLVMContextDispose(context);
+  }
   for (auto &entry : jitCoreMap) {
     delete entry.second;
   }
@@ -160,11 +168,12 @@ void JITImpl::init()
   if (initialized)
     return;
   JIT::initializeGlobalState();
+  context = LLVMContextCreate();
   LLVMMemoryBufferRef memBuffer =
     LLVMExtraCreateMemoryBufferWithPtr(instructionBitcode,
                                        instructionBitcodeSize);
   char *outMessage;
-  if (LLVMParseBitcode(memBuffer, &module, &outMessage)) {
+  if (LLVMParseBitcodeInContext(context, memBuffer, &module, &outMessage)) {
     std::cerr << "Error loading bitcode: " << outMessage << '\n';
     std::abort();
   }
@@ -174,7 +183,7 @@ void JITImpl::init()
     std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
     std::abort();
   }
-  builder = LLVMCreateBuilder();
+  builder = LLVMCreateBuilderInContext(context);
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
@@ -279,7 +288,7 @@ void JITImpl::ensureEarlyReturnBB(LLVMTypeRef phiType)
   // Save off current insert point.
   LLVMBasicBlockRef savedBB = LLVMGetInsertBlock(builder);
   LLVMValueRef f = LLVMGetBasicBlockParent(savedBB);
-  earlyReturnBB = LLVMAppendBasicBlock(f, "early_return");
+  earlyReturnBB = LLVMAppendBasicBlockInContext(context, f, "early_return");
   LLVMPositionBuilderAtEnd(builder, earlyReturnBB);
   // Create phi (incoming values will be filled in later).
   earlyReturnPhi = LLVMBuildPhi(builder, phiType, "");
@@ -374,7 +383,8 @@ getJITFunctionOrStubImpl(JITCoreInfo &coreInfo, uint32_t pc)
   LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
   LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
   LLVMSetFunctionCallConv(f, LLVMFastCallConv);
-  LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
+  LLVMBasicBlockRef entryBB =
+    LLVMAppendBasicBlockInContext(context, f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   LLVMValueRef args[] = {
     LLVMGetParam(f, 0)
@@ -403,12 +413,11 @@ getJITFunctionOrStub(JITCoreInfo &coreInfo, uint32_t pc,
   return info->value;
 }
 
-LLVMBasicBlockRef
-appendBBToCurrentFunction(LLVMBuilderRef builder, const char *name)
+LLVMBasicBlockRef JITImpl::appendBBToCurrentFunction(const char *name)
 {
   LLVMBasicBlockRef currentBB = LLVMGetInsertBlock(builder);
   LLVMValueRef function = LLVMGetBasicBlockParent(currentBB);
-  return LLVMAppendBasicBlock(function, name);
+  return LLVMAppendBasicBlockInContext(context, function, name);
 }
 
 void JITImpl::
@@ -447,8 +456,8 @@ emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
       LLVMValueRef cmp =
         LLVMBuildICmp(builder, LLVMIntEQ, nextPc,
                       LLVMConstInt(LLVMTypeOf(nextPc), *it, false), "");
-      LLVMBasicBlockRef trueBB = appendBBToCurrentFunction(builder, "");
-      LLVMBasicBlockRef afterBB = appendBBToCurrentFunction(builder, "");
+      LLVMBasicBlockRef trueBB = appendBBToCurrentFunction("");
+      LLVMBasicBlockRef afterBB = appendBBToCurrentFunction("");
       LLVMBuildCondBr(builder, cmp, trueBB, afterBB);
       LLVMPositionBuilderAtEnd(builder, trueBB);
       emitJumpToNextFragment(coreInfo, *it, caller);
@@ -547,9 +556,12 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     LLVMSetFunctionCallConv(f, LLVMFastCallConv);
   }
   threadParam = LLVMGetParam(f, 0);
-  LLVMValueRef ramBase = LLVMConstInt(LLVMInt32Type(), core.getRamBase(), false);
-  ramSizeLog2Param = LLVMConstInt(LLVMInt32Type(), core.ramSizeLog2, false);
-  LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
+  LLVMValueRef ramBase =
+    LLVMConstInt(LLVMInt32TypeInContext(context), core.getRamBase(), false);
+  ramSizeLog2Param =
+    LLVMConstInt(LLVMInt32TypeInContext(context), core.ramSizeLog2, false);
+  LLVMBasicBlockRef entryBB =
+    LLVMAppendBasicBlockInContext(context, f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   uint32_t pc = startPc;
   bool needsReturn = true;
@@ -632,7 +644,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
 
 void JITImpl::emitCondBrToBlock(LLVMValueRef cond, LLVMBasicBlockRef trueBB)
 {
-  LLVMBasicBlockRef afterBB = LLVMAppendBasicBlock(getCurrentFunction(), "");
+  LLVMBasicBlockRef afterBB =
+    LLVMAppendBasicBlockInContext(context, getCurrentFunction(), "");
   LLVMBuildCondBr(builder, cond, trueBB, afterBB);
   LLVMPositionBuilderAtEnd(builder, afterBB);
 }
@@ -647,7 +660,8 @@ LLVMBasicBlockRef JITImpl::getOrCreateMemoryCheckBailoutBlock(unsigned index)
     return endTraceBB;
   }
   LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
-  LLVMBasicBlockRef bailoutBB = LLVMAppendBasicBlock(getCurrentFunction(), "");
+  LLVMBasicBlockRef bailoutBB =
+    LLVMAppendBasicBlockInContext(context, getCurrentFunction(), "");
   LLVMPositionBuilderAtEnd(builder, bailoutBB);
   if (index == 0) {
     LLVMValueRef args[] = {
@@ -756,7 +770,8 @@ JITInstructionFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)
 {
   LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
   LLVMValueRef thread = LLVMGetParam(f, 0);
-  LLVMBasicBlockRef entryBB = LLVMAppendBasicBlock(f, "entry");
+  LLVMBasicBlockRef entryBB =
+    LLVMAppendBasicBlockInContext(context, f, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   LLVMValueRef args[] = {
     thread
