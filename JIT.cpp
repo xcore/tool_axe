@@ -22,6 +22,7 @@
 #include "LLVMExtra.h"
 #include "InstructionProperties.h"
 #include "JITOptimize.h"
+#include "JITInstructionFunction.h"
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
@@ -56,7 +57,7 @@ JITCoreInfo::~JITCoreInfo()
   }
 }
 
-class JITImpl {
+class axe::JITImpl {
   bool initialized;
   struct Functions {
     LLVMValueRef jitStubImpl;
@@ -125,8 +126,6 @@ public:
   void compileBlock(Core &core, uint32_t pc);
 };
 
-JITImpl JITImpl::instance;
-
 JITImpl::~JITImpl()
 {
   for (auto &entry : jitCoreMap) {
@@ -160,7 +159,7 @@ void JITImpl::init()
 {
   if (initialized)
     return;
-  JIT::initialize();
+  JIT::initializeGlobalState();
   LLVMMemoryBufferRef memBuffer =
     LLVMExtraCreateMemoryBufferWithPtr(instructionBitcode,
                                        instructionBitcodeSize);
@@ -804,7 +803,15 @@ bool JITImpl::invalidate(Core &core, uint32_t pc)
   return true;
 }
 
-void JIT::initialize()
+JIT::JIT() {
+  pImpl = new JITImpl;
+}
+
+JIT::~JIT() {
+  delete pImpl;
+}
+
+void JIT::initializeGlobalState()
 {
   static bool initialized = false;
   if (initialized)
@@ -816,10 +823,10 @@ void JIT::initialize()
 
 void JIT::compileBlock(Core &core, uint32_t pc)
 {
-  return JITImpl::instance.compileBlock(core, pc);
+  return pImpl->compileBlock(core, pc);
 }
 
 bool JIT::invalidate(Core &core, uint32_t pc)
 {
-  return JITImpl::instance.invalidate(core, pc);
+  return pImpl->invalidate(core, pc);
 }

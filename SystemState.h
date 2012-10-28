@@ -9,6 +9,7 @@
 #include <vector>
 #include <memory>
 #include "Thread.h"
+#include "JIT.h"
 #include "RunnableQueue.h"
 
 namespace axe {
@@ -33,6 +34,8 @@ class SystemState {
 
   uint8_t *rom;
   std::auto_ptr<DecodeCache> romDecodeCache;
+
+  JIT jit;
 
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
 
@@ -106,6 +109,8 @@ public:
   const DecodeCache::State &getRomDecodeCache() const {
     return romDecodeCache->getState();
   }
+
+  JIT &getJIT() { return jit; }
 
   node_iterator node_begin() { return nodes.begin(); }
   node_iterator node_end() { return nodes.end(); }

@@ -7,21 +7,25 @@
 #define _JIT_h_
 
 #include <stdint.h>
-#include "JITInstructionFunction.h"
 
 namespace axe {
 
 class Thread;
 class Core;
+class JITImpl;
 
-namespace JIT {
+class JIT {
+  JITImpl *pImpl;
+public:
+  JIT();
+  ~JIT();
   /// Preallocate global state for the JIT. Normally this state is initialized
   /// when the JIT is first used but in a multi-threaded applications it should
   /// be preallocated to avoid race conditions.
-  void initialize();
+  static void initializeGlobalState();
   void compileBlock(Core &c, uint32_t pc);
   bool invalidate(Core &c, uint32_t pc);
-}
+};
   
 } // End axe namespace
 

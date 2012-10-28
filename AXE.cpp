@@ -24,7 +24,7 @@ void axe::AXEInitialize(bool beLazy)
   if (!beLazy) {
     xmlInitParser();
     xsltInit();
-    JIT::initialize();
+    JIT::initializeGlobalState();
     BootSequence::initializeElfHandling();
   }
 }

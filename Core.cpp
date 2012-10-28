@@ -387,10 +387,11 @@ void Core::invalidateWordSlowPath(uint32_t shiftedAddress)
 void Core::invalidateSlowPath(uint32_t shiftedAddress)
 {
   unsigned char info;
+  JIT &jit = getParent()->getParent()->getJIT();
   do {
     info = invalidationInfoOffset[shiftedAddress];
     uint32_t pc = shiftedAddress - (getRamBase()/2);
-    if (!JIT::invalidate(*this, pc))
+    if (!jit.invalidate(*this, pc))
       clearOpcode(pc);
     ramDecodeCache.getState().executionFrequency[pc] = 0;
     invalidationInfoOffset[shiftedAddress--] = DecodeCache::INVALIDATE_NONE;
@@ -403,7 +404,7 @@ void Core::runJIT(uint32_t jitPc)
     return;
   ramDecodeCache.getState().executionFrequency[jitPc] =
     DecodeCache::MIN_EXECUTION_FREQUENCY;
-  JIT::compileBlock(*this, jitPc);
+  getParent()->getParent()->getJIT().compileBlock(*this, jitPc);
 }
 
 void Core::clearOpcode(uint32_t pc)
