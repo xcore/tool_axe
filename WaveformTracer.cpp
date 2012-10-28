@@ -8,6 +8,8 @@
 #include "BitManip.h"
 #include <ctime>
 
+using namespace axe;
+
 WaveformTracer::WaveformTracer(const std::string &name) :
   out(name.c_str(), std::fstream::out),
   portsFinalized(false),

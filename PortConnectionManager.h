@@ -9,6 +9,8 @@
 #include <string>
 #include <map>
 
+namespace axe {
+
 class Port;
 class SystemState;
 class PortAliases;
@@ -53,5 +55,7 @@ public:
   PortConnectionWrapper get(const Properties &properties,
                             const std::string &name);
 };
+  
+} // End axe namespace
 
 #endif // _PortConnectionManager_

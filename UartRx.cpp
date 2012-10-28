@@ -17,6 +17,8 @@
 #include "Core.h"
 #include <iostream>
 
+using namespace axe;
+
 const unsigned DEFAULT_BIT_RATE = 115200;
 
 class UartRx : public PortInterface, public Runnable, public Peripheral {
@@ -169,7 +171,7 @@ createUartRx(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorUartRx()
+std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorUartRx()
 {
   std::auto_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("uart-rx", &createUartRx));

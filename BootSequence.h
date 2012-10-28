@@ -9,6 +9,8 @@
 #include <vector>
 #include <stdint.h>
 
+namespace axe {
+
 class Core;
 class SystemState;
 class XEElfSector;
@@ -28,5 +30,7 @@ public:
   void setLoadImages(bool value);
   int execute();
 };
+
+} // End axe namespace
 
 #endif // _BootSequence_h

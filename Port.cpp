@@ -9,6 +9,8 @@
 #include "PortNames.h"
 #include <algorithm>
 
+using namespace axe;
+
 Port::Port() :
   EventableResource(RES_TYPE_PORT),
   clock(0),

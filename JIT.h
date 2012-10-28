@@ -9,12 +9,16 @@
 #include <stdint.h>
 #include "JITInstructionFunction.h"
 
+namespace axe {
+
 class Thread;
 class Core;
 
 namespace JIT {
   void compileBlock(Core &c, uint32_t pc);
   bool invalidate(Core &c, uint32_t pc);
-};
+}
+  
+} // End axe namespace
 
 #endif // _JIT_h_

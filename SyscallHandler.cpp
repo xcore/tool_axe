@@ -32,6 +32,7 @@
 #define lseek _lseek
 #endif
 
+using namespace axe;
 using namespace Register;
 
 class SyscallHandlerImpl {

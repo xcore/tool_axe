@@ -8,6 +8,8 @@
 
 #include "Resource.h"
 
+namespace axe {
+
 class Timer : public EventableResource {
 private:
   bool after;
@@ -50,5 +52,7 @@ public:
 protected:
   bool seeEventEnable(ticks_t time);
 };
+  
+} // End axe namespace
 
 #endif // _Timer_h_

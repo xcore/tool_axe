@@ -5,6 +5,8 @@
 
 #include "PortInterface.h"
 
+using namespace axe;
+
 PortInterface::~PortInterface() {
   
 }

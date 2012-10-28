@@ -7,6 +7,8 @@
 #include "PeripheralDescriptor.h"
 #include <map>
 
+using namespace axe;
+
 std::map<std::string,PeripheralDescriptor*> peripherals;
 
 void PeripheralRegistry::add(std::auto_ptr<PeripheralDescriptor> p)

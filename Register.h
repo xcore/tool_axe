@@ -6,6 +6,8 @@
 #ifndef _Register_h_
 #define _Register_h_
 
+namespace axe {
+
 namespace Register {
   enum Reg {
     R0,
@@ -34,5 +36,7 @@ namespace Register {
     NUM_REGISTERS
   };
 }
+  
+} // End axe namespace
 
 #endif //_Register_h_

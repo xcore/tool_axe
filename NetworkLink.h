@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 
+namespace axe {
+
 class NetworkLink {
 public:
   static const unsigned maxFrameSize = 1500 + 18;
@@ -19,5 +21,7 @@ public:
 };
 
 std::auto_ptr<NetworkLink> createNetworkLinkTap(const std::string &ifname);
+  
+} // End axe namespace
 
 #endif // _NetworkLink_h

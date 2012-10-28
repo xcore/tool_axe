@@ -5,6 +5,8 @@
 
 #include "TerminalColours.h"
 
+using namespace axe;
+
 TerminalColours TerminalColours::ansi = {
   "\033[0m", // reset
   "\033[30m", // black

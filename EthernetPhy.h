@@ -9,8 +9,12 @@
 
 #include <memory>
 
+namespace axe {
+
 class PeripheralDescriptor;
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy();
+  std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy();
+  
+} // End axe namespace
 
 #endif // _EthernetPhy_h_

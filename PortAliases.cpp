@@ -5,6 +5,8 @@
 
 #include "PortAliases.h"
 
+using namespace axe;
+
 bool PortAliases::
 lookup(const std::string &name, std::string &core, std::string &port) const
 {

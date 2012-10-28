@@ -45,6 +45,8 @@
 #include <SDL.h>
 #endif
 
+using namespace axe;
+
 const char configSchema[] = {
 #include "ConfigSchema.inc"
 };

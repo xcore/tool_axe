@@ -9,6 +9,8 @@
 #include "Signal.h"
 #include "PortHandleClockMixin.h"
 
+namespace axe {
+
 class PortHandleClockProxy : public PortHandleClockMixin<PortHandleClockProxy> {
   PortInterface &next;
 public:
@@ -17,5 +19,7 @@ public:
     next.seePinsChange(Signal(value), time);
   }
 };
+  
+} // End axe namespace
 
 #endif // _PortHandleClockProxy_h_

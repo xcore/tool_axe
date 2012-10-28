@@ -11,6 +11,8 @@
 #include <string>
 #include "AccessSecondIterator.h"
 
+namespace axe {
+
 class Peripheral;
 class Properties;
 class PortConnectionManager;
@@ -71,5 +73,7 @@ public:
   const_iterator properties_begin() const { return properties.begin(); }
   const_iterator properties_end() const { return properties.end(); }
 };
+  
+} // End axe namespace
 
 #endif // _PeripheralDescriptor_h_

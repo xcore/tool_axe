@@ -16,6 +16,8 @@
 #include "SyscallHandler.h"
 #include <cstdio>
 
+using namespace axe;
+
 /// Use to get the required LLVM type for instruction functions.
 extern "C" JITReturn jitInstructionTemplate(Thread &t) {
   return JIT_RETURN_CONTINUE;

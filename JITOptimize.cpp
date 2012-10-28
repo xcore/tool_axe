@@ -11,6 +11,8 @@
 #include <cassert>
 #include <cstring>
 
+using namespace axe;
+
 // baseReg + offsetImm + scale * offsetReg
 class MemoryAccess {
   Register::Reg baseReg;
@@ -201,9 +203,10 @@ update(InstructionOpcode opc, const Operands &ops, unsigned nextOffset)
   }
 }
 
-void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
-                       std::vector<Operands> &operands,
-                       std::queue<std::pair<uint32_t,MemoryCheck*> > &checks)
+void axe::
+placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
+                  std::vector<Operands> &operands,
+                  std::queue<std::pair<uint32_t,MemoryCheck*> > &checks)
 {
   MemoryCheckState state;
 

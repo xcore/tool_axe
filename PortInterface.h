@@ -8,6 +8,8 @@
 
 #include "Config.h"
 
+namespace axe {
+
 struct Signal;
 
 class PortInterface {
@@ -30,5 +32,7 @@ public:
     (obj.*func)(value, time);
   }
 };
+  
+} // End axe namespace
 
 #endif // _PortInterface_h_

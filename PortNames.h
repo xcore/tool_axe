@@ -9,7 +9,11 @@
 #include "Config.h"
 #include <string>
 
+namespace axe {
+
 bool getPortName(uint32_t id, std::string &name);
 bool getPortId(const std::string &name, uint32_t &id);
+  
+} // End axe namespace
 
 #endif // _PortNames_h_

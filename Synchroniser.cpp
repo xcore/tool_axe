@@ -6,6 +6,8 @@
 #include "Synchroniser.h"
 #include "Core.h"
 
+using namespace axe;
+
 ticks_t Synchroniser::MaxThreadTime() const
 {
   ticks_t time = threads[0]->time;

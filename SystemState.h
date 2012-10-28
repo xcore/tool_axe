@@ -11,6 +11,8 @@
 #include "Thread.h"
 #include "RunnableQueue.h"
 
+namespace axe {
+
 class Node;
 class ChanEndpoint;
 class DecodeCache;
@@ -110,5 +112,7 @@ public:
   const_node_iterator node_begin() const { return nodes.begin(); }
   const_node_iterator node_end() const { return nodes.end(); }
 };
+  
+} // End axe namespace
 
 #endif // _SystemState_h_

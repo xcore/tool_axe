@@ -21,6 +21,8 @@
 #include <iostream>
 #include <cstdlib>
 
+using namespace axe;
+
 class SPIFlash : public Peripheral {
   void seeSCLKChange(const Signal &value, ticks_t time);
   void seeSSChange(const Signal &value, ticks_t time);
@@ -191,7 +193,7 @@ createSPIFlash(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorSPIFlash()
+std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorSPIFlash()
 {
   std::auto_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("spi-flash", &createSPIFlash));

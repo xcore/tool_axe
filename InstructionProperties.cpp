@@ -5,5 +5,7 @@
 
 #include "InstructionProperties.h"
 
+using namespace axe;
+
 #define EMIT_INSTRUCTION_PROPERTIES
 #include "InstructionGenOutput.inc"

@@ -18,6 +18,8 @@
 #include <string>
 #include <climits>
 
+namespace axe {
+
 class Lock;
 class Synchroniser;
 class Chanend;
@@ -375,5 +377,7 @@ public:
   port_iterator port_begin() { return port_iterator(this, 1, 0); }
   port_iterator port_end() { return port_iterator(this, 33, 0); }
 };
+  
+} // End axe namespace
 
 #endif // _Core_h_

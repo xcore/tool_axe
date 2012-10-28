@@ -6,6 +6,8 @@
 #ifndef _SyscallHandler_h_
 #define _SyscallHandler_h_
 
+namespace axe {
+
 class SyscallHandler {
 public:
   enum SycallOutcome {
@@ -17,5 +19,7 @@ public:
   static SycallOutcome doSyscall(Thread &thread, int &retval);
   static void doException(const Thread &thread);
 };
+  
+} // End axe namespace
 
 #endif // _SyscallHandler_h_

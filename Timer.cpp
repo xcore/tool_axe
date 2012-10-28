@@ -6,6 +6,8 @@
 #include "Timer.h"
 #include "Thread.h"
 
+using namespace axe;
+
 bool Timer::conditionMet(ticks_t time) const
 {
   if (!after)

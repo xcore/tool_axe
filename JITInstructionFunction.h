@@ -6,6 +6,8 @@
 #ifndef _JITInstructionFunction_h_
 #define _JITInstructionFunction_h_
 
+namespace axe {
+
 class Thread;
 
 enum JITReturn {
@@ -18,5 +20,7 @@ enum JITReturn {
 };
 
 typedef JITReturn (*JITInstructionFunction_t)(Thread &);
+  
+} // End axe namespace
 
 #endif // _JITInstructionFunction_h_

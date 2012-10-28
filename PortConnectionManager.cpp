@@ -11,6 +11,8 @@
 #include "PortCombiner.h"
 #include "SystemState.h"
 
+using namespace axe;
+
 void PortConnectionWrapper::attach(PortInterface *to) {
   parent->attach(to, port, beginOffset, endOffset);
 }

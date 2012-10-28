@@ -5,6 +5,8 @@
 
 #include "ChanEndpoint.h"
 
+using namespace axe;
+
 ChanEndpoint::ChanEndpoint() :
   junkIncoming(true),
   source(0)

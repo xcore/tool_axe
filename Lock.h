@@ -9,6 +9,8 @@
 #include <queue>
 #include "Resource.h"
 
+namespace axe {
+
 class Lock : public Resource {
 private:
   /// Is the lock currently held by a thread?
@@ -40,5 +42,7 @@ public:
   ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
   ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
 };
+  
+} // End axe namespace
 
 #endif // _Lock_h_

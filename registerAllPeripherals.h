@@ -6,7 +6,11 @@
 #ifndef _registerAllPeripherals_h_
 #define _registerAllPeripherals_h_
 
+namespace axe {
+
 void registerAllPeripherals();
+  
+} // End axe namespace
 
 #endif //_registerAllPeripherals_h_
 

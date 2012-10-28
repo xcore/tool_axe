@@ -5,6 +5,8 @@
 
 #include "PeripheralDescriptor.h"
 
+using namespace axe;
+
 PropertyDescriptor &PeripheralDescriptor::
 addProperty(const PropertyDescriptor &p)
 {

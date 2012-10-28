@@ -9,6 +9,8 @@
 #include <map>
 #include "PortHandleClockMixin.h"
 
+namespace axe {
+
 class PortCombiner : public PortHandleClockMixin<PortCombiner> {
   uint32_t value;
   std::map<std::pair<uint32_t,unsigned>,PortInterface*> slices;
@@ -17,5 +19,7 @@ public:
   void seePinsValueChange(uint32_t value, ticks_t time);
   void attach(PortInterface *to, unsigned beginOffset, unsigned endOffset);
 };
+  
+} // End axe namespace
 
 #endif //_PortCombiner_

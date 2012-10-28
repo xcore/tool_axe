@@ -14,6 +14,8 @@
 #include <iostream>
 #include <iomanip>
 
+using namespace axe;
+
 class NetworkLinkTap : public NetworkLink {
   int fd;
 public:
@@ -79,7 +81,7 @@ bool NetworkLinkTap::receiveFrame(uint8_t *data, unsigned &size)
   return true;
 }
 
-std::auto_ptr<NetworkLink> createNetworkLinkTap(const std::string &ifname)
+std::auto_ptr<NetworkLink> axe::createNetworkLinkTap(const std::string &ifname)
 {
   return std::auto_ptr<NetworkLink>(new NetworkLinkTap(ifname));
 }

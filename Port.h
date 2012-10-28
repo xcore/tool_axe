@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include <set>
 
+namespace axe {
+
 class Thread;
 class ClockBlock;
 
@@ -313,5 +315,7 @@ public:
     scheduleUpdateIfNeeded();
   }
 };
+  
+} // End axe namespace
 
 #endif // _Port_h_

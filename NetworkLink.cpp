@@ -5,6 +5,8 @@
 
 #include "NetworkLink.h"
 
+using namespace axe;
+
 NetworkLink::~NetworkLink()
 {
 }

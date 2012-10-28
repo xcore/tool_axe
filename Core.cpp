@@ -17,6 +17,8 @@
 #include <iomanip>
 #include <sstream>
 
+using namespace axe;
+
 Core::Core(uint32_t RamSize, uint32_t RamBase) :
   ramDecodeCache(RamBase >> 1, RamBase, true),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),

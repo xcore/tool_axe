@@ -13,6 +13,8 @@
 #include "Core.h"
 #include "PortAliases.h"
 
+using namespace axe;
+
 static bool parsePortOffset(const std::string &s, signed char &result)
 {
   char *endp;

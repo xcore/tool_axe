@@ -9,8 +9,12 @@
 
 #include <memory>
 
+namespace axe {
+
 class PeripheralDescriptor;
 
 std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorUartRx();
+
+} // End axe namespace
 
 #endif // _UartRx_h_

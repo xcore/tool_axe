@@ -8,6 +8,7 @@
 #include "Core.h"
 #include "Trace.h"
 
+using namespace axe;
 using namespace Register;
 
 SystemState::SystemState() : currentRunnable(0), rom(0) {

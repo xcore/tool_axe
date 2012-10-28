@@ -10,6 +10,8 @@
 #include <iterator>
 #include "Config.h"
 
+namespace axe {
+
 struct Edge {
   enum Type {
     RISING,
@@ -178,5 +180,7 @@ struct Signal {
     return !(*this == other);
   }
 };
+  
+} // End axe namespace
 
 #endif

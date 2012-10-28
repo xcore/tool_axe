@@ -10,6 +10,8 @@
 #include "Resource.h"
 #include <cassert>
 
+namespace axe {
+
 class Synchroniser : public Resource {
 public:
   enum SyncResult {
@@ -76,5 +78,7 @@ public:
 
   void cancel();
 };
+  
+} // End axe namespace
 
 #endif // _Synchroniser_h_

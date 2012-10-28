@@ -8,6 +8,8 @@
 #include "Trace.h"
 #include <cstring>
 
+using namespace axe;
+
 DecodeCache::DecodeCache(uint32_t sz, uint32_t b, bool writable)
 {
   state.size = sz;

@@ -5,6 +5,8 @@
 
 #include "Exceptions.h"
 
+using namespace axe;
+
 const char *Exceptions::getExceptionName(int type)
 {
   switch (type) {

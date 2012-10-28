@@ -10,6 +10,8 @@
 #include "Trace.h"
 #include <cassert>
 
+using namespace axe;
+
 SSwitch::SSwitch(Node *p) :
   parent(p),
   regs(p),

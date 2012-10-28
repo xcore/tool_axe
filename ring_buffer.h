@@ -6,6 +6,8 @@
 #ifndef _ring_buffer_h_
 #define _ring_buffer_h_
 
+namespace axe {
+
 template <typename Kind, unsigned BufSize>
 class ring_buffer {
 private:
@@ -101,5 +103,7 @@ public:
     numEntries = 0;
   }
 };
+  
+} // End axe namespace
 
 #endif // _ring_buffer_h_

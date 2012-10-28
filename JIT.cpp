@@ -28,6 +28,8 @@
 #include <map>
 #include <vector>
 
+using namespace axe;
+
 struct JITFunctionInfo {
   explicit JITFunctionInfo(uint32_t a) :
     pc(a), value(0), func(0), isStub(false) {}

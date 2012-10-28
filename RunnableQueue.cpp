@@ -5,6 +5,8 @@
 
 #include "RunnableQueue.h"
 
+using namespace axe;
+
 void RunnableQueue::push(Runnable &thread, ticks_t time)
 {
   if (contains(thread)) {

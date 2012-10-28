@@ -12,6 +12,8 @@
 #include "SSwitch.h"
 #include "Resource.h"
 
+namespace axe {
+
 class Core;
 class SystemState;
 
@@ -98,5 +100,7 @@ public:
   uint8_t getDirection(unsigned num) const { return directions[num]; }
   void setDirection(unsigned num, uint8_t value) { directions[num] = value; }
 };
+  
+} // End axe namespace
 
 #endif // _Node_h_

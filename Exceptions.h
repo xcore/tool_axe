@@ -6,6 +6,8 @@
 #ifndef _Exceptions_h_
 #define _Exceptions_h_
 
+namespace axe {
+
 enum ExceptionType {
   ET_LINK_ERROR = 1,
   ET_ILLEGAL_PC = 2,
@@ -23,5 +25,7 @@ class Exceptions {
 public:
   static const char *getExceptionName(int type);
 };
+  
+} // End axe namespace
 
 #endif // _Exceptions_h_

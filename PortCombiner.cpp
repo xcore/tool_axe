@@ -7,6 +7,8 @@
 #include "Signal.h"
 #include "BitManip.h"
 
+using namespace axe;
+
 PortCombiner::PortCombiner(RunnableQueue &scheduler) :
   PortHandleClockMixin<PortCombiner>(scheduler),
   value(0) {}

@@ -19,6 +19,8 @@
 #include <memory>
 #include <cstring>
 
+using namespace axe;
+
 // MII uses a 25MHz clock.
 const uint32_t ethernetPhyHalfPeriod = CYCLES_PER_TICK * 2;
 const uint32_t ethernetPhyPeriod = ethernetPhyHalfPeriod * 2;
@@ -558,7 +560,7 @@ createEthernetPhy(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy()
+std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorEthernetPhy()
 {
   std::auto_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("ethernet-phy", &createEthernetPhy));

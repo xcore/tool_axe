@@ -10,6 +10,8 @@
 #include "ChanEndpoint.h"
 #include "SSwitchCtrlRegs.h"
 
+namespace axe {
+
 class Node;
 
 class SSwitch : public ChanEndpoint {
@@ -54,6 +56,8 @@ public:
 
   virtual void receiveCtrlToken(ticks_t time, uint8_t value);
 };
+  
+} // End axe namespace
 
 #endif //_SSwitch_h_
 

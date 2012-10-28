@@ -7,6 +7,8 @@
 #include "Core.h"
 #include <algorithm>
 
+using namespace axe;
+
 bool Chanend::canAcceptToken()
 {
   return !buf.full();

@@ -11,6 +11,8 @@
 #include "ring_buffer.h"
 #include "Token.h"
 
+namespace axe {
+
 class Chanend : public EventableResource, public ChanEndpoint {
 private:
   // The destination resource ID.
@@ -127,5 +129,7 @@ public:
 protected:
   bool seeEventEnable(ticks_t time);
 };
+  
+} // End axe namespace
 
 #endif // _Chanend_h_

@@ -8,8 +8,12 @@
 
 #include <memory>
 
+namespace axe {
+
 class PeripheralDescriptor;
 
 std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorSPIFlash();
+  
+} // End axe namespace
 
 #endif // _SPIFlash_

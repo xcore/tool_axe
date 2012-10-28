@@ -8,6 +8,8 @@
 #include "BitManip.h"
 #include <algorithm>
 
+using namespace axe;
+
 namespace SSwitchReg {
   enum {
     DEVICE_ID0 = 0x0,

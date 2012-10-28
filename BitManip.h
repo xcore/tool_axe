@@ -6,6 +6,8 @@
 #ifndef _BitManip_h_
 #define _BitManip_h_
 
+namespace axe {
+
 inline uint32_t extractBits(uint32_t value, unsigned shift, unsigned size)
 {
   return (value >> shift) & ((1 << size) - 1);
@@ -88,5 +90,7 @@ inline bool isPowerOf2(uint32_t value)
 {
   return value != 0 && (value & (value - 1)) == 0;
 }
+  
+} // End axe namespace
 
 #endif // _BitManip_h_

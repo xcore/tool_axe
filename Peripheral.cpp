@@ -5,6 +5,8 @@
 
 #include "Peripheral.h"
 
+using namespace axe;
+
 Peripheral::~Peripheral()
 {
 }

@@ -9,6 +9,8 @@
 #include "Runnable.h"
 #include <cassert>
 
+namespace axe {
+
 class RunnableQueue {
 private:
   Runnable *head;
@@ -54,5 +56,7 @@ public:
     head = head->next;
   }
 };
+  
+} // End axe namespace
 
 #endif // _RunnableQueue_h_

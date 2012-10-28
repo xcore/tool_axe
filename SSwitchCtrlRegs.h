@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <vector>
 
+namespace axe {
+
 class Node;
 
 class SSwitchCtrlRegs {
@@ -28,5 +30,7 @@ public:
   bool read(uint16_t num, uint32_t &result);
   bool write(uint16_t num, uint32_t value);
 };
+  
+} // End axe namespace
 
 #endif //_SSwitchCtrlRegs_h_

@@ -11,6 +11,8 @@
 #include "Runnable.h"
 #include "Config.h"
 
+namespace axe {
+
 enum ResourceType {
   RES_TYPE_PORT = 0,
   RES_TYPE_TIMER = 1,
@@ -334,5 +336,7 @@ public:
   EventableResource *next;
   EventableResource *prev;
 };
+  
+} // End axe namespace
 
 #endif // _Resource_h_

@@ -8,6 +8,7 @@
 #include "Node.h"
 #include "SystemState.h"
 
+using namespace axe;
 using namespace Register;
 
 const char *Resource::getResourceName(ResourceType type)

@@ -10,6 +10,8 @@
 #include <fstream>
 #include <vector>
 
+namespace axe {
+
 class XE;
 
 class XESector {
@@ -103,5 +105,7 @@ public:
     s.close();
   }
 };
+  
+} // End axe namespace
 
 #endif //_XE_h_

@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+namespace axe {
+
 enum ControlTokenValue {
   CT_END = 1,
   CT_PAUSE = 2,
@@ -38,5 +40,7 @@ public:
   
   operator uint8_t() const { return value; }
 };
+  
+} // End axe namespace
 
 #endif // _Token_h_

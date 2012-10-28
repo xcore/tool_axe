@@ -5,10 +5,12 @@
 
 #include "InstructionBitcode.h"
 
-const unsigned char instructionBitcode[] = {
+using namespace axe;
+
+const unsigned char axe::instructionBitcode[] = {
 #include "InstructionBitcode.inc"
   , 0x00 // Ensure null termination.
 };
 
 /// Size of LLVMModule excluding the terminating null byte.
-size_t instructionBitcodeSize = sizeof(instructionBitcode) - 1;
+size_t axe::instructionBitcodeSize = sizeof(instructionBitcode) - 1;

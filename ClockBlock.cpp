@@ -6,6 +6,7 @@
 #include "ClockBlock.h"
 #include "Port.h"
 
+using namespace axe;
 
 ClockBlock::ClockBlock() :
   Resource(RES_TYPE_CLKBLK),

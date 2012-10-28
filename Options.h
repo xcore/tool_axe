@@ -11,6 +11,8 @@
 #include <vector>
 #include <string>
 
+namespace axe {
+
 class PeripheralDescriptor;
 
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
@@ -31,5 +33,7 @@ struct Options {
   Options();
   void parse(int argc, char **argv);
 };
+  
+} // End axe namespace
 
 #endif // _Options_h_

@@ -12,6 +12,8 @@
 #include "Instruction.h"
 #include "Register.h"
 
+namespace axe {
+
 // Let x = baseReg + scale + offsetReg + offsetImm
 class MemoryCheck {
 public:
@@ -49,5 +51,7 @@ public:
 void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                        std::vector<Operands> &operands,
                        std::queue<std::pair<uint32_t,MemoryCheck*> > &checks);
+  
+} // End axe namespace
 
 #endif // _JITOptimize_h_

@@ -21,9 +21,10 @@
 #include <iostream>
 #include <cstdlib>
 
+using namespace axe;
 using namespace Register;
 
-const char *registerNames[] = {
+const char *axe::registerNames[] = {
   "r0",
   "r1",
   "r2",
@@ -531,35 +532,35 @@ void Thread::run(ticks_t time)
   }
 }
 
-OPCODE_TYPE getInstruction_DECODE(bool tracing) {
+OPCODE_TYPE axe::getInstruction_DECODE(bool tracing) {
   if (tracing)
     return &Instruction_DECODE<true>;
   else
     return &Instruction_DECODE<false>;
 }
 
-OPCODE_TYPE getInstruction_ILLEGAL_PC(bool tracing) {
+OPCODE_TYPE axe::getInstruction_ILLEGAL_PC(bool tracing) {
   if (tracing)
     return &Instruction_ILLEGAL_PC<true>;
   else
     return &Instruction_ILLEGAL_PC<false>;
 }
 
-OPCODE_TYPE getInstruction_ILLEGAL_PC_THREAD(bool tracing) {
+OPCODE_TYPE axe::getInstruction_ILLEGAL_PC_THREAD(bool tracing) {
   if (tracing)
     return &Instruction_ILLEGAL_PC_THREAD<true>;
   else
     return &Instruction_ILLEGAL_PC_THREAD<false>;
 }
 
-OPCODE_TYPE getInstruction_RUN_JIT(bool tracing) {
+OPCODE_TYPE axe::getInstruction_RUN_JIT(bool tracing) {
   if (tracing)
     return &Instruction_RUN_JIT<true>;
   else
     return &Instruction_RUN_JIT<false>;
 }
 
-OPCODE_TYPE getInstruction_INTERPRET_ONE(bool tracing) {
+OPCODE_TYPE axe::getInstruction_INTERPRET_ONE(bool tracing) {
   if (tracing)
     return &Instruction_INTERPRET_ONE<true>;
   else

@@ -16,6 +16,8 @@
 #include <iostream>
 #include <algorithm>
 
+using namespace axe;
+
 const unsigned XCORE_ELF_MACHINE = 0xB49E;
 
 static void readSymbols(Elf *e, Elf_Scn *scn, const GElf_Shdr &shdr,
@@ -66,7 +68,7 @@ static void readSymbols(Elf *e, unsigned low, unsigned high,
   }
 }
 
-class BootSequenceStep {
+class axe::BootSequenceStep {
 public:
   enum Type {
     ELF,

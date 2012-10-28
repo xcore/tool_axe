@@ -1,6 +1,8 @@
 #include "PortNames.h"
 #include <map>
 
+using namespace axe;
+
 struct PortNames {
   std::map<uint32_t, std::string> portNames;
   std::map<std::string, uint32_t> portIds;
@@ -69,12 +71,12 @@ PortNames::PortNames()
 
 static PortNames portNames;
 
-bool getPortName(uint32_t id, std::string &name)
+bool axe::getPortName(uint32_t id, std::string &name)
 {
   return portNames.getPortName(id, name);
 }
 
-bool getPortId(const std::string &name, uint32_t &id)
+bool axe::getPortId(const std::string &name, uint32_t &id)
 {
   return portNames.getPortId(name, id);
 }

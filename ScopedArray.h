@@ -8,6 +8,8 @@
 
 #include <cstddef>
 
+namespace axe {
+
 template<class T> class scoped_array
 {
 private:
@@ -31,5 +33,7 @@ public:
     return ptr;
   }
 };
+  
+} // End axe namespace
 
 #endif // _ScopedArray_h_

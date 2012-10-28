@@ -11,6 +11,8 @@
 #include "RunnableQueue.h"
 #include "Signal.h"
 
+namespace axe {
+
 class RunnableQueue;
 
 /// Mixin which handles calls to seePinsChange() and calls seePinsValueChange()
@@ -56,5 +58,7 @@ void PortHandleClockMixin<Derived>::run(ticks_t time)
   static_cast<Derived*>(this)->seePinsValueChange(currentValue, time);
   scheduler.push(*this, time += currentSignal.getHalfPeriod());
 }
+  
+} // End axe namespace
 
 #endif //_PortHandleClockMixin_h_

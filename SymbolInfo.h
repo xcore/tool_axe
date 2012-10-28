@@ -13,6 +13,8 @@
 #include <string>
 #include <functional>
 
+namespace axe {
+
 struct ElfSymbol {
   std::string name;
   uint32_t value;
@@ -66,5 +68,7 @@ public:
   const ElfSymbol *getDataSymbol(const Core *core,
                                  uint32_t address) const;
 };
+  
+} // End axe namespace
 
 #endif // _SymbolInfo_h_

@@ -14,6 +14,8 @@
 #include "PortInterface.h"
 #include "Signal.h"
 
+namespace axe {
+
 class Port;
 class WaveformTracer;
 
@@ -66,5 +68,7 @@ public:
   void seePinsChange(WaveformTracerPort *port, uint32_t newValue,
                      ticks_t time);
 };
+  
+} // End axe namespace
 
 #endif // _WaveformTracer_h_

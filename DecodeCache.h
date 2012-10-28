@@ -10,6 +10,8 @@
 #include <climits>
 #include "Instruction.h"
 
+namespace axe {
+
 struct Operands;
 
 class DecodeCache {
@@ -91,6 +93,7 @@ public:
   State &getState() { return state; }
   const State &getState() const { return state; }
 };
-
+  
+} // End axe namespace
 
 #endif // _DecodeCache_h_

@@ -11,6 +11,8 @@
 #include <map>
 #include "AccessSecondIterator.h"
 
+namespace axe {
+
 class PeripheralDescriptor;
 
 namespace PeripheralRegistry {
@@ -20,5 +22,7 @@ namespace PeripheralRegistry {
   iterator begin();
   iterator end();
 };
+  
+} // End axe namespace
 
 #endif // _PeripheralRegistry_h

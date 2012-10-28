@@ -13,6 +13,7 @@
 #include <sstream>
 #include <cstring>
 
+using namespace axe;
 using namespace Register;
 
 const unsigned mnemonicColumn = 49;

@@ -6,6 +6,8 @@
 #include "Lock.h"
 #include "Thread.h"
 
+using namespace axe;
+
 Resource::ResOpResult Lock::
 out(Thread &thread, uint32_t value, ticks_t time)
 {

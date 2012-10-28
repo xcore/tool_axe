@@ -15,6 +15,8 @@
 #include "Instruction.h"
 #include "DecodeCache.h"
 
+namespace axe {
+
 class Synchroniser;
 
 extern const char *registerNames[];
@@ -336,5 +338,7 @@ OPCODE_TYPE getInstruction_ILLEGAL_PC(bool tracing);
 OPCODE_TYPE getInstruction_ILLEGAL_PC_THREAD(bool tracing);
 OPCODE_TYPE getInstruction_RUN_JIT(bool tracing);
 OPCODE_TYPE getInstruction_INTERPRET_ONE(bool tracing);
+  
+} // End axe namespace
 
 #endif // _Thread_h_

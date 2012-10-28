@@ -8,6 +8,8 @@
 
 #include <iterator>
 
+namespace axe {
+
 template <typename Iterator>
 class AccessSecondIterator :
 public std::iterator<
@@ -41,5 +43,7 @@ public:
     return !(*this == other);
   }
 };
+
+} // End axe namespace
 
 #endif // _AccessSecondIterator_h_

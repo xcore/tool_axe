@@ -5,4 +5,6 @@
 
 #include "PortSignalTracker.h"
 
+using namespace axe;
+
 PortSignalTracker::PortSignalTracker() : signal(0) {}

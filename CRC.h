@@ -8,6 +8,8 @@
 
 #include <climits>
 
+namespace axe {
+
 template <typename T> uint32_t crc(uint32_t checksum, T data, uint32_t poly)
 {
   for (unsigned i = 0; i < sizeof(T) * CHAR_BIT; i++) {
@@ -31,5 +33,7 @@ inline uint32_t crc8(uint32_t checksum, uint8_t data, uint32_t poly)
 {
   return crc<uint8_t>(checksum, data, poly);
 }
+  
+} // End axe namespace
 
 #endif //_CRC_h_

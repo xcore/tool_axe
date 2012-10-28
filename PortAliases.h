@@ -9,6 +9,8 @@
 #include <map>
 #include <string>
 
+namespace axe {
+
 class PortAliases {
   std::map<std::string, std::pair<std::string,std::string> > aliases;
 public:
@@ -19,5 +21,7 @@ public:
   bool lookup(const std::string &name, std::string &core,
               std::string &port) const;
 };
+  
+} // End axe namespace
 
 #endif // _PortAliases_h_

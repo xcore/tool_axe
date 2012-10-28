@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cstring>
 
+using namespace axe;
+
 Options::Options() :
   bootMode(BOOT_SIM),
   file(0),

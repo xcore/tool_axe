@@ -10,6 +10,8 @@
 #include "Signal.h"
 #include <set>
 
+namespace axe {
+
 class Port;
 
 class ClockBlock : public Resource {
@@ -92,5 +94,7 @@ public:
     return getReadyInValue().getValue(time);
   }
 };
+  
+} // End axe namespace
 
 #endif //_ClockBlock_h_

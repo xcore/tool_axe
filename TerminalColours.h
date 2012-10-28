@@ -6,6 +6,8 @@
 #ifndef _TerminalColours_h_
 #define _TerminalColours_h_
 
+namespace axe {
+
 struct TerminalColours {
   const char *reset;
   const char *black;
@@ -20,5 +22,7 @@ struct TerminalColours {
   static TerminalColours ansi;
   static TerminalColours null;
 };
+  
+} // End axe namespace
 
 #endif //_TerminalColours_h_

@@ -6,6 +6,8 @@
 #include "Node.h"
 #include "Core.h"
 
+using namespace axe;
+
 XLink::XLink() :
   destNode(0),
   destXLinkNum(0),

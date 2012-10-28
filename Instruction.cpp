@@ -7,6 +7,8 @@
 #include "Core.h"
 #include <cassert>
 
+using namespace axe;
+
 static inline uint32_t bitRange(uint32_t value, unsigned high, unsigned low)
 {
   return extractBitRange(value, high, low);
@@ -339,8 +341,9 @@ static unsigned bitpValue(unsigned Value)
   return bitpValues[Value];
 }
 
-void instructionDecode(Core &core, uint32_t address, InstructionOpcode &opcode,
-                       Operands &operands)
+void axe::
+instructionDecode(Core &core, uint32_t address, InstructionOpcode &opcode,
+                  Operands &operands)
 {
   assert((address & 1) == 0 && core.isValidAddress(address));
   if (address == core.syscallAddress) {
@@ -366,7 +369,7 @@ void instructionDecode(Core &core, uint32_t address, InstructionOpcode &opcode,
 #define PFIX 0x1e /* 0b11110 */
 #define EOPR 0x1f /* 0b11111 */
 
-void
+void axe::
 instructionDecode(uint16_t low, uint16_t high, bool highValid,
                   InstructionOpcode &opcode, Operands &operands) {
   /* bits 15:11 */
@@ -1415,7 +1418,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 #define PC pc
 #define CHECK_PC(pc) (decodeCache->isValidPc(pc))
 
-void
+void axe::
 instructionTransform(InstructionOpcode &opc, Operands &operands,
                      const Core &core, uint32_t address)
 {

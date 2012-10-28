@@ -9,6 +9,8 @@
 #include <string>
 #include <iosfwd>
 
+namespace axe {
+
 class Port;
 class SystemState;
 class PortAliases;
@@ -32,5 +34,7 @@ public:
               unsigned &beginOffset, unsigned &endOffset) const;
   void dump(std::ostream &s) const;
 };
+  
+} // End axe namespace
 
 #endif // _PortArg_h

@@ -8,6 +8,8 @@
 
 #include "Register.h"
 
+namespace axe {
+
 namespace OperandProperties {
   enum OpType {
     in,
@@ -52,5 +54,7 @@ struct InstructionProperties {
 };
 
 extern InstructionProperties instructionProperties[];
+  
+} // End axe namespace
 
 #endif //_InstructionProperties_h_

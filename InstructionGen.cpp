@@ -15,6 +15,7 @@
 
 // TODO emit line markers.
 
+using namespace axe;
 using namespace OperandProperties;
 
 enum ImplicitOp {
@@ -1438,7 +1439,7 @@ static void emitInstProperties()
   for (Instruction *inst : instructions) {
     emitInstPropertiesArrays(*inst);
   }
-  std::cout << "InstructionProperties instructionProperties[] = {\n";
+  std::cout << "InstructionProperties axe::instructionProperties[] = {\n";
   bool needComma = false;
   for (Instruction *inst : instructions) {
     if (needComma)

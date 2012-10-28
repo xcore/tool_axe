@@ -9,6 +9,8 @@
 #include "Config.h"
 #include <cassert>
 
+namespace axe {
+
 class Runnable {
 public:
   Runnable *prev;
@@ -18,5 +20,7 @@ public:
   virtual void run(ticks_t time) = 0;
   Runnable() : prev(0), next(0) {}
 };
+  
+} // End axe namespace
 
 #endif // _Runnable_h_

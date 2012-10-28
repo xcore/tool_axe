@@ -8,7 +8,9 @@
 #include "BitManip.h"
 #include <cassert>
 
-class PortSplitterSlice : public PortHandleClockMixin<PortSplitterSlice> {
+using namespace axe;
+
+class axe::PortSplitterSlice : public PortHandleClockMixin<PortSplitterSlice> {
   PortSplitter *parent;
   unsigned shift;
   uint32_t mask;

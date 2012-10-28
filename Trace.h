@@ -14,6 +14,8 @@
 #include <string>
 #include <memory>
 
+namespace axe {
+
 class EventableResource;
 class SystemState;
 class Node;
@@ -198,5 +200,7 @@ public:
     return instance;
   }
 };
+  
+} // End axe namespace
 
 #endif //_Trace_h_

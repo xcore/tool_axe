@@ -13,9 +13,10 @@
 #include "ClockBlock.h"
 #include <cstdlib>
 
+using namespace axe;
 using namespace Register;
 
-uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
+uint32_t axe::exception(Thread &t, uint32_t pc, int et, uint32_t ed)
 {
   uint32_t sed = t.regs[ED];
   uint32_t spc = t.fromPc(pc);
@@ -45,7 +46,7 @@ uint32_t exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   return t.toPc(newPc);
 }
 
-Resource *checkResource(Core &state, ResourceID id)
+Resource *axe::checkResource(Core &state, ResourceID id)
 {
   Resource *res = state.getResourceByID(id);
   if (!res || !res->isInUse())
@@ -53,7 +54,7 @@ Resource *checkResource(Core &state, ResourceID id)
   return res;
 }
 
-Synchroniser *checkSync(Core &state, ResourceID id)
+Synchroniser *axe::checkSync(Core &state, ResourceID id)
 {
   Resource *res = checkResource(state, id);
   if (!res)
@@ -63,7 +64,7 @@ Synchroniser *checkSync(Core &state, ResourceID id)
   return static_cast<Synchroniser *>(res);
 }
 
-Thread *checkThread(Core &state, ResourceID id)
+Thread *axe::checkThread(Core &state, ResourceID id)
 {
   Resource *res = checkResource(state, id);
   if (!res)
@@ -73,7 +74,7 @@ Thread *checkThread(Core &state, ResourceID id)
   return static_cast<Thread *>(res);
 }
 
-Chanend *checkChanend(Core &state, ResourceID id)
+Chanend *axe::checkChanend(Core &state, ResourceID id)
 {
   Resource *res = checkResource(state, id);
   if (!res)
@@ -83,7 +84,7 @@ Chanend *checkChanend(Core &state, ResourceID id)
   return static_cast<Chanend *>(res);
 }
 
-Port *checkPort(Core &state, ResourceID id)
+Port *axe::checkPort(Core &state, ResourceID id)
 {
   Resource *res = checkResource(state, id);
   if (!res)
@@ -93,7 +94,7 @@ Port *checkPort(Core &state, ResourceID id)
   return static_cast<Port *>(res);
 }
 
-EventableResource *checkEventableResource(Core &state, ResourceID id)
+EventableResource *axe::checkEventableResource(Core &state, ResourceID id)
 {
   Resource *res = checkResource(state, id);
   if (!res)
@@ -105,7 +106,7 @@ EventableResource *checkEventableResource(Core &state, ResourceID id)
 
 const uint32_t CLK_REF = 0x1;
 
-bool setClock(Thread &t, ResourceID resID, uint32_t val, ticks_t time)
+bool axe::setClock(Thread &t, ResourceID resID, uint32_t val, ticks_t time)
 {
   Core &state = t.getParent();
   Resource *res = checkResource(state, resID);
@@ -142,7 +143,7 @@ bool setClock(Thread &t, ResourceID resID, uint32_t val, ticks_t time)
   return true;
 }
 
-bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
+bool axe::setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
                          ticks_t time)
 {
   Core &state = t.getParent();
@@ -156,7 +157,7 @@ bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
 
 /// Set proccessor state. Can't be called from JIT as setting the RAM base
 /// invalidates the cache.
-bool setProcessorState(Thread &t, uint32_t reg, uint32_t value)
+bool axe::setProcessorState(Thread &t, uint32_t reg, uint32_t value)
 {
   if (reg == PS_RAM_BASE && t.isInRam()) {
     // TODO changing ram base while executing from RAM requires more thought.

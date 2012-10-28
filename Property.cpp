@@ -5,6 +5,8 @@
 
 #include "Property.h"
 
+using namespace axe;
+
 int32_t Property::getAsInteger() const {
   assert(descriptor->getType() == PropertyDescriptor::INTEGER);
   return static_cast<const IntegerProperty*>(this)->getValue();

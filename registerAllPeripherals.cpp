@@ -11,7 +11,9 @@
 #include "LCDScreen.h"
 #include "PeripheralDescriptor.h"
 
-void registerAllPeripherals()
+using namespace axe;
+
+void axe::registerAllPeripherals()
 {
   PeripheralRegistry::add(getPeripheralDescriptorUartRx());
   PeripheralRegistry::add(getPeripheralDescriptorSPIFlash());

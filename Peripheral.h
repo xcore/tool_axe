@@ -6,9 +6,13 @@
 #ifndef _Peripheral_h_
 #define _Peripheral_h_
 
+namespace axe {
+
 class Peripheral {
 public:
   virtual ~Peripheral();
 };
+  
+} // End axe namespace
 
 #endif // _Peripheral_h_

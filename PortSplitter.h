@@ -9,6 +9,8 @@
 #include <map>
 #include "Signal.h"
 
+namespace axe {
+
 class PortInterface;
 class PortSplitterSlice;
 class RunnableQueue;
@@ -25,5 +27,7 @@ public:
   void seePinsValueChange(uint32_t value, ticks_t time, unsigned shift,
                           uint32_t mask);
 };
+  
+} // End axe namespace
 
 #endif // _PortSplitter_

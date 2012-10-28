@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include "Config.h"
 
+namespace axe {
+
 class Thread;
 class Core;
 class ResourceID;
@@ -39,5 +41,7 @@ bool setReadyInstruction(Thread &t, ResourceID resID, uint32_t val,
                          ticks_t time);
 
 bool setProcessorState(Thread &t, uint32_t reg, uint32_t value);
+  
+} // End axe namespace
 
 #endif // _InstructionHelpers_h_

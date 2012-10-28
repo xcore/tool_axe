@@ -12,6 +12,8 @@
 #include "PortArg.h"
 #include <stdint.h>
 
+namespace axe {
+
 class Property {
   const PropertyDescriptor *descriptor;
 protected:
@@ -62,5 +64,7 @@ public:
     return 0;
   }
 };
+  
+} // End axe namespace
 
 #endif //_Property_h_

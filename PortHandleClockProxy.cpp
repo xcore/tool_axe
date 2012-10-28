@@ -7,6 +7,8 @@
 #include "Signal.h"
 #include "RunnableQueue.h"
 
+using namespace axe;
+
 PortHandleClockProxy::
 PortHandleClockProxy(RunnableQueue &s, PortInterface &p) :
   PortHandleClockMixin<PortHandleClockProxy>(s),

@@ -9,6 +9,8 @@
 #include <queue>
 #include "Config.h"
 
+namespace axe {
+
 class ChanEndpoint {
 private:
   /// Should incoming packets be junked?
@@ -60,5 +62,7 @@ public:
   /// using canAcceptTokens().
   virtual void receiveCtrlToken(ticks_t time, uint8_t value) = 0;
 };
+  
+} // End axe namespace
 
 #endif // _ChanEndpoint_h_

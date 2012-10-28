@@ -8,7 +8,11 @@
 
 #include <cstring>
 
+namespace axe {
+
 extern const unsigned char instructionBitcode[];
 extern size_t instructionBitcodeSize;
+  
+} // End axe namespace
 
 #endif //_InstructionBitcode_h_

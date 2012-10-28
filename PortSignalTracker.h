@@ -9,6 +9,8 @@
 #include "PortInterface.h"
 #include "Signal.h"
 
+namespace axe {
+
 class PortSignalTracker : public PortInterface {
   Signal signal;
 public:
@@ -16,5 +18,7 @@ public:
   void seePinsChange(const Signal &s, ticks_t time) { signal = s; }
   const Signal &getSignal() const { return signal; }
 };
+  
+} // End axe namespace
 
 #endif //_PortSignalTracker_h_

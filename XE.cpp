@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cassert>
 
+using namespace axe;
+
 bool XESector::getData(char *buf) const
 {
   getParent().s.seekg(offset);

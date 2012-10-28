@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cstring>
 
+using namespace axe;
+
 const ElfSymbol *CoreSymbolInfo::getGlobalSymbol(const std::string &name) const
 {
   auto it = symNameMap.find(name);

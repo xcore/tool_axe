@@ -6,12 +6,14 @@
 #ifndef _Instruction_h_
 #define _Instruction_h_
 
-class Thread;
-
 #include "Config.h"
+#include "JITInstructionFunction.h"
 #include <cstddef>
 
+namespace axe {
+
 class Core;
+class Thread;
 
 /// Below are all the instructions supported by the interpreter.
 /// The instructions match those of the XCore except where noted below.
@@ -38,8 +40,6 @@ enum InstructionOpcode {
 #undef DO_INSTRUCTION
 };
 
-#include "JITInstructionFunction.h"
-
 typedef JITInstructionFunction_t OPCODE_TYPE;
 
 struct Operands {
@@ -59,5 +59,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands,
                      const Core &core, uint32_t address);
+  
+} // End axe namespace
 
 #endif //_Instruction_h_

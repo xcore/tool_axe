@@ -8,8 +8,12 @@
 
 #include <memory>
 
+namespace axe {
+
 class PeripheralDescriptor;
 
 std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorLCDScreen();
+
+} // End namespace axe
 
 #endif // _LCDScreen_h_

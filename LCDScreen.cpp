@@ -16,6 +16,8 @@
 #include <iostream>
 #include <cstdlib>
 
+using namespace axe;
+
 const bool showFPS = false;
 
 static int filterSDLEvents(const SDL_Event *event)
@@ -282,7 +284,7 @@ createLCDScreen(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorLCDScreen()
+std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorLCDScreen()
 {
   std::auto_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("lcd-screen", &createLCDScreen));
