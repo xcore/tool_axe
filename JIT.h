@@ -15,6 +15,10 @@ class Thread;
 class Core;
 
 namespace JIT {
+  /// Preallocate global state for the JIT. Normally this state is initialized
+  /// when the JIT is first used but in a multi-threaded applications it should
+  /// be preallocated to avoid race conditions.
+  void initialize();
   void compileBlock(Core &c, uint32_t pc);
   bool invalidate(Core &c, uint32_t pc);
 }

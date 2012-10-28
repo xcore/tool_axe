@@ -160,8 +160,7 @@ void JITImpl::init()
 {
   if (initialized)
     return;
-  LLVMLinkInJIT();
-  LLVMInitializeNativeTarget();
+  JIT::initialize();
   LLVMMemoryBufferRef memBuffer =
     LLVMExtraCreateMemoryBufferWithPtr(instructionBitcode,
                                        instructionBitcodeSize);
@@ -803,6 +802,16 @@ bool JITImpl::invalidate(Core &core, uint32_t pc)
     coreInfo->unreachableFunctions.push_back(functionPc);
   }
   return true;
+}
+
+void JIT::initialize()
+{
+  static bool initialized = false;
+  if (initialized)
+    return;
+  LLVMLinkInJIT();
+  LLVMInitializeNativeTarget();
+  initialized = true;
 }
 
 void JIT::compileBlock(Core &core, uint32_t pc)

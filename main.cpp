@@ -20,6 +20,7 @@
 #include <set>
 #include <map>
 
+#include "AXE.h"
 #include "Trace.h"
 #include "Resource.h"
 #include "Core.h"
@@ -642,14 +643,7 @@ loop(const Options &options)
 
 int
 main(int argc, char **argv) {
-  /*
-   * this initialize the library and check potential ABI mismatches
-   * between the version it was compiled for and the actual shared
-   * library used.
-   */
-  LIBXML_TEST_VERSION
-
-  registerAllPeripherals();
+  AXEInitialize(true);
   Options options;
   options.parse(argc, argv);
 #ifndef _WIN32
@@ -661,7 +655,6 @@ main(int argc, char **argv) {
     Tracer::get().setTracingEnabled(true);
   }
   int retval = loop(options);
-  xsltCleanupGlobals();
-  xmlCleanupParser();
+  AXECleanup();
   return retval;
 }

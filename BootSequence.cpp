@@ -302,15 +302,24 @@ void BootSequence::setLoadImages(bool value)
 }
 
 int BootSequence::execute() {
-  if (elf_version(EV_CURRENT) == EV_NONE) {
-    std::cerr << "ELF library intialisation failed: "
-    << elf_errmsg(-1) << std::endl;
-    std::exit(1);
-  }
+  initializeElfHandling();
   for (BootSequenceStep *step : steps) {
     int status = step->execute(sys);
     if (status != 0)
       return status;
   }
   return 0;
+}
+
+void BootSequence::initializeElfHandling()
+{
+  static bool initialized = false;
+  if (initialized)
+    return;
+  if (elf_version(EV_CURRENT) == EV_NONE) {
+    std::cerr << "ELF library intialisation failed: "
+              << elf_errmsg(-1) << std::endl;
+    std::exit(1);
+  }
+  initialized = true;
 }

@@ -109,6 +109,8 @@ endif()
 
 add_executable(axe
   AccessSecondIterator.h
+  AXE.h
+  AXE.cpp
   BitManip.h
   BootSequence.h
   BootSequence.cpp
