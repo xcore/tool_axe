@@ -88,7 +88,7 @@ sub main
 {
   doBench(
     "dhrystone",
-    "xcc -w dhry_1.c dhry_2.c -O2 -target=XC-5 -o dhry.xe",
+    "xcc -w dhry_1.c dhry_2.c -O2 -target=XK-1A -o dhry.xe",
     "dhry.xe",
     "dhry.xe",
     1000,
@@ -96,7 +96,7 @@ sub main
   );
   doBench(
     "ports",
-    "xcc ports.xc -O2 -target=XC-5 -o ports.xe",
+    "xcc ports.xc -O2 -target=XK-1A -o ports.xe",
     "ports.xe --plugin LoopbackPort.so '-port stdcore[0] XS1_PORT_1A 1 0 -port stdcore[0] XS1_PORT_1E 1 0 -port stdcore[0] XS1_PORT_1B 1 0 -port stdcore[0] XS1_PORT_1G 1 0 -port stdcore[0] XS1_PORT_1C 1 0 -port stdcore[0] XS1_PORT_1F 1 0 -port stdcore[0] XS1_PORT_1D 1 0 -port stdcore[0] XS1_PORT_1H 1 0 -port stdcore[0] XS1_PORT_1I 1 0 -port stdcore[0] XS1_PORT_1M 1 0 -port stdcore[0] XS1_PORT_1J 1 0 -port stdcore[0] XS1_PORT_1O 1 0 -port stdcore[0] XS1_PORT_1K 1 0 -port stdcore[0] XS1_PORT_1N 1 0 -port stdcore[0] XS1_PORT_1L 1 0 -port stdcore[0] XS1_PORT_1P 1 0'",
     "ports.xe --loopback 0x10200 0x10600 --loopback 0x10000 0x10500 --loopback 0x10100 0x10400 --loopback 0x10300 0x10700 --loopback 0x10a00 0x10c00 --loopback 0x10800 0x10e00 --loopback 0x10900 0x10d00 --loopback 0x10b00 0x10f00",
     100,
