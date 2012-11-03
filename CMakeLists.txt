@@ -107,7 +107,7 @@ list(APPEND
   LCDScreen.cpp)
 endif()
 
-add_executable(axe
+add_library(axe
   AccessSecondIterator.h
   AXE.h
   AXE.cpp
@@ -150,7 +150,6 @@ add_executable(axe
   LLVMExtra.cpp
   Lock.cpp
   Lock.h
-  main.cpp
   NetworkLink.h
   NetworkLink.cpp
   ${NETWORK_LINK_TAP_FILES}
@@ -308,7 +307,12 @@ target_link_libraries(
 
 set_target_properties(axe PROPERTIES LINK_FLAGS ${LLVM_LDFLAGS})
 
-install(TARGETS axe DESTINATION bin)
+add_executable(axe-bin main.cpp)
+target_link_libraries(axe-bin axe)
+set_target_properties(axe-bin PROPERTIES OUTPUT_NAME axe)
+set_target_properties(axe-bin PROPERTIES LINK_FLAGS ${LLVM_LDFLAGS})
+
+install(TARGETS axe-bin DESTINATION bin)
 
 if (MSVC)
   SET(CPACK_GENERATOR "ZIP")
