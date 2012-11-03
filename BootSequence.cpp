@@ -191,7 +191,7 @@ int BootSequenceStepElf::execute(SystemState &sys)
     }
   }
 
-  SymbolInfo *SI = Tracer::get().getSymbolInfo();
+  SymbolInfo *SI = sys.getTracer().getSymbolInfo();
   std::auto_ptr<CoreSymbolInfo> CSI;
   readSymbols(e, ram_base, ram_base + ram_size, CSI);
   SI->add(core, CSI);
@@ -228,7 +228,7 @@ int BootSequenceStepSchedule::execute(SystemState &sys)
 
 int BootSequenceStepRun::execute(SystemState &sys)
 {
-  SyscallHandler::setDoneSyscallsRequired(numDoneSyscalls);
+  sys.getSyscallHandler().setDoneSyscallsRequired(numDoneSyscalls);
   return sys.run();
 }
 

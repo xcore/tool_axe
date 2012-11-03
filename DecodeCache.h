@@ -39,10 +39,12 @@ public:
     Operands *operands;
     executionFrequency_t *executionFrequency;
     unsigned char *invalidationInfo;
-    // Size in half words.
+    /// Size in half words.
     uint32_t size;
-    // Base in bytes
+    /// Base in bytes
     uint32_t base;
+    /// Is tracing enabled?
+    bool tracingEnabled;
 
     void setBase(uint32_t value) {
       base = value;
@@ -86,9 +88,9 @@ public:
   };
 private:
   State state;
-  void initCache(bool tracing);
+  void initCache();
 public:
-  DecodeCache(uint32_t size, uint32_t base, bool writable);
+  DecodeCache(uint32_t size, uint32_t base, bool writable, bool tracingEnabled);
   ~DecodeCache();
   State &getState() { return state; }
   const State &getState() const { return state; }

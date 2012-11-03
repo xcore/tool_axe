@@ -64,10 +64,6 @@ public:
 
 class Tracer {
 private:
-  Tracer() :
-    tracingEnabled(false),
-    line(std::cout, buf, pendingBuf),
-    colours(TerminalColours::null) {}
   struct LineState {
     LineState(std::ostringstream *b) :
       thread(0),
@@ -90,8 +86,9 @@ private:
   private:
     bool needRestore;
     LineState line;
+    Tracer &parent;
   public:
-    PushLineState();
+    PushLineState(Tracer &parent);
     ~PushLineState();
     bool getRestore() const { return needRestore; }
   };
@@ -101,8 +98,6 @@ private:
   LineState line;
   SymbolInfo symInfo;
   TerminalColours colours;
-
-  static Tracer instance;
 
   void escapeCode(const char *s);
   void reset() { escapeCode(colours.reset); }
@@ -140,8 +135,10 @@ private:
     traceAux(args...);
   }
 public:
-
-  void setTracingEnabled(bool enable) { tracingEnabled = enable; }
+  Tracer(bool tracing) :
+    tracingEnabled(tracing),
+    line(std::cout, buf, pendingBuf),
+    colours(TerminalColours::null) {}
   bool getTracingEnabled() const { return tracingEnabled; }
   SymbolInfo *getSymbolInfo() { return &symInfo; }
   void setColour(bool enable);
@@ -194,11 +191,6 @@ public:
   }
 
   void noRunnableThreads(const SystemState &system);
-
-  static Tracer &get()
-  {
-    return instance;
-  }
 };
   
 } // End axe namespace

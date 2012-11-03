@@ -19,14 +19,13 @@ using namespace Register;
 const unsigned mnemonicColumn = 49;
 const unsigned regWriteColumn = 87;
 
-Tracer Tracer::instance;
-
-Tracer::PushLineState::PushLineState() :
+Tracer::PushLineState::PushLineState(Tracer &p) :
   needRestore(false),
-  line(Tracer::get().line.pending)
+  line(p.line.pending),
+  parent(p)
 {
-  if (Tracer::get().line.thread) {
-    std::swap(Tracer::get().line, line);
+  if (parent.line.thread) {
+    std::swap(parent.line, line);
     needRestore = true;
   }
 }
@@ -34,7 +33,7 @@ Tracer::PushLineState::PushLineState() :
 Tracer::PushLineState::~PushLineState()
 {
   if (needRestore) {
-    std::swap(Tracer::get().line, line);
+    std::swap(parent.line, line);
   }
 }
 
@@ -202,7 +201,7 @@ void Tracer::regWrite(Reg reg, uint32_t value)
 
 void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(node);
   red();
   *line.buf << " SSwitch read: ";
@@ -216,7 +215,7 @@ void Tracer::
 SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
              uint32_t value)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(node);
   red();
   *line.buf << " SSwitch write: ";
@@ -229,7 +228,7 @@ SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
 
 void Tracer::SSwitchNack(const Node &node, uint32_t dest)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(node);
   red();
   *line.buf << " SSwitch reply: NACK";
@@ -240,7 +239,7 @@ void Tracer::SSwitchNack(const Node &node, uint32_t dest)
 
 void Tracer::SSwitchAck(const Node &node, uint32_t dest)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(node);
   red();
   *line.buf << " SSwitch reply: ACK";
@@ -251,7 +250,7 @@ void Tracer::SSwitchAck(const Node &node, uint32_t dest)
 
 void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(node);
   red();
   *line.buf << " SSwitch reply: ACK";
@@ -265,7 +264,7 @@ void Tracer::
 event(const Thread &t, const EventableResource &res, uint32_t pc,
       uint32_t ev)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(t);
   red();
   *line.buf << " Event caused by "
@@ -280,7 +279,7 @@ void Tracer::
 interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
           uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(t);
   red();
   *line.buf << " Interrupt caused by "
@@ -298,7 +297,7 @@ void Tracer::
 exception(const Thread &t, uint32_t et, uint32_t ed,
           uint32_t sed, uint32_t ssr, uint32_t spc)
 {
-  PushLineState save;
+  PushLineState save(*this);
   printCommonStart(t);
   red();
   *line.buf << ' ' << Exceptions::getExceptionName(et) << " exception";

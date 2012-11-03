@@ -6,18 +6,35 @@
 #ifndef _SyscallHandler_h_
 #define _SyscallHandler_h_
 
+#include "ScopedArray.h"
+
 namespace axe {
 
 class SyscallHandler {
+private:
+  const scoped_array<int> fds;
+  unsigned doneSyscallsRequired;
+  char *getString(Thread &thread, uint32_t address);
+  const void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
+  void *getRamBuffer(Thread &thread, uint32_t address, uint32_t size);
+  int getNewFd();
+  bool isValidFd(int fd);
+  int convertOpenFlags(int flags);
+  int convertOpenMode(int mode);
+  bool convertLseekType(int whence, int &converted);
+  void doException(const Thread &state, uint32_t et, uint32_t ed);
+  
 public:
   enum SycallOutcome {
     CONTINUE,
     DESCHEDULE,
     EXIT
   };
-  static void setDoneSyscallsRequired(unsigned number);
-  static SycallOutcome doSyscall(Thread &thread, int &retval);
-  static void doException(const Thread &thread);
+  SyscallHandler();
+  
+  void setDoneSyscallsRequired(unsigned count) { doneSyscallsRequired = count; }
+  SycallOutcome doSyscall(Thread &thread, int &retval);
+  void doException(const Thread &thread);
 };
   
 } // End axe namespace

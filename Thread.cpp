@@ -429,19 +429,19 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define TRACE(...) \
 do { \
 if (tracing) { \
-Tracer::get().trace(THREAD, __VA_ARGS__); \
+CORE.getTracer().trace(THREAD, __VA_ARGS__); \
 } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
 do { \
 if (tracing) { \
-Tracer::get().regWrite(register, value); \
+CORE.getTracer().regWrite(register, value); \
 } \
 } while(0)
 #define TRACE_END() \
 do { \
 if (tracing) { \
-Tracer::get().traceEnd(); \
+CORE.getTracer().traceEnd(); \
 } \
 } while(0)
 #define EMIT_INSTRUCTION_FUNCTIONS

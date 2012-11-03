@@ -35,30 +35,6 @@
 using namespace axe;
 using namespace Register;
 
-class SyscallHandlerImpl {
-private:
-  const scoped_array<int> fds;
-  unsigned doneSyscallsRequired;
-  char *getString(Thread &thread, uint32_t address);
-  const void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
-  void *getRamBuffer(Thread &thread, uint32_t address, uint32_t size);
-  int getNewFd();
-  bool isValidFd(int fd);
-  int convertOpenFlags(int flags);
-  int convertOpenMode(int mode);
-  bool convertLseekType(int whence, int &converted);
-  void doException(const Thread &state, uint32_t et, uint32_t ed);
-
-public:
-  SyscallHandlerImpl();
-
-  void setDoneSyscallsRequired(unsigned count) { doneSyscallsRequired = count; }
-  SyscallHandler::SycallOutcome doSyscall(Thread &thread, int &retval);
-  void doException(const Thread &thread);
-
-  static SyscallHandlerImpl instance;
-};
-
 enum SyscallType {
   OSCALL_EXIT = 0,
   OSCALL_PRINTC = 1,
@@ -101,7 +77,7 @@ enum OpenFlags {
 
 const unsigned MAX_FDS = 512;
 
-SyscallHandlerImpl::SyscallHandlerImpl() :
+SyscallHandler::SyscallHandler() :
   fds(new int[MAX_FDS]), doneSyscallsRequired(1)
 {
   // Duplicate the standard file descriptors.
@@ -116,7 +92,7 @@ SyscallHandlerImpl::SyscallHandlerImpl() :
 
 /// Returns a pointer to a string in memory at the given address.
 /// Returns 0 if the address is invalid or the string is not null terminated.
-char *SyscallHandlerImpl::getString(Thread &thread, uint32_t startAddress)
+char *SyscallHandler::getString(Thread &thread, uint32_t startAddress)
 {
   // TODO update for ROM.
   Core &core = thread.getParent();
@@ -134,7 +110,7 @@ char *SyscallHandlerImpl::getString(Thread &thread, uint32_t startAddress)
 
 /// Returns a pointer to a buffer in memory of the given size.
 /// Returns 0 if the buffer address is invalid.
-const void *SyscallHandlerImpl::
+const void *SyscallHandler::
 getBuffer(Thread &thread, uint32_t address, uint32_t size)
 {
   Core &core = thread.getParent();
@@ -154,7 +130,7 @@ getBuffer(Thread &thread, uint32_t address, uint32_t size)
 
 /// Returns a pointer to a buffer in memory of the given size.
 /// Returns 0 if the buffer address is invalid.
-void *SyscallHandlerImpl::
+void *SyscallHandler::
 getRamBuffer(Thread &thread, uint32_t address, uint32_t size)
 {
   Core &core = thread.getParent();
@@ -166,7 +142,7 @@ getRamBuffer(Thread &thread, uint32_t address, uint32_t size)
 
 /// Either returns an unused number for a file descriptor or -1 if there are no
 /// file descriptors available.
-int SyscallHandlerImpl::getNewFd()
+int SyscallHandler::getNewFd()
 {
   for (unsigned i = 0; i < MAX_FDS; i++) {
     if (fds[i] == -1) {
@@ -176,12 +152,12 @@ int SyscallHandlerImpl::getNewFd()
   return -1;
 }
 
-bool SyscallHandlerImpl::isValidFd(int fd)
+bool SyscallHandler::isValidFd(int fd)
 {
   return fd >= 0 && (unsigned)fd < MAX_FDS && fds[fd] != -1;
 }
 
-int SyscallHandlerImpl::convertOpenFlags(int flags)
+int SyscallHandler::convertOpenFlags(int flags)
 {
   int converted = 0;
   if (flags & XCORE_O_RDONLY)
@@ -203,7 +179,7 @@ int SyscallHandlerImpl::convertOpenFlags(int flags)
   return converted;
 }
 
-int SyscallHandlerImpl::convertOpenMode(int mode)
+int SyscallHandler::convertOpenMode(int mode)
 {
   int converted = 0;
   if (mode & XCORE_S_IREAD)
@@ -215,7 +191,7 @@ int SyscallHandlerImpl::convertOpenMode(int mode)
   return converted;
 }
 
-bool SyscallHandlerImpl::convertLseekType(int whence, int &converted)
+bool SyscallHandler::convertLseekType(int whence, int &converted)
 {
   switch (whence) {
   case XCORE_SEEK_CUR:
@@ -232,8 +208,7 @@ bool SyscallHandlerImpl::convertLseekType(int whence, int &converted)
   }
 }
 
-
-void SyscallHandlerImpl::doException(const Thread &thread, uint32_t et, uint32_t ed)
+void SyscallHandler::doException(const Thread &thread, uint32_t et, uint32_t ed)
 {
   std::cout << "Unhandled exception: "
             << Exceptions::getExceptionName(et)
@@ -242,38 +217,21 @@ void SyscallHandlerImpl::doException(const Thread &thread, uint32_t et, uint32_t
   thread.dump();
 }
 
-void SyscallHandlerImpl::doException(const Thread &thread)
+void SyscallHandler::doException(const Thread &thread)
 {
   doException(thread, thread.regs[ET], thread.regs[ED]);
 }
 
-#define TRACE_BEGIN() \
-do { \
-if (Tracer::get().getTracingEnabled()) { \
-Tracer::get().syscall(thread); \
-} \
-} while(0)
-#define TRACE_END() \
-do { \
-if (Tracer::get().getTracingEnabled()) { \
-Tracer::get().traceEnd(); \
-} \
-} while(0)
 #define TRACE(...) \
 do { \
-if (Tracer::get().getTracingEnabled()) { \
-Tracer::get().syscall(thread, __VA_ARGS__); \
-Tracer::get().traceEnd(); \
-} \
-} while(0)
-#define TRACE_REG_WRITE(register, value) \
-do { \
-if (Tracer::getInstance().getTracingEnabled()) { \
-Tracer::getInstance().regWrite(register, value); \
+Tracer &tracer = thread.getParent().getTracer(); \
+if (tracer.getTracingEnabled()) { \
+tracer.syscall(thread, __VA_ARGS__); \
+tracer.traceEnd(); \
 } \
 } while(0)
 
-SyscallHandler::SycallOutcome SyscallHandlerImpl::
+SyscallHandler::SycallOutcome SyscallHandler::
 doSyscall(Thread &thread, int &retval)
 {
   switch (thread.regs[R0]) {
@@ -447,22 +405,4 @@ doSyscall(Thread &thread, int &retval)
     retval = 1;
     return SyscallHandler::EXIT;
   }
-}
-
-SyscallHandlerImpl SyscallHandlerImpl::instance;
-
-void SyscallHandler::setDoneSyscallsRequired(unsigned number)
-{
-  SyscallHandlerImpl::instance.setDoneSyscallsRequired(number);
-}
-
-SyscallHandler::SycallOutcome SyscallHandler::
-doSyscall(Thread &thread, int &retval)
-{
-  return SyscallHandlerImpl::instance.doSyscall(thread, retval);
-}
-
-void SyscallHandler::doException(const Thread &thread)
-{
-  return SyscallHandlerImpl::instance.doException(thread);
 }

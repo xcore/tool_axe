@@ -150,7 +150,7 @@ static long readNumberAttribute(xmlNode *node, const char *name)
 }
 
 static inline std::auto_ptr<Core>
-createCoreFromConfig(xmlNode *config)
+createCoreFromConfig(xmlNode *config, bool tracing)
 {
   uint32_t ram_size = RAM_SIZE;
   uint32_t ram_base = RAM_BASE;
@@ -166,7 +166,7 @@ createCoreFromConfig(xmlNode *config)
     std::cerr << "Error: ram base is not a multiple of ram size\n";
     std::exit(1);
   }
-  std::auto_ptr<Core> core(new Core(ram_size, ram_base));
+  std::auto_ptr<Core> core(new Core(ram_size, ram_base, tracing));
   core->setCoreNumber(readNumberAttribute(config, "number"));
   if (xmlAttr *codeReference = findAttribute(config, "codeReference")) {
     core->setCodeReference((char*)codeReference->children->content);
@@ -176,7 +176,7 @@ createCoreFromConfig(xmlNode *config)
 
 static inline std::auto_ptr<Node>
 createNodeFromConfig(xmlNode *config,
-                     std::map<long,Node*> &nodeNumberMap)
+                     std::map<long,Node*> &nodeNumberMap, bool tracing)
 {
   long jtagID = readNumberAttribute(config, "jtagId");
   Node::Type nodeType;
@@ -197,7 +197,7 @@ createNodeFromConfig(xmlNode *config,
     if (child->type != XML_ELEMENT_NODE ||
         strcmp("Processor", (char*)child->name) != 0)
       continue;
-    node->addCore(createCoreFromConfig(child));
+    node->addCore(createCoreFromConfig(child, tracing));
   }
   return node;
 }
@@ -256,7 +256,8 @@ checkDocAgainstSchema(xmlDoc *doc, const char *schemaData, size_t schemaSize)
 
 static inline std::auto_ptr<SystemState>
 createSystemFromConfig(const std::string &filename,
-                       const XESector *configSector)
+                       const XESector *configSector,
+                       bool tracing)
 {
   uint64_t length = configSector->getLength();
   const scoped_array<char> buf(new char[length + 1]);
@@ -279,13 +280,13 @@ createSystemFromConfig(const std::string &filename,
   xmlNode *root = xmlDocGetRootElement(doc);
   xmlNode *system = findChild(root, "System");
   xmlNode *nodes = findChild(system, "Nodes");
-  std::auto_ptr<SystemState> systemState(new SystemState);
+  std::auto_ptr<SystemState> systemState(new SystemState(tracing));
   std::map<long,Node*> nodeNumberMap;
   for (xmlNode *child = nodes->children; child; child = child->next) {
     if (child->type != XML_ELEMENT_NODE ||
         strcmp("Node", (char*)child->name) != 0)
       continue;
-    systemState->addNode(createNodeFromConfig(child, nodeNumberMap));
+    systemState->addNode(createNodeFromConfig(child, nodeNumberMap, tracing));
   }
   xmlNode *connections = findChild(system, "Connections");
   for (xmlNode *child = connections->children; child; child = child->next) {
@@ -352,7 +353,7 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
   }
 }
 
-static inline std::auto_ptr<SystemState> readXE(XE &xe)
+static inline std::auto_ptr<SystemState> readXE(XE &xe, bool tracing)
 {
   // Load the file into memory.
   if (!xe) {
@@ -367,7 +368,7 @@ static inline std::auto_ptr<SystemState> readXE(XE &xe)
     std::exit(1);
   }
   std::auto_ptr<SystemState> system =
-    createSystemFromConfig(xe.getFileName(), configSector);
+    createSystemFromConfig(xe.getFileName(), configSector, tracing);
   return system;
 }
 
@@ -600,10 +601,15 @@ int
 loop(const Options &options)
 {
   XE xe(options.file);
-  std::auto_ptr<SystemState> statePtr = readXE(xe);
+  std::auto_ptr<SystemState> statePtr = readXE(xe, options.tracing);
   PortAliases portAliases;
   readPortAliases(portAliases, xe);
   SystemState &sys = *statePtr;
+#ifndef _WIN32
+  if (isatty(fileno(stdout))) {
+    sys.getTracer().setColour(true);
+  }
+#endif
   PortConnectionManager connectionManager(sys, portAliases);
 
   if (!connectLoopbackPorts(connectionManager, options.loopbackPorts)) {
@@ -646,14 +652,6 @@ main(int argc, char **argv) {
   AXEInitialize(true);
   Options options;
   options.parse(argc, argv);
-#ifndef _WIN32
-  if (isatty(fileno(stdout))) {
-    Tracer::get().setColour(true);
-  }
-#endif
-  if (options.tracing) {
-    Tracer::get().setTracingEnabled(true);
-  }
   int retval = loop(options);
   AXECleanup();
   return retval;

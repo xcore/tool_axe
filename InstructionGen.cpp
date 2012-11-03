@@ -2779,7 +2779,8 @@ void add()
              "%exception(ET_ILLEGAL_INSTRUCTION, 0)");
   pseudoInst("SYSCALL", "",
     "int retval;\n"
-    "switch (SyscallHandler::doSyscall(THREAD, retval)) {\n"
+    "switch (CORE.getParent()->getParent()->getSyscallHandler()\n"
+    "        .doSyscall(THREAD, retval)) {\n"
     "case SyscallHandler::EXIT:\n"
     "  throw (ExitException(retval));\n"
     "case SyscallHandler::DESCHEDULE:\n"
@@ -2793,7 +2794,8 @@ void add()
     .addImplicitOp(LR, in)
     .setDisableJit();
   pseudoInst("EXCEPTION", "",
-             "SyscallHandler::doException(THREAD);\n"
+             "CORE.getParent()->getParent()->getSyscallHandler()\n"
+             "  .doException(THREAD);\n"
              "throw (ExitException(1));\n")
     .setDisableJit();
   pseudoInst("RUN_JIT", "", "").setCustom();

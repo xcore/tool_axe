@@ -92,23 +92,24 @@ void SSwitch::handleRequest(ticks_t time, const Request &request)
   uint32_t value = 0;
   ResourceID destID = ResourceID::chanendID(request.returnNum,
                                             request.returnNode);
+  Tracer &tracer = parent->getParent()->getTracer();
   if (request.write) {
     ack = regs.write(request.regNum, request.data);
-    if (Tracer::get().getTracingEnabled()) {
-      Tracer::get().SSwitchWrite(*parent, destID, request.regNum, request.data);
+    if (tracer.getTracingEnabled()) {
+      tracer.SSwitchWrite(*parent, destID, request.regNum, request.data);
       if (ack)
-        Tracer::get().SSwitchAck(*parent, destID);
+        tracer.SSwitchAck(*parent, destID);
       else
-        Tracer::get().SSwitchNack(*parent, destID);
+        tracer.SSwitchNack(*parent, destID);
     }
   } else {
     ack = regs.read(request.regNum, value);
-    if (Tracer::get().getTracingEnabled()) {
-      Tracer::get().SSwitchRead(*parent, destID, request.regNum);
+    if (tracer.getTracingEnabled()) {
+      tracer.SSwitchRead(*parent, destID, request.regNum);
       if (ack)
-        Tracer::get().SSwitchAck(*parent, value, destID);
+        tracer.SSwitchAck(*parent, value, destID);
       else
-        Tracer::get().SSwitchNack(*parent, destID);
+        tracer.SSwitchNack(*parent, destID);
     }
   }
   ChanEndpoint *dest = parent->getChanendDest(destID);

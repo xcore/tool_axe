@@ -4,6 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "SystemState.h"
+#include "SyscallHandler.h"
 #include "Node.h"
 #include "Core.h"
 #include "Trace.h"
@@ -11,7 +12,11 @@
 using namespace axe;
 using namespace Register;
 
-SystemState::SystemState() : currentRunnable(0), rom(0) {
+SystemState::SystemState(bool tracing) :
+  currentRunnable(0),
+  rom(0),
+  syscallHandler(new SyscallHandler),
+  tracer(new Tracer(tracing)) {
   pendingEvent.set = false;
 }
 
@@ -21,6 +26,8 @@ SystemState::~SystemState()
     delete node;
   }
   delete[] rom;
+  delete tracer;
+  delete syscallHandler;
 }
 
 void SystemState::finalize()
@@ -53,13 +60,12 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   t.eeble() = false;
   // EventableResource::completeEvent sets the ED and PC.
   res.completeEvent();
-  if (Tracer::get().getTracingEnabled()) {
+  if (tracer->getTracingEnabled()) {
     if (interrupt) {
-      Tracer::get().interrupt(t, res, t.fromPc(t.pc),
-                                      t.regs[SSR], t.regs[SPC], t.regs[SED],
-                                      t.regs[ED]);
+      tracer->interrupt(t, res, t.fromPc(t.pc), t.regs[SSR], t.regs[SPC],
+                        t.regs[SED], t.regs[ED]);
     } else {
-      Tracer::get().event(t, res, t.fromPc(t.pc), t.regs[ED]);
+      tracer->event(t, res, t.fromPc(t.pc), t.regs[ED]);
     }
   }
 }
@@ -76,7 +82,7 @@ int SystemState::run()
   } catch (ExitException &ee) {
     return ee.getStatus();
   }
-  Tracer::get().noRunnableThreads(*this);
+  tracer->noRunnableThreads(*this);
   return 1;
 }
 
@@ -85,7 +91,8 @@ setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize)
 {
   rom = new uint8_t[romSize];
   std::memcpy(rom, data, romSize);
-  romDecodeCache.reset(new DecodeCache(romSize, romBase, false));
+  romDecodeCache.reset(new DecodeCache(romSize, romBase, false,
+                                       tracer->getTracingEnabled()));
   for (Node *node : nodes) {
     for (auto it = node->core_begin(), e = node->core_end(); it != e; ++it) {
       Core *core = *it;

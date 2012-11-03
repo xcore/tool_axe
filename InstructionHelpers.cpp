@@ -22,8 +22,9 @@ uint32_t axe::exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   uint32_t spc = t.fromPc(pc);
   uint32_t ssr = t.sr.to_ulong();
 
-  if (Tracer::get().getTracingEnabled()) {
-    Tracer::get().exception(t, et, ed, sed, ssr, spc);
+  Tracer &tracer = t.getParent().getTracer();
+  if (tracer.getTracingEnabled()) {
+    tracer.exception(t, et, ed, sed, ssr, spc);
   }
 
   t.regs[SSR] = sed;

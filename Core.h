@@ -27,6 +27,7 @@ class ChanEndpoint;
 class ClockBlock;
 class Port;
 class Timer;
+class Tracer;
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
@@ -88,7 +89,7 @@ public:
   uint32_t syscallAddress;
   uint32_t exceptionAddress;
 
-  Core(uint32_t RamSize, uint32_t RamBase);
+  Core(uint32_t RamSize, uint32_t RamBase, bool tracing);
   ~Core();
 
   void setRamBaseMultiple(unsigned multiple);
@@ -333,6 +334,7 @@ public:
   unsigned getCoreNumber() const { return coreNumber; }
   uint32_t getCoreID() const;
   const Node *getParent() const { return parent; }
+  Tracer &getTracer();
   Node *getParent() { return parent; }
   void dumpPaused() const;
   Thread &getThread(unsigned num) { return thread[num]; }

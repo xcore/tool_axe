@@ -10,10 +10,11 @@
 
 using namespace axe;
 
-DecodeCache::DecodeCache(uint32_t sz, uint32_t b, bool writable)
+DecodeCache::DecodeCache(uint32_t sz, uint32_t b, bool writable, bool tracing)
 {
   state.size = sz;
   state.base = b;
+  state.tracingEnabled = tracing;
   state.operands = new Operands[sz];
   state.opcode = new OPCODE_TYPE[sz + ILLEGAL_PC_THREAD_ADDR_OFFSET];
   state.executionFrequency = new executionFrequency_t[sz];
@@ -27,7 +28,7 @@ DecodeCache::DecodeCache(uint32_t sz, uint32_t b, bool writable)
   }
   std::memset(state.executionFrequency, 0,
               sizeof(state.executionFrequency[0]) * sz);
-  initCache(Tracer::get().getTracingEnabled());
+  initCache();
 }
 
 DecodeCache::~DecodeCache()
@@ -40,7 +41,7 @@ DecodeCache::~DecodeCache()
 
 void DecodeCache::State::clearOpcode(uint32_t pc)
 {
-  opcode[pc] = getInstruction_DECODE(Tracer::get().getTracingEnabled());
+  opcode[pc] = getInstruction_DECODE(tracingEnabled);
 }
 
 void DecodeCache::State::
@@ -64,8 +65,9 @@ setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size)
   operands[pc] = ops;
 }
 
-void DecodeCache::initCache(bool tracing)
+void DecodeCache::initCache()
 {
+  bool tracing = state.tracingEnabled;
   // Initialise instruction cache.
   OPCODE_TYPE decode = getInstruction_DECODE(tracing);
   for (unsigned i = 0; i < state.size; i++) {
@@ -73,7 +75,8 @@ void DecodeCache::initCache(bool tracing)
   }
   state.opcode[state.size] = getInstruction_ILLEGAL_PC(tracing);
   state.opcode[state.getRunJitAddr()] = getInstruction_RUN_JIT(tracing);
-  state.opcode[state.getInterpretOneAddr()] = getInstruction_INTERPRET_ONE(tracing);
+  state.opcode[state.getInterpretOneAddr()] =
+    getInstruction_INTERPRET_ONE(tracing);
   state.opcode[state.getIllegalPCThreadAddr()] =
     getInstruction_ILLEGAL_PC_THREAD(tracing);
 }

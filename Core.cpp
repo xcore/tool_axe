@@ -19,8 +19,8 @@
 
 using namespace axe;
 
-Core::Core(uint32_t RamSize, uint32_t RamBase) :
-  ramDecodeCache(RamBase >> 1, RamBase, true),
+Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
+  ramDecodeCache(RamBase >> 1, RamBase, true, tracing),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
@@ -155,6 +155,11 @@ void Core::setRamBaseMultiple(unsigned multiple)
   for (unsigned i = 0; i < NUM_THREADS; i++) {
     getThread(i).seeRamDecodeCacheChange();
   }
+}
+
+Tracer &Core::getTracer()
+{
+  return parent->getParent()->getTracer();
 }
 
 void Core::dumpPaused() const

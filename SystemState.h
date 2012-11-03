@@ -17,6 +17,8 @@ namespace axe {
 class Node;
 class ChanEndpoint;
 class DecodeCache;
+class SyscallHandler;
+class Tracer;
 
 class ExitException {
   unsigned status;
@@ -36,13 +38,15 @@ class SystemState {
   std::auto_ptr<DecodeCache> romDecodeCache;
 
   JIT jit;
+  SyscallHandler *syscallHandler;
+  Tracer *tracer;
 
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
 
 public:
   typedef std::vector<Node*>::iterator node_iterator;
   typedef std::vector<Node*>::const_iterator const_node_iterator;
-  SystemState();
+  SystemState(bool tracing);
   ~SystemState();
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
@@ -111,6 +115,8 @@ public:
   }
 
   JIT &getJIT() { return jit; }
+  SyscallHandler &getSyscallHandler() { return *syscallHandler; }
+  Tracer &getTracer() { return *tracer; }
 
   node_iterator node_begin() { return nodes.begin(); }
   node_iterator node_end() { return nodes.end(); }
