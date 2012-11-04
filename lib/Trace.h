@@ -6,6 +6,7 @@
 #ifndef _Trace_h_
 #define _Trace_h_
 
+#include "Config.h"
 #include "SymbolInfo.h"
 #include "Register.h"
 #include "TerminalColours.h"
@@ -190,10 +191,10 @@ public:
   void syscallEnd() {
     printCommonEnd();
   }
-
+  void timeout(const SystemState &system, ticks_t time);
   void noRunnableThreads(const SystemState &system);
 };
-  
+
 } // End axe namespace
 
 #endif //_Trace_h_

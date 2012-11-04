@@ -11,6 +11,7 @@
 #include "Thread.h"
 #include "JIT.h"
 #include "RunnableQueue.h"
+#include "Timeout.h"
 
 namespace axe {
 
@@ -27,12 +28,20 @@ public:
   unsigned getStatus() const { return status; }
 };
 
+class TimeoutException {
+  ticks_t time;
+public:
+  TimeoutException(ticks_t t) : time(t) {}
+  ticks_t getTime() const { return time; }
+};
+
 class SystemState {
   std::vector<Node*> nodes;
   RunnableQueue scheduler;
   /// The currently executing runnable.
   Runnable *currentRunnable;
   PendingEvent pendingEvent;
+  Timeout timeoutRunnable;
 
   uint8_t *rom;
   std::auto_ptr<DecodeCache> romDecodeCache;
@@ -56,8 +65,10 @@ public:
     return currentRunnable;
   }
 
+  void setTimeout(ticks_t time);
+
   int run();
-  
+
   /// Schedule a thread.
   void schedule(Thread &thread) {
     thread.waiting() = false;

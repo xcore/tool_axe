@@ -126,6 +126,8 @@ add_library(axe
   TerminalColours.cpp
   Thread.h
   Thread.cpp
+  Timeout.h
+  Timeout.cpp
   Timer.cpp
   Timer.h
   Token.h

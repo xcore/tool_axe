@@ -8,13 +8,15 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <cerrno>
 
 using namespace axe;
 
 Options::Options() :
   bootMode(BOOT_SIM),
   file(0),
-  tracing(false)
+  tracing(false),
+  maxCycles(0)
 {  
 }
 
@@ -27,6 +29,7 @@ static void printUsage(const char *ProgName) {
   "  --vcd FILE                  Write VCD trace to FILE.\n"
   "  --boot-spi                  Specify boot from SPI\n"
   "  --rom FILE                  Specify boot rom.\n"
+  "  --max-cycles <n>            Exit after <n> cycles\n"
   "  -t                          Enable instruction tracing.\n"
   "\n"
   "Peripherals:\n";
@@ -170,6 +173,20 @@ void Options::parse(int argc, char **argv)
     arg = argv[i];
     if (arg == "-t") {
       tracing = true;
+    } else if (arg == "--max-cycles") {
+      if (i + 1 > argc) {
+        printUsage(argv[0]);
+        std::exit(1);
+      }
+      char *endp;
+      errno = 0;
+      long value = std::strtol(argv[i + 1], &endp, 10);
+      if (errno != 0 || *endp != '\0' || value < 0) {
+        std::cerr << "Error: failed to parse number of cycles\n";
+        std::exit(1);
+      }
+      maxCycles = value;
+      i++;
     } else if (arg == "--vcd") {
       if (i + 1 > argc) {
         printUsage(argv[0]);

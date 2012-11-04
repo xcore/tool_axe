@@ -362,6 +362,16 @@ void Tracer::dumpThreadSummary(const SystemState &system)
   }
 }
 
+void Tracer::timeout(const SystemState &system, ticks_t time)
+{
+  printCommonStart();
+  red();
+  *line.buf << "Timeout after " << time << " cycles";
+  reset();
+  printCommonEnd();
+  dumpThreadSummary(system);
+}
+
 void Tracer::noRunnableThreads(const SystemState &system)
 {
   printCommonStart();

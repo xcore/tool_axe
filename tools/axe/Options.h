@@ -6,6 +6,7 @@
 #ifndef _Options_h_
 #define _Options_h_
 
+#include "Config.h"
 #include "PortArg.h"
 #include "Property.h"
 #include <vector>
@@ -29,6 +30,7 @@ struct Options {
   std::string rom;
   std::string vcdFile;
   bool tracing;
+  ticks_t maxCycles;
 
   Options();
   void parse(int argc, char **argv);

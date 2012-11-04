@@ -185,6 +185,9 @@ loop(const Options &options)
     bootSequencer.adjustForSPIBoot();
     break;
   }
+  if (options.maxCycles != 0) {
+    sys.setTimeout(options.maxCycles);
+  }
   return bootSequencer.execute();
 }
 

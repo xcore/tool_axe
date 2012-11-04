@@ -70,6 +70,11 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   }
 }
 
+void SystemState::setTimeout(ticks_t time)
+{
+  scheduler.push(timeoutRunnable, time);
+}
+
 int SystemState::run()
 {
   try {
@@ -81,6 +86,9 @@ int SystemState::run()
     }
   } catch (ExitException &ee) {
     return ee.getStatus();
+  } catch (TimeoutException &te) {
+    tracer->timeout(*this, te.getTime());
+    return 1;
   }
   tracer->noRunnableThreads(*this);
   return 1;
