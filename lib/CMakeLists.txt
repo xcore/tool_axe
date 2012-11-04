@@ -14,8 +14,8 @@ list(APPEND
 endif()
 
 include_directories(${AXE_SOURCE_DIR}/thirdparty/boost)
-# make sure cmake addes the binary directory for the project to the include path
-include_directories(${AXE_BINARY_DIR})
+# make sure cmake addes the current binary to the include path
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(axe
   AccessSecondIterator.h
@@ -146,11 +146,11 @@ add_library(axe
   XNSchema.rng
   XNTransform.xslt
   ${AXE_OPTIONAL_FILES}
-  ${AXE_BINARY_DIR}/InstructionGenOutput.inc
-  ${AXE_BINARY_DIR}/ConfigSchema.inc
-  ${AXE_BINARY_DIR}/XNSchema.inc
-  ${AXE_BINARY_DIR}/XNTransform.inc
-  ${AXE_BINARY_DIR}/InstructionBitcode.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
   )
 
 # add the executable that will do the generation
@@ -158,8 +158,8 @@ get_target_property(INSTGEN_EXE instgen LOCATION)
 get_target_property(GENHEX_EXE genHex LOCATION)
 # add the custom command that will run the generator
 add_custom_command(
- OUTPUT ${AXE_BINARY_DIR}/InstructionGenOutput.inc
- COMMAND ${INSTGEN_EXE} ${AXE_BINARY_DIR} > ${AXE_BINARY_DIR}/InstructionGenOutput.inc
+ OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
+ COMMAND ${INSTGEN_EXE} > ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
  DEPENDS instgen
  )
 # add the custom command that compiles InstructionDefinitions.cpp to LLVM
@@ -171,34 +171,38 @@ foreach(dir ${INCLUDES_DIRS})
 endforeach()
 string(REPLACE " " ";" CLANG_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 add_custom_command(
-  OUTPUT ${AXE_BINARY_DIR}/InstructionBitcode.bc
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
   COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CLANG_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
   -c -emit-llvm ${CMAKE_CURRENT_SOURCE_DIR}/InstructionDefinitions.cpp
-  -o ${AXE_BINARY_DIR}/InstructionBitcode.bc
-  DEPENDS ${AXE_BINARY_DIR}/InstructionGenOutput.inc
+  -o ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
   IMPLICIT_DEPENDS CXX InstructionDefinitions.cpp
   )
 # add the custom command that turns the LLVM bitcode into hex
 add_custom_command(
-  OUTPUT ${AXE_BINARY_DIR}/InstructionBitcode.inc
-  COMMAND ${GENHEX_EXE} ${AXE_BINARY_DIR}/InstructionBitcode.bc ${AXE_BINARY_DIR}/InstructionBitcode.inc
-  DEPENDS genHex ${AXE_BINARY_DIR}/InstructionBitcode.bc
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
+  COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+          ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
+  DEPENDS genHex ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
   )
 
 # add the custom command that turns the schema into hex
 add_custom_command(
- OUTPUT ${AXE_BINARY_DIR}/ConfigSchema.inc
- COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/ConfigSchema.rng ${AXE_BINARY_DIR}/ConfigSchema.inc
+ OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
+ COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/ConfigSchema.rng
+         ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
  DEPENDS genHex ConfigSchema.rng
  )
 add_custom_command(
- OUTPUT ${AXE_BINARY_DIR}/XNSchema.inc
- COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/XNSchema.rng ${AXE_BINARY_DIR}/XNSchema.inc
+ OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
+ COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/XNSchema.rng
+         ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
  DEPENDS genHex XNSchema.rng
  )
 add_custom_command(
- OUTPUT ${AXE_BINARY_DIR}/XNTransform.inc
- COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/XNTransform.xslt ${AXE_BINARY_DIR}/XNTransform.inc
+ OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
+ COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/XNTransform.xslt
+         ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
  DEPENDS genHex XNTransform.xslt
  )
 
