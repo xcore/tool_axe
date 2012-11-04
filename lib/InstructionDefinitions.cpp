@@ -53,7 +53,7 @@ jitComputeAddress(const Thread &t, Register::Reg baseReg, unsigned scale,
 extern "C" bool
 jitCheckAddress(const Thread &t, uint32_t ramSizeLog2, uint32_t address)
 {
-  return (address >> ramSizeLog2) == t.getParent().ramBaseMultiple;
+  return (address >> ramSizeLog2) == t.getParent().getRamBaseMultiple();
 }
 
 extern "C" bool jitInvalidateByteCheck(Thread &t, uint32_t address)
@@ -80,7 +80,7 @@ extern "C" JITReturn jitInterpretOne(Thread &t) {
 #define THREAD thread
 #define CORE THREAD.getParent()
 #define CHECK_ADDR_RAM(addr) \
-  ((uint32_t(addr) >> ramSizeLog2) == CORE.ramBaseMultiple)
+  ((uint32_t(addr) >> ramSizeLog2) == CORE.getRamBaseMultiple())
 #define CHECK_PC(addr) ((uint32_t(addr) >> (ramSizeLog2 - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();

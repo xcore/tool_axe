@@ -51,10 +51,8 @@ private:
   uint32_t * memoryOffset;
   unsigned char *invalidationInfoOffset;
   DecodeCache ramDecodeCache;
-public:
   const uint32_t ramSizeLog2;
   uint32_t ramBaseMultiple;
-private:
   Thread * const thread;
   Synchroniser * const sync;
   Lock * const lock;
@@ -111,7 +109,9 @@ public:
   void runJIT(uint32_t jitPc);
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
+  uint32_t getRamSizeLog2() const { return ramSizeLog2; }
   uint32_t getRamBase() const { return getRamSize() * ramBaseMultiple; }
+  uint32_t getRamBaseMultiple() const { return ramBaseMultiple; }
   uint32_t getRomSize() const { return romSize; }
   uint32_t getRomBase() const { return romBase; }
   

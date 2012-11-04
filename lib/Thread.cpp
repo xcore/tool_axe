@@ -395,7 +395,7 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define THREAD thread
 #define CORE THREAD.getParent()
 #define CHECK_ADDR_RAM(addr) CORE.isValidRamAddress(addr)
-#define CHECK_PC(addr) (((addr) >> (CORE.ramSizeLog2 - 1)) == 0)
+#define CHECK_PC(addr) (((addr) >> (CORE.getRamSizeLog2() - 1)) == 0)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
