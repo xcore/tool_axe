@@ -66,8 +66,6 @@ add_library(axe
   ${NETWORK_LINK_TAP_FILES}
   Node.h
   Node.cpp
-  Options.h
-  Options.cpp
   Peripheral.h
   Peripheral.cpp
   PeripheralDescriptor.h
