@@ -627,7 +627,6 @@ loop(const Options &options)
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;
-  // TODO update to handle multiple cores.
   if (!options.vcdFile.empty()) {
     waveformTracer.reset(new WaveformTracer(options.vcdFile));
     connectWaveformTracer(sys, *waveformTracer);
