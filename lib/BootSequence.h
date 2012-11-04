@@ -15,6 +15,7 @@ class Core;
 class SystemState;
 class XEElfSector;
 class BootSequenceStep;
+class XE;
 
 class BootSequence {
   SystemState &sys;
@@ -28,6 +29,7 @@ public:
   void overrideEntryPoint(uint32_t address);
   void eraseAllButLastImage();
   void setLoadImages(bool value);
+  void populateFromXE(XE &xe);
   int execute();
   /// Initialize ELF handling global state. Normally this state is initialized
   /// when it is first used but in a multi-threaded applications it may need to

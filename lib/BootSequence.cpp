@@ -311,6 +311,117 @@ int BootSequence::execute() {
   return 0;
 }
 
+static inline void
+addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
+             Node &node)
+{
+  unsigned jtagIndex = node.getJtagIndex();
+  const std::vector<Core*> &cores = node.getCores();
+  unsigned coreNum = 0;
+  for (Core *core : cores) {
+    coreMap.insert(std::make_pair(std::make_pair(jtagIndex, coreNum), core));
+    coreNum++;
+  }
+}
+
+
+static inline void
+addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
+             SystemState &system)
+{
+  for (SystemState::node_iterator it = system.node_begin(),
+       e = system.node_end(); it != e; ++it) {
+    addToCoreMap(coreMap, **it);
+  }
+}
+
+void BootSequence::populateFromXE(XE &xe)
+{
+  std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
+  addToCoreMap(coreMap, sys);
+  
+  std::set<Core*> gotoSectors;
+  std::set<Core*> callSectors;
+  for (const XESector *sector : xe.getSectors()) {
+    switch (sector->getType()) {
+      case XESector::XE_SECTOR_ELF:
+      {
+        const XEElfSector *elfSector = static_cast<const XEElfSector*>(sector);
+        unsigned jtagIndex = elfSector->getNode();
+        unsigned coreNum = elfSector->getCore();
+        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
+        if (!core) {
+          std::cerr << "Error: cannot find node " << jtagIndex
+          << ", core " << coreNum << std::endl;
+          std::exit(1);
+        }
+        if (gotoSectors.count(core)) {
+          // Shouldn't happen.
+          break;
+        }
+        if (callSectors.count(core)) {
+          addRun(callSectors.size());
+          callSectors.clear();
+        }
+        addElf(core, elfSector);
+      }
+        break;
+      case XESector::XE_SECTOR_CALL:
+      {
+        const XECallOrGotoSector *callSector =
+        static_cast<const XECallOrGotoSector*>(sector);
+        if (!gotoSectors.empty()) {
+          // Shouldn't happen.
+          break;
+        }
+        unsigned jtagIndex = callSector->getNode();
+        unsigned coreNum = callSector->getCore();
+        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
+        if (!core) {
+          std::cerr << "Error: cannot find node " << jtagIndex
+          << ", core " << coreNum << std::endl;
+          std::exit(1);
+        }
+        if (!callSectors.insert(core).second) {
+          addRun(callSectors.size());
+          callSectors.clear();
+          callSectors.insert(core);
+        }
+      }
+        break;
+      case XESector::XE_SECTOR_GOTO:
+      {
+        const XECallOrGotoSector *gotoSector =
+        static_cast<const XECallOrGotoSector*>(sector);
+        if (!callSectors.empty()) {
+          // Handle calls.
+          addRun(callSectors.size());
+          callSectors.clear();
+        }
+        unsigned jtagIndex = gotoSector->getNode();
+        unsigned coreNum = gotoSector->getCore();
+        Core *core = coreMap[std::make_pair(jtagIndex, coreNum)];
+        if (!core) {
+          std::cerr << "Error: cannot find node " << jtagIndex
+          << ", core " << coreNum << std::endl;
+          std::exit(1);
+        }
+        if (!gotoSectors.insert(core).second) {
+          // Shouldn't happen.
+          break;
+        }
+      }
+        break;
+    }
+  }
+  if (!gotoSectors.empty()) {
+    addRun(gotoSectors.size());
+  } else if (!callSectors.empty()) {
+    // Shouldn't happen.
+    addRun(callSectors.size());
+  }
+}
+
 void BootSequence::initializeElfHandling()
 {
   static bool initialized = false;
