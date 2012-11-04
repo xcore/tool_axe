@@ -2,7 +2,7 @@
 
 # Set some key paths for use by axe test suite config.
 config.axe_obj_root = os.path.dirname(os.path.dirname(__file__))
-config.axe_bin_dir = '${CMAKE_BINARY_DIR}'
+config.axe_bin_dir = '${CMAKE_BINARY_DIR}/bin'
 
 # Let the main config do the real work.
 lit.load_config(config, '${CMAKE_SOURCE_DIR}/test/lit.cfg')
