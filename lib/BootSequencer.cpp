@@ -266,7 +266,7 @@ getPenultimateRunStep(std::vector<BootSequenceStep*>::iterator begin,
   return end;
 }
 
-void BootSequencer::overrideEntryPoint(uint32_t address)
+void BootSequencer::setEntryPointToRom()
 {
   std::vector<BootSequenceStep*> newSteps;
   for (BootSequenceStep *step : steps) {
@@ -274,8 +274,9 @@ void BootSequencer::overrideEntryPoint(uint32_t address)
     if (step->getType() == BootSequenceStep::ELF) {
       BootSequenceStepElf *elfStep = static_cast<BootSequenceStepElf*>(step);
       elfStep->setUseElfEntryPoint(false);
-      newSteps.push_back(new BootSequenceStepSchedule(elfStep->getCore(),
-                                                      address));
+      Core *core = elfStep->getCore();
+      newSteps.push_back(new BootSequenceStepSchedule(core,
+                                                      core->getRomBase()));
     }
   }
   std::swap(steps, newSteps);
@@ -419,6 +420,22 @@ void BootSequencer::populateFromXE(XE &xe)
   } else if (!callSectors.empty()) {
     // Shouldn't happen.
     addRun(callSectors.size());
+  }
+}
+
+void BootSequencer::adjustForSPIBoot()
+{
+  eraseAllButLastImage();
+  setEntryPointToRom();
+  setLoadImages(false);
+  for (auto outerIt = sys.node_begin(), outerE = sys.node_end();
+       outerIt != outerE; ++outerIt) {
+    Node &node = **outerIt;
+    for (auto innerIt = node.core_begin(), innerE = node.core_end();
+         innerIt != innerE; ++innerIt) {
+      Core *core = *innerIt;
+      core->setBootConfig(1 << 2);
+    }
   }
 }
 

@@ -87,7 +87,7 @@ int SystemState::run()
 }
 
 void SystemState::
-setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize)
+setRom(const uint8_t *data, uint32_t romSize, uint32_t romBase)
 {
   rom = new uint8_t[romSize];
   std::memcpy(rom, data, romSize);
@@ -96,7 +96,7 @@ setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize)
   for (Node *node : nodes) {
     for (auto it = node->core_begin(), e = node->core_end(); it != e; ++it) {
       Core *core = *it;
-      core->setRom(rom, 0xffffc000, romSize);
+      core->setRom(rom, romBase, romSize);
     }
   }
 }

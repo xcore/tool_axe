@@ -391,28 +391,6 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
-const uint32_t romBaseAddress = 0xffffc000;
-
-static void
-adjustForBootMode(const Options &options, SystemState &sys,
-                  BootSequencer &bootSequence)
-{
-  if (options.bootMode == Options::BOOT_SPI) {
-    bootSequence.eraseAllButLastImage();
-    bootSequence.overrideEntryPoint(romBaseAddress);
-    bootSequence.setLoadImages(false);
-    for (auto outerIt = sys.node_begin(), outerE = sys.node_end();
-         outerIt != outerE; ++outerIt) {
-      Node &node = **outerIt;
-      for (auto innerIt = node.core_begin(), innerE = node.core_end();
-           innerIt != innerE; ++innerIt) {
-        Core *core = *innerIt;
-        core->setBootConfig(1 << 2);
-      }
-    }
-  }
-}
-
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
   PeripheralDescriptorWithPropertiesVector;
 
@@ -523,13 +501,19 @@ loop(const Options &options)
   if (!options.rom.empty()) {
     std::vector<uint8_t> rom;
     readRom(options.rom, rom);
-    sys.setRom(&rom[0], romBaseAddress, rom.size());
+    sys.setRom(&rom[0], rom.size());
   }
 
   BootSequencer bootSequencer(sys);
   bootSequencer.populateFromXE(xe);
-  adjustForBootMode(options, sys, bootSequencer);
-
+  switch (options.bootMode) {
+  default: assert(0 && "Unexpected bootmode");
+  case Options::BOOT_SIM:
+    break;
+  case Options::BOOT_SPI:
+    bootSequencer.adjustForSPIBoot();
+    break;
+  }
   return bootSequencer.execute();
 }
 

@@ -20,16 +20,17 @@ class XE;
 class BootSequencer {
   SystemState &sys;
   std::vector<BootSequenceStep*> steps;
+  void setEntryPointToRom();
+  void eraseAllButLastImage();
+  void setLoadImages(bool value);
 public:
   BootSequencer(SystemState &s) : sys(s) {}
   ~BootSequencer();
   void addElf(Core *c, const XEElfSector *elfSector);
   void addSchedule(Core *c, uint32_t address);
   void addRun(unsigned numDoneSyscalls);
-  void overrideEntryPoint(uint32_t address);
-  void eraseAllButLastImage();
-  void setLoadImages(bool value);
   void populateFromXE(XE &xe);
+  void adjustForSPIBoot();
   int execute();
   /// Initialize ELF handling global state. Normally this state is initialized
   /// when it is first used but in a multi-threaded applications it may need to

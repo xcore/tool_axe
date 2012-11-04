@@ -21,7 +21,8 @@
 #define CHECK_ADDR_RAM_BYTE(addr) CHECK_ADDR_RAM(addr)
 #define CHECK_ADDR_RAM_SHORT(addr) (!((addr) & 1) && CHECK_ADDR_RAM(addr))
 #define CHECK_ADDR_RAM_WORD(addr) (!((addr) & 3) && CHECK_ADDR_RAM(addr))
-#define CHECK_ADDR_ROM(addr) ((uint32_t(addr) - CORE.romBase) < CORE.romSize)
+#define CHECK_ADDR_ROM(addr) \
+  ((uint32_t(addr) - CORE.getRomBase()) < CORE.getRomSize())
 #define CHECK_ADDR_ROM_BYTE(addr) CHECK_ADDR_ROM(addr)
 #define CHECK_ADDR_ROM_SHORT(addr) (!((addr) & 1) && CHECK_ADDR_ROM(addr))
 #define CHECK_ADDR_ROM_WORD(addr) (!((addr) & 3) && CHECK_ADDR_ROM(addr))

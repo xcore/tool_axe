@@ -73,11 +73,9 @@ private:
   uint32_t bootConfig;
   uint32_t bootStatus;
   const uint8_t *rom;
-public:
   uint32_t romBase;
   uint32_t romSize;
 
-private:
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
   void invalidateSlowPath(uint32_t shiftedAddress);
@@ -114,6 +112,8 @@ public:
 
   uint32_t getRamSize() const { return 1 << ramSizeLog2; }
   uint32_t getRamBase() const { return getRamSize() * ramBaseMultiple; }
+  uint32_t getRomSize() const { return romSize; }
+  uint32_t getRomBase() const { return romBase; }
   
   bool isValidRamAddress(uint32_t address) const {
     return (address >> ramSizeLog2) == ramBaseMultiple;
