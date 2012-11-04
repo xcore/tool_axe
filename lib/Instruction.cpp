@@ -4,6 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "Instruction.h"
+#include "InstructionOpcode.h"
 #include "Core.h"
 #include <cassert>
 

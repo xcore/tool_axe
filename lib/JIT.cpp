@@ -17,6 +17,7 @@
 #include "llvm-c/Analysis.h"
 #endif
 #include "Instruction.h"
+#include "InstructionOpcode.h"
 #include "Core.h"
 #include "InstructionBitcode.h"
 #include "LLVMExtra.h"

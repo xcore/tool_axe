@@ -6,6 +6,7 @@
 #include "JITOptimize.h"
 #include "Register.h"
 #include "InstructionProperties.h"
+#include "InstructionOpcode.h"
 #include <algorithm>
 #include <iostream>
 #include <cassert>

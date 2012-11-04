@@ -49,6 +49,7 @@ add_library(axe
   InstructionHelpers.h
   InstructionHelpers.cpp
   InstructionMacrosCommon.h
+  InstructionOpcode.h
   InstructionProperties.h
   InstructionProperties.cpp
   JIT.h
