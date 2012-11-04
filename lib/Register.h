@@ -36,7 +36,16 @@ namespace Register {
     NUM_REGISTERS
   };
 }
-  
+
+extern const char *registerNames[];
+
+inline const char *getRegisterName(unsigned RegNum) {
+  if (RegNum < Register::NUM_REGISTERS) {
+    return registerNames[RegNum];
+  }
+  return "?";
+}
+
 } // End axe namespace
 
 #endif //_Register_h_

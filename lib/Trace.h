@@ -7,7 +7,7 @@
 #define _Trace_h_
 
 #include "SymbolInfo.h"
-#include "Thread.h"
+#include "Register.h"
 #include "TerminalColours.h"
 #include <iostream>
 #include <sstream>
@@ -19,6 +19,7 @@ namespace axe {
 class EventableResource;
 class SystemState;
 class Node;
+class Thread;
 
 inline std::ostream &operator<<(std::ostream &out, const Register::Reg &r) {
   return out << getRegisterName(r);

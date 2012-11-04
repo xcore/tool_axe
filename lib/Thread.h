@@ -19,15 +19,6 @@ namespace axe {
 
 class Synchroniser;
 
-extern const char *registerNames[];
-
-inline const char *getRegisterName(unsigned RegNum) {
-  if (RegNum < Register::NUM_REGISTERS) {
-    return registerNames[RegNum];
-  }
-  return "?";
-}
-
 class EventableResourceIterator :
   public std::iterator<std::forward_iterator_tag, int> {
 public:

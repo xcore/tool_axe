@@ -98,6 +98,7 @@ add_library(axe
   PortSplitter.h
   PortSplitter.cpp
   Register.h
+  Register.cpp
   registerAllPeripherals.h
   registerAllPeripherals.cpp
   Resource.h
