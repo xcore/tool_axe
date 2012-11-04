@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#ifndef _BootSequence_h
-#define _BootSequence_h
+#ifndef _BootSequencer_h
+#define _BootSequencer_h
 
 #include <vector>
 #include <stdint.h>
@@ -17,12 +17,12 @@ class XEElfSector;
 class BootSequenceStep;
 class XE;
 
-class BootSequence {
+class BootSequencer {
   SystemState &sys;
   std::vector<BootSequenceStep*> steps;
 public:
-  BootSequence(SystemState &s) : sys(s) {}
-  ~BootSequence();
+  BootSequencer(SystemState &s) : sys(s) {}
+  ~BootSequencer();
   void addElf(Core *c, const XEElfSector *elfSector);
   void addSchedule(Core *c, uint32_t address);
   void addRun(unsigned numDoneSyscalls);
@@ -39,4 +39,4 @@ public:
 
 } // End axe namespace
 
-#endif // _BootSequence_h
+#endif // _BootSequencer_h

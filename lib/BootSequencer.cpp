@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include "BootSequence.h"
+#include "BootSequencer.h"
 #include "Core.h"
 #include "Node.h"
 #include "SystemState.h"
@@ -232,21 +232,21 @@ int BootSequenceStepRun::execute(SystemState &sys)
   return sys.run();
 }
 
-BootSequence::~BootSequence() {
+BootSequencer::~BootSequencer() {
   for (BootSequenceStep *step : steps) {
     delete step;
   }
 }
 
-void BootSequence::addElf(Core *c, const XEElfSector *elfSector) {
+void BootSequencer::addElf(Core *c, const XEElfSector *elfSector) {
   steps.push_back(new BootSequenceStepElf(c, elfSector));
 }
 
-void BootSequence::addSchedule(Core *c, uint32_t address) {
+void BootSequencer::addSchedule(Core *c, uint32_t address) {
   steps.push_back(new BootSequenceStepSchedule(c, address));
 }
 
-void BootSequence::addRun(unsigned numDoneSyscalls) {
+void BootSequencer::addRun(unsigned numDoneSyscalls) {
   steps.push_back(new BootSequenceStepRun(numDoneSyscalls));
 }
 
@@ -266,7 +266,7 @@ getPenultimateRunStep(std::vector<BootSequenceStep*>::iterator begin,
   return end;
 }
 
-void BootSequence::overrideEntryPoint(uint32_t address)
+void BootSequencer::overrideEntryPoint(uint32_t address)
 {
   std::vector<BootSequenceStep*> newSteps;
   for (BootSequenceStep *step : steps) {
@@ -281,7 +281,7 @@ void BootSequence::overrideEntryPoint(uint32_t address)
   std::swap(steps, newSteps);
 }
 
-void BootSequence::eraseAllButLastImage()
+void BootSequencer::eraseAllButLastImage()
 {
   auto eraseTo = getPenultimateRunStep(steps.begin(), steps.end());
   if (eraseTo == steps.end())
@@ -292,7 +292,7 @@ void BootSequence::eraseAllButLastImage()
   steps.erase(steps.begin(), eraseTo);
 }
 
-void BootSequence::setLoadImages(bool value)
+void BootSequencer::setLoadImages(bool value)
 {
   for (BootSequenceStep *step : steps) {
     if (step->getType() == BootSequenceStep::ELF) {
@@ -301,7 +301,7 @@ void BootSequence::setLoadImages(bool value)
   }
 }
 
-int BootSequence::execute() {
+int BootSequencer::execute() {
   initializeElfHandling();
   for (BootSequenceStep *step : steps) {
     int status = step->execute(sys);
@@ -335,7 +335,7 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
   }
 }
 
-void BootSequence::populateFromXE(XE &xe)
+void BootSequencer::populateFromXE(XE &xe)
 {
   std::map<std::pair<unsigned, unsigned>,Core*> coreMap;
   addToCoreMap(coreMap, sys);
@@ -422,7 +422,7 @@ void BootSequence::populateFromXE(XE &xe)
   }
 }
 
-void BootSequence::initializeElfHandling()
+void BootSequencer::initializeElfHandling()
 {
   static bool initialized = false;
   if (initialized)

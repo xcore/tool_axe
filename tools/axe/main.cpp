@@ -36,7 +36,7 @@
 #include "registerAllPeripherals.h"
 #include "JIT.h"
 #include "Options.h"
-#include "BootSequence.h"
+#include "BootSequencer.h"
 #include "PortAliases.h"
 #include "PortConnectionManager.h"
 
@@ -395,7 +395,7 @@ const uint32_t romBaseAddress = 0xffffc000;
 
 static void
 adjustForBootMode(const Options &options, SystemState &sys,
-                  BootSequence &bootSequence)
+                  BootSequencer &bootSequence)
 {
   if (options.bootMode == Options::BOOT_SPI) {
     bootSequence.eraseAllButLastImage();
@@ -526,11 +526,11 @@ loop(const Options &options)
     sys.setRom(&rom[0], romBaseAddress, rom.size());
   }
 
-  BootSequence bootSequence(sys);
-  bootSequence.populateFromXE(xe);
-  adjustForBootMode(options, sys, bootSequence);
+  BootSequencer bootSequencer(sys);
+  bootSequencer.populateFromXE(xe);
+  adjustForBootMode(options, sys, bootSequencer);
 
-  return bootSequence.execute();
+  return bootSequencer.execute();
 }
 
 int

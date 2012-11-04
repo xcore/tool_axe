@@ -8,7 +8,7 @@
 #include <libxml/parser.h>
 #include <libxslt/transform.h>
 #include "registerAllPeripherals.h"
-#include "BootSequence.h"
+#include "BootSequencer.h"
 
 using namespace axe;
 
@@ -25,7 +25,7 @@ void axe::AXEInitialize(bool beLazy)
     xmlInitParser();
     xsltInit();
     JIT::initializeGlobalState();
-    BootSequence::initializeElfHandling();
+    BootSequencer::initializeElfHandling();
   }
 }
 

@@ -22,8 +22,8 @@ add_library(axe
   AXE.h
   AXE.cpp
   BitManip.h
-  BootSequence.h
-  BootSequence.cpp
+  BootSequencer.h
+  BootSequencer.cpp
   Chanend.h
   Chanend.cpp
   ChanEndpoint.h
