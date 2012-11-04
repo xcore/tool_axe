@@ -1,7 +1,5 @@
 include_directories(${AXE_SOURCE_DIR}/lib)
 include_directories(${AXE_SOURCE_DIR}/thirdparty/boost)
-# make sure cmake addes the binary directory for the project to the include path
-include_directories(${AXE_BINARY_DIR})
 
 add_executable(axe-bin
   Options.h

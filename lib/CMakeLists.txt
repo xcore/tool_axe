@@ -137,6 +137,10 @@ add_library(axe
   WaveformTracer.cpp
   XE.h
   XE.cpp
+  XEReader.h
+  XEReader.cpp
+  XMLUtils.h
+  XMLUtils.cpp
   XNSchema.rng
   XNTransform.xslt
   ${AXE_OPTIONAL_FILES}
