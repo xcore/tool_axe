@@ -10,7 +10,6 @@
 #include "Trace.h"
 #include "Exceptions.h"
 #include "BitManip.h"
-#include "SyscallHandler.h"
 #include "JIT.h"
 #include "CRC.h"
 #include "InstructionHelpers.h"

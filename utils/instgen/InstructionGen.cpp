@@ -2777,26 +2777,10 @@ void add()
              "%exception(ET_ILLEGAL_PC, THREAD.pendingPc)");
   pseudoInst("ILLEGAL_INSTRUCTION", "",
              "%exception(ET_ILLEGAL_INSTRUCTION, 0)");
-  pseudoInst("SYSCALL", "",
-    "int retval;\n"
-    "switch (CORE.getParent()->getParent()->getSyscallHandler()\n"
-    "        .doSyscall(THREAD, retval)) {\n"
-    "case SyscallHandler::EXIT:\n"
-    "  throw (ExitException(retval));\n"
-    "case SyscallHandler::DESCHEDULE:\n"
-    "  %deschedule;\n"
-    "  break;\n"
-    "case SyscallHandler::CONTINUE:\n"
-    "  %write_pc(%0);\n"
-    "  %yield\n"
-    "  break;\n"
-    "}\n")
-    .addImplicitOp(LR, in)
-    .setDisableJit();
-  pseudoInst("EXCEPTION", "",
-             "CORE.getParent()->getParent()->getSyscallHandler()\n"
-             "  .doException(THREAD);\n"
-             "throw (ExitException(1));\n")
+  pseudoInst("BREAKPOINT", "",
+             "%write_pc_unchecked(%pc - 1)"
+             "THREAD.waiting() = true;\n"
+             "throw (BreakpointException(THREAD));")
     .setDisableJit();
   pseudoInst("RUN_JIT", "", "").setCustom();
   pseudoInst("INTERPRET_ONE", "", "").setCustom();

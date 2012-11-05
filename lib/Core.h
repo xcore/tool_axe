@@ -17,6 +17,7 @@
 #include "DecodeCache.h"
 #include <string>
 #include <climits>
+#include <set>
 
 namespace axe {
 
@@ -79,11 +80,9 @@ private:
   void invalidateSlowPath(uint32_t shiftedAddress);
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
+  std::set<uint32_t> breakpoints;
 public:
   uint32_t vector_base;
-
-  uint32_t syscallAddress;
-  uint32_t exceptionAddress;
 
   Core(uint32_t RamSize, uint32_t RamBase, bool tracing);
   ~Core();
@@ -100,8 +99,9 @@ public:
 
   const DecodeCache::State *getDecodeCacheContaining(uint32_t address) const;
 
-  bool setSyscallAddress(uint32_t value);
-  bool setExceptionAddress(uint32_t value);
+  bool setBreakpoint(uint32_t value);
+  void unsetBreakpoint(uint32_t value);
+  bool isBreakpointAddress(uint32_t value) { return breakpoints.count(value); }
 
   void resetCaches();
 

@@ -8,10 +8,12 @@
 
 #include <vector>
 #include <stdint.h>
+#include "BreakpointManager.h"
 
 namespace axe {
 
 class Core;
+class SyscallHandler;
 class SystemState;
 class XEElfSector;
 class BootSequenceStep;
@@ -19,12 +21,14 @@ class XE;
 
 class BootSequencer {
   SystemState &sys;
+  BreakpointManager breakpointManager;
+  SyscallHandler *syscallHandler;
   std::vector<BootSequenceStep*> steps;
   void setEntryPointToRom();
   void eraseAllButLastImage();
   void setLoadImages(bool value);
 public:
-  BootSequencer(SystemState &s) : sys(s) {}
+  BootSequencer(SystemState &s);
   ~BootSequencer();
   void addElf(Core *c, const XEElfSector *elfSector);
   void addSchedule(Core *c, uint32_t address);

@@ -24,6 +24,8 @@ add_library(axe
   BitManip.h
   BootSequencer.h
   BootSequencer.cpp
+  BreakpointManager.h
+  BreakpointManager.cpp
   Chanend.h
   Chanend.cpp
   ChanEndpoint.h
@@ -114,6 +116,8 @@ add_library(axe
   SSwitch.cpp
   SSwitchCtrlRegs.h
   SSwitchCtrlRegs.cpp
+  StopReason.h
+  StopReason.cpp
   SymbolInfo.h
   SymbolInfo.cpp
   Synchroniser.cpp

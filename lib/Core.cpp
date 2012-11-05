@@ -40,9 +40,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   bootStatus(0),
   rom(0),
   romBase(0),
-  romSize(0),
-  syscallAddress(~0),
-  exceptionAddress(~0)
+  romSize(0)
 {
   memoryOffset = memory - (RamBase / 4);
   invalidationInfoOffset =
@@ -252,20 +250,19 @@ getDecodeCacheContaining(uint32_t address) const
   return 0;
 }
 
-bool Core::setSyscallAddress(uint32_t value)
+bool Core::setBreakpoint(uint32_t value)
 {
   if ((value & 1) || !isValidAddress(value))
     return false;
-  syscallAddress = value;
+  if (breakpoints.insert(value).second)
+    invalidateShort(value);
   return true;
 }
 
-bool Core::setExceptionAddress(uint32_t value)
+void Core::unsetBreakpoint(uint32_t value)
 {
-  if ((value & 1) || !isValidAddress(value))
-    return false;
-  exceptionAddress = value;
-  return true;
+  if (breakpoints.erase(value))
+    invalidateShort(value);
 }
 
 void Core::resetCaches()

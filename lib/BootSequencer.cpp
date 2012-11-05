@@ -10,6 +10,7 @@
 #include "SyscallHandler.h"
 #include "XE.h"
 #include "ScopedArray.h"
+#include "StopReason.h"
 #include "SymbolInfo.h"
 #include "Trace.h"
 #include <gelf.h>
@@ -68,6 +69,16 @@ static void readSymbols(Elf *e, unsigned low, unsigned high,
   }
 }
 
+namespace {
+  struct ExecutionState {
+    SystemState &sys;
+    BreakpointManager &breakpointManager;
+    SyscallHandler &syscallHandler;
+    ExecutionState(SystemState &s, BreakpointManager &BM, SyscallHandler &SH) :
+      sys(s), breakpointManager(BM), syscallHandler(SH) { }
+  };
+}
+
 class axe::BootSequenceStep {
 public:
   enum Type {
@@ -82,49 +93,52 @@ protected:
 public:
   virtual ~BootSequenceStep() {}
   Type getType() const { return type; }
-  virtual int execute(SystemState &sys) = 0;
+  virtual int execute(ExecutionState &state) = 0;
 };
 
 class BootSequenceStepElf : public BootSequenceStep {
-public:
   bool loadImage;
   bool useElfEntryPoint;
   Core *core;
   const XEElfSector *elfSector;
+public:
   BootSequenceStepElf(Core *c, const XEElfSector *e) :
     BootSequenceStep(ELF),
     loadImage(true),
     useElfEntryPoint(true),
     core(c),
     elfSector(e) {}
-  int execute(SystemState &sys);
+  int execute(ExecutionState &state);
   Core *getCore() const { return core; }
   void setUseElfEntryPoint(bool value) { useElfEntryPoint = value; }
   void setLoadImage(bool value) { loadImage = value; }
 };
 
 class BootSequenceStepSchedule : public BootSequenceStep {
-public:
   Core *core;
   uint32_t address;
+public:
   BootSequenceStepSchedule(Core *c, uint32_t a) :
     BootSequenceStep(SCHEDULE),
     core(c),
     address(a) {}
-  int execute(SystemState &sys);
+  int execute(ExecutionState &state);
 };
 
 class BootSequenceStepRun : public BootSequenceStep {
-public:
   unsigned numDoneSyscalls;
+  int executeAux(ExecutionState &state);
+public:
   BootSequenceStepRun(unsigned n) :
     BootSequenceStep(RUN),
     numDoneSyscalls(n) {}
-  int execute(SystemState &sys);
+  int execute(ExecutionState &state);
 };
 
-int BootSequenceStepElf::execute(SystemState &sys)
+int BootSequenceStepElf::execute(ExecutionState &state)
 {
+  SystemState &sys = state.sys;
+  BreakpointManager &BM = state.breakpointManager;
   uint64_t ElfSize = elfSector->getElfSize();
   const scoped_array<char> buf(new char[ElfSize]);
   if (!elfSector->getElfData(buf.get())) {
@@ -198,14 +212,15 @@ int BootSequenceStepElf::execute(SystemState &sys)
 
   // Patch in syscall instruction at the syscall address.
   if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(core, "_DoSyscall")) {
-    if (!core->setSyscallAddress(syscallSym->value)) {
+    if (!BM.setBreakpoint(*core, syscallSym->value, BreakpointType::Syscall)) {
       std::cout << "Warning: invalid _DoSyscall address "
       << std::hex << syscallSym->value << std::dec << "\n";
     }
   }
   // Patch in exception instruction at the exception address
   if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(core, "_DoException")) {
-    if (!core->setExceptionAddress(doExceptionSym->value)) {
+    if (!BM.setBreakpoint(*core, doExceptionSym->value,
+                          BreakpointType::Exception)) {
       std::cout << "Warning: invalid _DoException address "
       << std::hex << doExceptionSym->value << std::dec << "\n";
     }
@@ -219,20 +234,73 @@ int BootSequenceStepElf::execute(SystemState &sys)
   return 0;
 }
 
-int BootSequenceStepSchedule::execute(SystemState &sys)
+int BootSequenceStepSchedule::execute(ExecutionState &state)
 {
+  SystemState &sys = state.sys;
   sys.schedule(core->getThread(0));
   core->getThread(0).setPcFromAddress(address);
   return 0;
 }
 
-int BootSequenceStepRun::execute(SystemState &sys)
+int BootSequenceStepRun::executeAux(ExecutionState &state)
 {
-  sys.getSyscallHandler().setDoneSyscallsRequired(numDoneSyscalls);
-  return sys.run();
+  SystemState &sys = state.sys;
+  BreakpointManager &BM = state.breakpointManager;
+  SyscallHandler &SH = state.syscallHandler;
+  SH.setDoneSyscallsRequired(numDoneSyscalls);
+  StopReason stopReason = sys.run();
+  while (stopReason.getType() == StopReason::BREAKPOINT) {
+    Thread *thread = stopReason.getThread();
+    Core &core = thread->getParent();
+    uint32_t address = thread->fromPc(thread->pc);
+    int retval;
+    switch (BM.getBreakpointType(core, address)) {
+      case BreakpointType::Exception:
+        SH.doException(*thread);
+        return 1;
+      case BreakpointType::Syscall:
+        switch (SH.doSyscall(*thread, retval)) {
+          case SyscallHandler::EXIT:
+            return retval;
+          case SyscallHandler::DESCHEDULE:
+            break;
+          case SyscallHandler::CONTINUE:
+            thread->setPcFromAddress(thread->reg(Register::LR));
+            thread->schedule();
+            break;
+        }
+        break;
+      case BreakpointType::Other:
+        assert(0 && "Unexpected breakpoint type");
+        break;
+    }
+    stopReason = sys.run();
+  }
+  switch (stopReason.getType()) {
+    default: assert(0 && "Unexpected stop reason");
+    case StopReason::NO_RUNNABLE_THREADS:
+    case StopReason::TIMEOUT:
+      return 1;
+    case StopReason::EXIT:
+      return stopReason.getStatus();
+  }
+}
+
+int BootSequenceStepRun::execute(ExecutionState &state)
+{
+  int status = executeAux(state);
+  state.breakpointManager.unsetBreakpoints();
+  return status;
+}
+
+BootSequencer::BootSequencer(SystemState &s) :
+  sys(s),
+  syscallHandler(new SyscallHandler)
+{
 }
 
 BootSequencer::~BootSequencer() {
+  delete syscallHandler;
   for (BootSequenceStep *step : steps) {
     delete step;
   }
@@ -304,8 +372,9 @@ void BootSequencer::setLoadImages(bool value)
 
 int BootSequencer::execute() {
   initializeElfHandling();
+  ExecutionState executionState(sys, breakpointManager, *syscallHandler);
   for (BootSequenceStep *step : steps) {
-    int status = step->execute(sys);
+    int status = step->execute(executionState);
     if (status != 0)
       return status;
   }

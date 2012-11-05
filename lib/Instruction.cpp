@@ -347,12 +347,8 @@ instructionDecode(Core &core, uint32_t address, InstructionOpcode &opcode,
                   Operands &operands)
 {
   assert((address & 1) == 0 && core.isValidAddress(address));
-  if (address == core.syscallAddress) {
-    opcode = SYSCALL;
-    return;
-  }
-  if (address == core.exceptionAddress) {
-    opcode = EXCEPTION;
+  if (core.isBreakpointAddress(address)) {
+    opcode = BREAKPOINT;
     return;
   }
   uint16_t low = core.loadShort(address);

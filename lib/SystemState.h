@@ -18,8 +18,8 @@ namespace axe {
 class Node;
 class ChanEndpoint;
 class DecodeCache;
-class SyscallHandler;
 class Tracer;
+class StopReason;
 
 class ExitException {
   unsigned status;
@@ -35,6 +35,13 @@ public:
   ticks_t getTime() const { return time; }
 };
 
+class BreakpointException {
+  Thread &thread;
+public:
+  BreakpointException(Thread &t) : thread(t) {}
+  Thread &getThread() const { return thread; }
+};
+
 class SystemState {
   std::vector<Node*> nodes;
   RunnableQueue scheduler;
@@ -47,7 +54,6 @@ class SystemState {
   std::auto_ptr<DecodeCache> romDecodeCache;
 
   JIT jit;
-  SyscallHandler *syscallHandler;
   Tracer *tracer;
 
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
@@ -67,7 +73,7 @@ public:
 
   void setTimeout(ticks_t time);
 
-  int run();
+  StopReason run();
 
   /// Schedule a thread.
   void schedule(Thread &thread) {
@@ -127,7 +133,6 @@ public:
   }
 
   JIT &getJIT() { return jit; }
-  SyscallHandler &getSyscallHandler() { return *syscallHandler; }
   Tracer &getTracer() { return *tracer; }
 
   node_iterator node_begin() { return nodes.begin(); }
@@ -135,7 +140,7 @@ public:
   const_node_iterator node_begin() const { return nodes.begin(); }
   const_node_iterator node_end() const { return nodes.end(); }
 };
-  
+
 } // End axe namespace
 
 #endif // _SystemState_h_

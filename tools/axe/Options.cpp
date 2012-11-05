@@ -17,7 +17,7 @@ Options::Options() :
   file(0),
   tracing(false),
   maxCycles(0)
-{  
+{
 }
 
 static void printUsage(const char *ProgName) {

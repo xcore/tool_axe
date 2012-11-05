@@ -13,7 +13,6 @@
 #include "Exceptions.h"
 #include "Synchroniser.h"
 #include "InstructionMacrosCommon.h"
-#include "SyscallHandler.h"
 #include <cstdio>
 
 using namespace axe;

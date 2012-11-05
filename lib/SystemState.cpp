@@ -4,10 +4,10 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "SystemState.h"
-#include "SyscallHandler.h"
 #include "Node.h"
 #include "Core.h"
 #include "Trace.h"
+#include "StopReason.h"
 
 using namespace axe;
 using namespace Register;
@@ -15,7 +15,6 @@ using namespace Register;
 SystemState::SystemState(bool tracing) :
   currentRunnable(0),
   rom(0),
-  syscallHandler(new SyscallHandler),
   tracer(new Tracer(tracing)) {
   pendingEvent.set = false;
 }
@@ -27,7 +26,6 @@ SystemState::~SystemState()
   }
   delete[] rom;
   delete tracer;
-  delete syscallHandler;
 }
 
 void SystemState::finalize()
@@ -75,7 +73,7 @@ void SystemState::setTimeout(ticks_t time)
   scheduler.push(timeoutRunnable, time);
 }
 
-int SystemState::run()
+StopReason SystemState::run()
 {
   try {
     while (!scheduler.empty()) {
@@ -85,13 +83,15 @@ int SystemState::run()
       runnable.run(runnable.wakeUpTime);
     }
   } catch (ExitException &ee) {
-    return ee.getStatus();
+    return StopReason::getExit(ee.getStatus());
   } catch (TimeoutException &te) {
     tracer->timeout(*this, te.getTime());
-    return 1;
+    return StopReason::getTimeout();
+  } catch (BreakpointException &be) {
+    return StopReason::getBreakpoint(be.getThread());
   }
   tracer->noRunnableThreads(*this);
-  return 1;
+  return StopReason::getNoRunnableThreads();
 }
 
 void SystemState::
