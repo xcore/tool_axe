@@ -2777,11 +2777,7 @@ void add()
              "%exception(ET_ILLEGAL_PC, THREAD.pendingPc)");
   pseudoInst("ILLEGAL_INSTRUCTION", "",
              "%exception(ET_ILLEGAL_INSTRUCTION, 0)");
-  pseudoInst("BREAKPOINT", "",
-             "%write_pc_unchecked(%pc - 1)"
-             "THREAD.waiting() = true;\n"
-             "throw (BreakpointException(THREAD));")
-    .setDisableJit();
+  pseudoInst("BREAKPOINT", "", "").setCustom();
   pseudoInst("RUN_JIT", "", "").setCustom();
   pseudoInst("INTERPRET_ONE", "", "").setCustom();
   pseudoInst("DECODE", "", "").setCustom();

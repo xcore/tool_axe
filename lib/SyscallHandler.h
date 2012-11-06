@@ -7,12 +7,16 @@
 #define _SyscallHandler_h_
 
 #include "ScopedArray.h"
+#include <set>
 
 namespace axe {
+
+class Core;
 
 class SyscallHandler {
 private:
   const scoped_array<int> fds;
+  std::set<Core*> doneSyscallsSeen;
   unsigned doneSyscallsRequired;
   char *getString(Thread &thread, uint32_t address);
   const void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
@@ -27,12 +31,11 @@ private:
 public:
   enum SycallOutcome {
     CONTINUE,
-    DESCHEDULE,
     EXIT
   };
   SyscallHandler();
   
-  void setDoneSyscallsRequired(unsigned count) { doneSyscallsRequired = count; }
+  void setDoneSyscallsRequired(unsigned count);
   SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);
 };

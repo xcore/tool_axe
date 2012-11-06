@@ -236,6 +236,8 @@ public:
 
   void setPcFromAddress(uint32_t address);
   
+  uint32_t getRealPc() const;
+  
   uint32_t fromPc(uint32_t pc) const {
     return decodeCache.fromPc(pc);
   }
@@ -253,6 +255,7 @@ public:
   }
 
   void runJIT(uint32_t pc);
+  JITReturn interpretOne();
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
     const DecodeCache::executionFrequency_t threshold = 128;

@@ -16,6 +16,7 @@
 #include "Synchroniser.h"
 #include "Chanend.h"
 #include "ClockBlock.h"
+#include "InstructionOpcode.h"
 #include "InstructionProperties.h"
 #include <iostream>
 #include <cstdlib>
@@ -72,7 +73,7 @@ void Thread::dump() const
   for (unsigned i = 0; i < NUM_REGISTERS; i++) {
     std::cout << getRegisterName(i) << ": 0x" << regs[i] << "\n";
   }
-  std::cout << "pc: 0x" << fromPc(pc) << "\n";
+  std::cout << "pc: 0x" << getRealPc() << "\n";
   std::cout << std::dec;
 }
 
@@ -141,6 +142,14 @@ void Thread::setPcFromAddress(uint32_t address)
   assert(updateOk);
   (void)updateOk;
   pc = decodeCache.toPc(address);
+}
+
+uint32_t Thread::getRealPc() const
+{
+  if (pc == parent->getInterpretOneAddr() ||
+      pc == parent->getRunJitAddr())
+    return fromPc(pendingPc);
+  return fromPc(pc);
 }
 
 enum {
@@ -447,9 +456,22 @@ template<bool tracing> JITReturn Instruction_RUN_JIT(Thread &thread) {
   return JIT_RETURN_END_TRACE;
 }
 
-template<bool tracing> JITReturn Instruction_DECODE(Thread &thread);
+template<bool tracing> JITReturn Instruction_BREAKPOINT(Thread &thread) {
+  // Arrange for the current instruction to be interpreted so we don't hit the
+  // breakpoint again when continuing.
+  THREAD.pendingPc = THREAD.pc;
+  THREAD.pc = CORE.getInterpretOneAddr();
+  THREAD.waiting() = true;
+  THREAD.schedule();
+  throw (BreakpointException(THREAD));
+}
 
-template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread);
+template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
+  THREAD.pc = THREAD.pendingPc;
+  return THREAD.interpretOne();
+}
+
+template<bool tracing> JITReturn Instruction_DECODE(Thread &thread);
 
 static OPCODE_TYPE opcodeMap[] = {
 #define EMIT_INSTRUCTION_LIST
@@ -478,16 +500,6 @@ template<bool tracing> JITReturn Instruction_DECODE(Thread &thread) {
   return JIT_RETURN_END_TRACE;
 }
 
-template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
-  THREAD.pc = THREAD.pendingPc;
-  InstructionOpcode opc;
-  Operands ops;
-  uint32_t address = THREAD.fromPc(THREAD.pc);
-  instructionDecode(CORE, address, opc, ops);
-  instructionTransform(opc, ops, CORE, address);
-  return (*opcodeMap[opc])(thread);
-}
-
 #undef THREAD
 #undef CORE
 #undef ERROR
@@ -496,6 +508,20 @@ template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
 #undef TRACE
 #undef TRACE_REG_WRITE
 #undef TRACE_END
+
+JITReturn Thread::interpretOne()
+{
+  Operands &ops = decodeCache.operands[pc];
+  Operands oldOps = ops;
+  InstructionOpcode opc;
+  uint32_t address = fromPc(pc);
+  instructionDecode(*parent, address, opc, ops, true /*ignoreBreakpoints*/);
+  instructionTransform(opc, ops, *parent, address);
+  bool tracing = decodeCache.tracingEnabled;
+  JITReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
+  ops = oldOps;
+  return retval;
+}
 
 void Thread::run(ticks_t time)
 {

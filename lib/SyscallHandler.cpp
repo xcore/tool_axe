@@ -222,6 +222,10 @@ void SyscallHandler::doException(const Thread &thread)
   doException(thread, thread.regs[ET], thread.regs[ED]);
 }
 
+void SyscallHandler::setDoneSyscallsRequired(unsigned count) {
+  doneSyscallsRequired = count;
+}
+
 #define TRACE(...) \
 do { \
 Tracer &tracer = thread.getParent().getTracer(); \
@@ -241,11 +245,13 @@ doSyscall(Thread &thread, int &retval)
     return SyscallHandler::EXIT;
   case OSCALL_DONE:
     TRACE("done");
-    if (--doneSyscallsRequired == 0) {
+    if (doneSyscallsSeen.insert(&thread.getParent()).second &&
+        --doneSyscallsRequired == 0) {
+      doneSyscallsSeen.clear();
       retval = 0;
       return SyscallHandler::EXIT;
     }
-    return SyscallHandler::DESCHEDULE;
+    return SyscallHandler::CONTINUE;
   case OSCALL_EXCEPTION:
     doException(thread, thread.regs[R1], thread.regs[R2]);
     retval = 1;

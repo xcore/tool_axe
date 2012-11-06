@@ -252,27 +252,24 @@ int BootSequenceStepRun::executeAux(ExecutionState &state)
   while (stopReason.getType() == StopReason::BREAKPOINT) {
     Thread *thread = stopReason.getThread();
     Core &core = thread->getParent();
-    uint32_t address = thread->fromPc(thread->pc);
+    uint32_t address = thread->getRealPc();
     int retval;
     switch (BM.getBreakpointType(core, address)) {
-      case BreakpointType::Exception:
-        SH.doException(*thread);
-        return 1;
-      case BreakpointType::Syscall:
-        switch (SH.doSyscall(*thread, retval)) {
-          case SyscallHandler::EXIT:
-            return retval;
-          case SyscallHandler::DESCHEDULE:
-            break;
-          case SyscallHandler::CONTINUE:
-            thread->setPcFromAddress(thread->reg(Register::LR));
-            thread->schedule();
-            break;
-        }
+    case BreakpointType::Exception:
+      SH.doException(*thread);
+      return 1;
+    case BreakpointType::Syscall:
+      switch (SH.doSyscall(*thread, retval)) {
+      case SyscallHandler::EXIT:
+        return retval;
+      case SyscallHandler::CONTINUE:
+        thread->setPcFromAddress(thread->regs[Register::LR]);
         break;
-      case BreakpointType::Other:
-        assert(0 && "Unexpected breakpoint type");
-        break;
+      }
+      break;
+    case BreakpointType::Other:
+      assert(0 && "Unexpected breakpoint type");
+      break;
     }
     stopReason = sys.run();
   }
