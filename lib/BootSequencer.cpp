@@ -414,7 +414,7 @@ void BootSequencer::populateFromXE(XE &xe)
   std::set<Core*> callSectors;
   for (const XESector *sector : xe.getSectors()) {
     switch (sector->getType()) {
-      case XESector::XE_SECTOR_ELF:
+    case XESector::XE_SECTOR_ELF:
       {
         const XEElfSector *elfSector = static_cast<const XEElfSector*>(sector);
         unsigned jtagIndex = elfSector->getNode();
@@ -435,8 +435,8 @@ void BootSequencer::populateFromXE(XE &xe)
         }
         addElf(core, elfSector);
       }
-        break;
-      case XESector::XE_SECTOR_CALL:
+      break;
+    case XESector::XE_SECTOR_CALL:
       {
         const XECallOrGotoSector *callSector =
         static_cast<const XECallOrGotoSector*>(sector);
@@ -458,8 +458,8 @@ void BootSequencer::populateFromXE(XE &xe)
           callSectors.insert(core);
         }
       }
-        break;
-      case XESector::XE_SECTOR_GOTO:
+      break;
+    case XESector::XE_SECTOR_GOTO:
       {
         const XECallOrGotoSector *gotoSector =
         static_cast<const XECallOrGotoSector*>(sector);
@@ -481,7 +481,7 @@ void BootSequencer::populateFromXE(XE &xe)
           break;
         }
       }
-        break;
+      break;
     }
   }
   if (!gotoSectors.empty()) {
