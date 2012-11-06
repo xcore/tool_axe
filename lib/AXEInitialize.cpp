@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include "AXE.h"
+#include "AXEInitialize.h"
 #include "JIT.h"
 #include <libxml/parser.h>
 #include <libxslt/transform.h>

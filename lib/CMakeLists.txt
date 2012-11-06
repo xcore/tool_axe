@@ -19,8 +19,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(axe
   AccessSecondIterator.h
-  AXE.h
-  AXE.cpp
+  AXEInitialize.h
+  AXEInitialize.cpp
   BitManip.h
   BootSequencer.h
   BootSequencer.cpp

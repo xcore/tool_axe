@@ -3,8 +3,8 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#ifndef _AXE_h_
-#define _AXE_h_
+#ifndef _AXEInitialize_h_
+#define _AXEInitialize_h_
 
 namespace axe {
 
@@ -13,4 +13,4 @@ void AXECleanup();
   
 } // End namespace axe
 
-#endif // _AXE_h_
+#endif // _AXEInitialize_h_

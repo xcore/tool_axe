@@ -11,7 +11,7 @@
 #include <memory>
 #include <climits>
 
-#include "AXE.h"
+#include "AXEInitialize.h"
 #include "Trace.h"
 #include "Resource.h"
 #include "Core.h"
