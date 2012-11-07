@@ -6,6 +6,8 @@
 #ifndef _BitManip_h_
 #define _BitManip_h_
 
+#include <stdint.h>
+
 namespace axe {
 
 inline uint32_t extractBits(uint32_t value, unsigned shift, unsigned size)

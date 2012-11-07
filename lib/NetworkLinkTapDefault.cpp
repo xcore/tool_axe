@@ -7,7 +7,9 @@
 #include <iostream>
 #include <cstdlib>
 
-std::auto_ptr<NetworkLink> createNetworkLinkTap(const std::string &ifname)
+using namespace axe;
+
+std::auto_ptr<NetworkLink> axe::createNetworkLinkTap(const std::string &ifname)
 {
   std::cerr << "error: network TAP not supported on this platform\n";
   std::exit(1);
