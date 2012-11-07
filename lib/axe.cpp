@@ -71,9 +71,9 @@ AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum)
   return wrap(&unwrap(core)->getThread(threadNum));
 }
 
-unsigned axeReadReg(AXEThreadRef thread, unsigned regNum)
+int axeThreadIsInUse(AXEThreadRef thread)
 {
-  return unwrap(thread)->reg(regNum);
+  return unwrap(thread)->isInUse();
 }
 
 static bool convertRegNum(AXERegister axeReg, Register::Reg &reg) {
