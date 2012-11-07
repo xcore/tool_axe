@@ -72,6 +72,7 @@ public:
   }
 
   void setTimeout(ticks_t time);
+  void clearTimeout();
 
   StopReason run();
 

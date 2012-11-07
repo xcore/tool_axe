@@ -180,7 +180,6 @@ int BootSequenceStepElf::execute(ExecutionState &state)
       std::cerr << "No ELF program headers" << std::endl;
       std::exit(1);
     }
-    core->resetCaches();
     for (unsigned i = 0; i < num_phdrs; i++) {
       GElf_Phdr phdr;
       if (gelf_getphdr(e, i, &phdr) == NULL) {

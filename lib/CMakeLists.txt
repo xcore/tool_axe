@@ -14,11 +14,14 @@ list(APPEND
 endif()
 
 include_directories(${AXE_SOURCE_DIR}/thirdparty/boost)
+include_directories(${AXE_SOURCE_DIR}/include)
 # make sure cmake addes the current binary to the include path
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(axe
   AccessSecondIterator.h
+  ${AXE_SOURCE_DIR}/include/axe-c/axe.h
+  axe.cpp
   AXEInitialize.h
   AXEInitialize.cpp
   BitManip.h

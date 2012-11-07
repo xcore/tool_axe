@@ -200,9 +200,36 @@ Resource *Core::allocResource(Thread &current, ResourceType type)
   return 0;
 }
 
-void Core::writeMemory(uint32_t address, void *src, size_t size)
+bool Core::readMemory(uint32_t address, void *dst, size_t size)
 {
+  if (size == 0)
+    return true;
+  uint32_t ramEnd = getRamBase() + getRamSize();
+  if (address < getRamBase() || address + size >= ramEnd)
+    return false;
+  std::memcpy(dst, &memOffset()[address], size);
+  return true;
+}
+
+bool Core::writeMemory(uint32_t address, const void *src, size_t size)
+{
+  if (size == 0)
+    return true;
+  uint32_t ramEnd = getRamBase() + getRamSize();
+  if (address < getRamBase() || address + size >= ramEnd)
+    return false;
   std::memcpy(&memOffset()[address], src, size);
+  uint32_t endAddress = address + size;
+  for (; address % 4 && address < endAddress; ++address) {
+    invalidateByte(address);
+  }
+  for (; address + 3 < endAddress; address += 4) {
+    invalidateWord(address);
+  }
+  for (; address < endAddress; ++address) {
+    invalidateByte(address);
+  }
+  return true;
 }
 
 const Port *Core::getPortByID(ResourceID ID) const

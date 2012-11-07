@@ -78,6 +78,7 @@ private:
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
   void invalidateSlowPath(uint32_t shiftedAddress);
+  void resetCaches();
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
   std::set<uint32_t> breakpoints;
@@ -102,8 +103,6 @@ public:
   bool setBreakpoint(uint32_t value);
   void unsetBreakpoint(uint32_t value);
   bool isBreakpointAddress(uint32_t value) { return breakpoints.count(value); }
-
-  void resetCaches();
 
   // TODO should take address in order to handle ROM.
   void runJIT(uint32_t jitPc);
@@ -283,8 +282,9 @@ public:
   {
     memOffset()[address] = value;
   }
-
-  void writeMemory(uint32_t address, void *src, size_t size);
+  
+  bool readMemory(uint32_t address, void *dst, size_t size);
+  bool writeMemory(uint32_t address, const void *src, size_t size);
 
   Resource *allocResource(Thread &current, ResourceType type);
 

@@ -73,6 +73,13 @@ void SystemState::setTimeout(ticks_t time)
   scheduler.push(timeoutRunnable, time);
 }
 
+void SystemState::clearTimeout()
+{
+  // TODO do this in a less hacky way
+  scheduler.push(timeoutRunnable, 0);
+  scheduler.remove(timeoutRunnable);
+}
+
 StopReason SystemState::run()
 {
   try {
