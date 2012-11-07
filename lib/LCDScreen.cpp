@@ -254,7 +254,7 @@ void LCDScreen::run(ticks_t time)
     seeSamplingEdge(time);
     if (time - lastPollForEvents >= minUpdateTicks) {
       if (screen.pollForEvents()) {
-        throw ExitException(0);
+        throw ExitException(time, 0);
       }
       lastPollForEvents = time;
     }

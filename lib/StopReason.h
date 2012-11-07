@@ -7,6 +7,7 @@
 #define _StopReason_h_
 
 #include <cassert>
+#include "Config.h"
 
 namespace axe {
 
@@ -22,13 +23,15 @@ public:
   };
 private:
   Type type;
+  ticks_t time;
   union {
     Thread *thread;
     int status;
   };
-  StopReason(Type t) : type(t) {}
+  StopReason(Type ty, ticks_t t) : type(ty), time(t) {}
 public:
   Type getType() const { return type; }
+  ticks_t getTime() const { return time; }
   Thread *getThread() const {
     assert(type == BREAKPOINT);
     return thread;
@@ -38,10 +41,10 @@ public:
     return status;
   }
 
-  static StopReason getTimeout();
-  static StopReason getBreakpoint(Thread &thread);
-  static StopReason getExit(int status);
-  static StopReason getNoRunnableThreads();
+  static StopReason getTimeout(ticks_t time);
+  static StopReason getBreakpoint(ticks_t time, Thread &thread);
+  static StopReason getExit(ticks_t time, int status);
+  static StopReason getNoRunnableThreads(ticks_t time);
 };
 
 } // End axe namespace

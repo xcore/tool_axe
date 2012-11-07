@@ -129,6 +129,8 @@ add_library(axe
   SyscallHandler.cpp
   SystemState.h
   SystemState.cpp
+  SystemStateWrapper.h
+  SystemStateWrapper.cpp
   TerminalColours.h
   TerminalColours.cpp
   Thread.h

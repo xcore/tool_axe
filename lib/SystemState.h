@@ -21,24 +21,32 @@ class DecodeCache;
 class Tracer;
 class StopReason;
 
-class ExitException {
-  unsigned status;
-public:
-  ExitException(unsigned s) : status(s) {}
-  unsigned getStatus() const { return status; }
-};
-
-class TimeoutException {
+class StopException {
   ticks_t time;
+protected:
+  StopException(ticks_t t) : time(t) {}
 public:
-  TimeoutException(ticks_t t) : time(t) {}
   ticks_t getTime() const { return time; }
 };
 
-class BreakpointException {
+class ExitException : public StopException {
+  unsigned status;
+public:
+  ExitException(ticks_t time, unsigned s) :
+    StopException(time), status(s) {}
+  unsigned getStatus() const { return status; }
+};
+
+class TimeoutException : public StopException {
+public:
+  TimeoutException(ticks_t time) : StopException(time) {}
+};
+
+class BreakpointException : public StopException {
   Thread &thread;
 public:
-  BreakpointException(Thread &t) : thread(t) {}
+  BreakpointException(ticks_t time, Thread &t) :
+    StopException(time), thread(t) {}
   Thread &getThread() const { return thread; }
 };
 

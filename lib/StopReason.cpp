@@ -7,26 +7,26 @@
 
 using namespace axe;
 
-StopReason StopReason::getTimeout()
+StopReason StopReason::getTimeout(ticks_t time)
 {
-  return StopReason(TIMEOUT);
+  return StopReason(TIMEOUT, time);
 }
 
-StopReason StopReason::getNoRunnableThreads()
+StopReason StopReason::getNoRunnableThreads(ticks_t time)
 {
-  return StopReason(NO_RUNNABLE_THREADS);
+  return StopReason(NO_RUNNABLE_THREADS, time);
 }
 
-StopReason StopReason::getBreakpoint(Thread &thread)
+StopReason StopReason::getBreakpoint(ticks_t time, Thread &thread)
 {
-  StopReason retval(BREAKPOINT);
+  StopReason retval(BREAKPOINT, time);
   retval.thread = &thread;
   return retval;
 }
 
-StopReason StopReason::getExit(int status)
+StopReason StopReason::getExit(ticks_t time, int status)
 {
-  StopReason retval(EXIT);
+  StopReason retval(EXIT, time);
   retval.status = status;
   return retval;
 }

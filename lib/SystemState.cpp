@@ -90,15 +90,20 @@ StopReason SystemState::run()
       runnable.run(runnable.wakeUpTime);
     }
   } catch (ExitException &ee) {
-    return StopReason::getExit(ee.getStatus());
+    return StopReason::getExit(ee.getTime(), ee.getStatus());
   } catch (TimeoutException &te) {
     tracer->timeout(*this, te.getTime());
-    return StopReason::getTimeout();
+    if (scheduler.empty()) {
+      tracer->noRunnableThreads(*this);
+      return StopReason::getNoRunnableThreads(te.getTime());
+    }
+    return StopReason::getTimeout(te.getTime());
   } catch (BreakpointException &be) {
-    return StopReason::getBreakpoint(be.getThread());
+    return StopReason::getBreakpoint(be.getTime(), be.getThread());
   }
   tracer->noRunnableThreads(*this);
-  return StopReason::getNoRunnableThreads();
+  // TODO use a sensible time here.
+  return StopReason::getNoRunnableThreads(0);
 }
 
 void SystemState::

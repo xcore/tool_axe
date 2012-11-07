@@ -463,7 +463,7 @@ template<bool tracing> JITReturn Instruction_BREAKPOINT(Thread &thread) {
   THREAD.pc = CORE.getInterpretOneAddr();
   THREAD.waiting() = true;
   THREAD.schedule();
-  throw (BreakpointException(THREAD));
+  throw (BreakpointException(TIME, THREAD));
 }
 
 template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {

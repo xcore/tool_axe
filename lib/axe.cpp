@@ -7,6 +7,7 @@
 #include "XE.h"
 #include "XEReader.h"
 #include "SystemState.h"
+#include "SystemStateWrapper.h"
 #include "Node.h"
 #include "Core.h"
 #include "Thread.h"
@@ -19,7 +20,9 @@ AXESystemRef axeCreateInstance(const char *xeFileName)
 {
   XE xe(xeFileName);
   XEReader xeReader(xe);
-  return wrap(xeReader.readConfig(false).release());
+  SystemStateWrapper *sysWrapper =
+    new SystemStateWrapper(xeReader.readConfig(false));
+  return wrap(sysWrapper);
 }
 
 void axeDeleteInstance(AXESystemRef system)
@@ -29,7 +32,7 @@ void axeDeleteInstance(AXESystemRef system)
 
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
-  SystemState *sys = unwrap(system);
+  SystemState *sys = unwrap(system)->getSystemState();
   for (auto it = sys->node_begin(), e = sys->node_end(); it != e; ++it) {
     Node *node = *it;
     if (node->getJtagIndex() != jtagIndex)
@@ -168,12 +171,11 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles)
 {
-  if (maxCycles == 0) {
-    unwrap(system)->clearTimeout();
-  } else {
-    // TODO
-    assert(0);
-  }
-  StopReason reason = unwrap(system)->run();
-  return convertStopReasonType(reason.getType());
+  StopReason::Type reason = unwrap(system)->run(maxCycles);
+  return convertStopReasonType(reason);
+}
+
+AXEThreadRef axeGetThreadForLastBreakpoint(AXESystemRef system)
+{
+  return wrap(unwrap(system)->getThreadForLastBreakpoint());
 }

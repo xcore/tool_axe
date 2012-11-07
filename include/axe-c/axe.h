@@ -65,12 +65,14 @@ unsigned axeReadReg(AXEThreadRef thread, AXERegister reg);
 int axeWriteReg(AXEThreadRef thread, AXERegister reg, unsigned value);
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles);
+AXEThreadRef axeGetThreadForLastBreakpoint(AXESystemRef system);
+
 #ifdef __cplusplus
 }
 
 namespace axe {
 
-class SystemState;
+class SystemStateWrapper;
 class Core;
 class Thread;
 
@@ -82,7 +84,7 @@ inline ref wrap(const type *p) { \
   return reinterpret_cast<ref>(const_cast<type*>(p)); \
 }
   
-DEFINE_WRAP_UNWRAP_FUNCTIONS(SystemState, AXESystemRef)
+DEFINE_WRAP_UNWRAP_FUNCTIONS(SystemStateWrapper, AXESystemRef)
 DEFINE_WRAP_UNWRAP_FUNCTIONS(Core, AXECoreRef)
 DEFINE_WRAP_UNWRAP_FUNCTIONS(Thread, AXEThreadRef)
 
