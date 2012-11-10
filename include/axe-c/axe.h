@@ -64,6 +64,7 @@ AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
 unsigned axeReadReg(AXEThreadRef thread, AXERegister reg);
 int axeWriteReg(AXEThreadRef thread, AXERegister reg, unsigned value);
+void axeScheduleThread(AXEThreadRef thread);
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles);
 AXEThreadRef axeGetThreadForLastBreakpoint(AXESystemRef system);
