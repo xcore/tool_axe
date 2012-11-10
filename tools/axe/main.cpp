@@ -10,6 +10,9 @@
 #include <cassert>
 #include <memory>
 #include <climits>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include "AXEInitialize.h"
 #include "Trace.h"
