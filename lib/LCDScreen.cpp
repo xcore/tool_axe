@@ -262,7 +262,7 @@ void LCDScreen::run(ticks_t time)
     break;
   case SCHEDULE_POLL_FOR_EVENTS:
     if (screen.pollForEvents()) {
-      throw ExitException(0);
+      throw ExitException(time, 0);
     }
     schedulePollForEvents(time + minUpdateTicks);
     lastPollForEvents = time;
