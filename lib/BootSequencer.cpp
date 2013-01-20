@@ -19,7 +19,8 @@
 
 using namespace axe;
 
-const unsigned XCORE_ELF_MACHINE = 0xB49E;
+const unsigned XCORE_ELF_MACHINE_OLD = 0xB49E;
+const unsigned XCORE_ELF_MACHINE = 0xCB;
 
 static void readSymbols(Elf *e, Elf_Scn *scn, const GElf_Shdr &shdr,
                         unsigned low, unsigned high,
@@ -159,7 +160,8 @@ int BootSequenceStepElf::execute(ExecutionState &state)
     std::cerr << "Reading ELF header failed: " << elf_errmsg(-1) << std::endl;
     std::exit(1);
   }
-  if (ehdr.e_machine != XCORE_ELF_MACHINE) {
+  if (ehdr.e_machine != XCORE_ELF_MACHINE &&
+      ehdr.e_machine != XCORE_ELF_MACHINE_OLD) {
     std::cerr << "Not a XCore ELF" << std::endl;
     std::exit(1);
   }
