@@ -17,8 +17,6 @@ LLVMExtraCreateMemoryBufferWithPtr(const unsigned char *ptr, size_t length);
 
 LLVMBool LLVMExtraInlineFunction(LLVMValueRef call);
 
-void LLVMExtraAddDeadCodeEliminationPass(LLVMPassManagerRef PM);
-
 void LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
                                       const char *triple);
 

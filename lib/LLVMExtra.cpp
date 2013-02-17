@@ -29,10 +29,6 @@ LLVMBool LLVMExtraInlineFunction(LLVMValueRef call)
   return InlineFunction(CallSite(unwrap(call)), IFI);
 }
 
-void LLVMExtraAddDeadCodeEliminationPass(LLVMPassManagerRef PM) {
-  unwrap(PM)->add(createDeadCodeEliminationPass());
-}
-
 #if 0
 class JitDisassembler : public JITEventListener {
   LLVMDisasmContextRef DC;
