@@ -191,6 +191,7 @@ void JITImpl::init()
   functions.init(module);
   FPM = LLVMCreateFunctionPassManagerForModule(module);
   LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
+  LLVMAddTypeBasedAliasAnalysisPass(FPM);
   LLVMAddBasicAliasAnalysisPass(FPM);
   LLVMAddJumpThreadingPass(FPM);
   LLVMAddGVNPass(FPM);
