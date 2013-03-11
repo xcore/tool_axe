@@ -14,7 +14,6 @@ using namespace Register;
 const char *Resource::getResourceName(ResourceType type)
 {
   switch (type) {
-  default: return "unknown resource";
   case RES_TYPE_PORT: return "port";
   case RES_TYPE_TIMER: return "timer";
   case RES_TYPE_CHANEND: return "channel end";

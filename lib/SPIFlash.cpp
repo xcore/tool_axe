@@ -110,7 +110,6 @@ void SPIFlash::seeSCLKChange(const Signal &value, ticks_t time)
     receiveReg = (receiveReg << 1) | MOSITracker.getSignal().getValue(time);
     if (++receivedBits == 8) {
       switch (state) {
-      default: assert(0 && "Unexpected state");
       case WAIT_FOR_CMD:
         if (receiveReg == 0x3)
           state = WAIT_FOR_ADDRESS;
