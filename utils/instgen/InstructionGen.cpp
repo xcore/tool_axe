@@ -155,7 +155,6 @@ private:
   bool canEvent:1;
   bool unimplemented:1;
   bool custom:1;
-  bool mayBranch:1;
   bool mayLoad:1;
   bool mayStore:1;
   bool writesPc:1;
@@ -183,7 +182,6 @@ public:
     canEvent(false),
     unimplemented(false),
     custom(false),
-    mayBranch(false),
     mayLoad(false),
     mayStore(false),
     writesPc(false),
