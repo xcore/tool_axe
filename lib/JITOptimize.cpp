@@ -35,7 +35,7 @@ public:
 
   MemoryAccess &addRegisterOffset(unsigned s, Register::Reg r) {
     assert(scale == 0);
-    scale = scale;
+    (void)scale;
     offsetReg = r;
     // Canonicalise.
     if (scale == 1 && offsetReg < baseReg)
