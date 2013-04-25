@@ -30,6 +30,7 @@
 #include "PortAliases.h"
 #include "PortConnectionManager.h"
 #include "XEReader.h"
+#include "Property.h"
 
 // SDL must be included before main so that SDL can substitute main() with
 // SDL_main() if required.
@@ -133,7 +134,7 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
-typedef std::vector<std::pair<PeripheralDescriptor*, Properties> >
+typedef std::vector<std::pair<PeripheralDescriptor*, Properties*> >
   PeripheralDescriptorWithPropertiesVector;
 
 int
@@ -160,10 +161,10 @@ loop(const Options &options)
     options.peripherals;
   for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
        e = peripherals.end(); it != e; ++it) {
-    if (!checkPeripheralPorts(connectionManager, it->first, it->second)) {
+    if (!checkPeripheralPorts(connectionManager, it->first, *it->second)) {
       std::exit(1);
     }
-    it->first->createInstance(sys, connectionManager, it->second);
+    it->first->createInstance(sys, connectionManager, *it->second);
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;

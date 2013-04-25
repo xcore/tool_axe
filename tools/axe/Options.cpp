@@ -5,6 +5,7 @@
 
 #include "Options.h"
 #include "PeripheralRegistry.h"
+#include "Property.h"
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
@@ -18,6 +19,14 @@ Options::Options() :
   tracing(false),
   maxCycles(0)
 {
+}
+
+Options::~Options()
+{
+  for (const auto &entry : peripherals) {
+    delete entry.first;
+    delete entry.second;
+  }
 }
 
 static void printUsage(const char *ProgName) {
@@ -214,11 +223,11 @@ void Options::parse(int argc, char **argv)
       printUsage(argv[0]);
       std::exit(0);
     } else if (PeripheralDescriptor *pd = parsePeripheralOption(arg)) {
-      peripherals.push_back(std::make_pair(pd, Properties()));
+      peripherals.push_back(std::make_pair(pd, new Properties()));
       if (i + 1 < argc && argv[i + 1][0] != '-') {
-        parseProperties(argv[++i], pd, peripherals.back().second);
+        parseProperties(argv[++i], pd, *peripherals.back().second);
       }
-      checkRequiredProperties(pd, peripherals.back().second);
+      checkRequiredProperties(pd, *peripherals.back().second);
     } else {
       if (file) {
         printUsage(argv[0]);

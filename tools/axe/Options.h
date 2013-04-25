@@ -8,13 +8,13 @@
 
 #include "Config.h"
 #include "PortArg.h"
-#include "Property.h"
 #include <vector>
 #include <string>
 
 namespace axe {
 
 class PeripheralDescriptor;
+class Properties;
 
 typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
 
@@ -25,7 +25,7 @@ struct Options {
   };
   BootMode bootMode;
   LoopbackPorts loopbackPorts;
-  std::vector<std::pair<PeripheralDescriptor*, Properties> > peripherals;
+  std::vector<std::pair<PeripheralDescriptor*, Properties*> > peripherals;
   const char *file;
   std::string rom;
   std::string vcdFile;
@@ -33,6 +33,8 @@ struct Options {
   ticks_t maxCycles;
 
   Options();
+  ~Options();
+  Options(const Options &) = delete;
   void parse(int argc, char **argv);
 };
   

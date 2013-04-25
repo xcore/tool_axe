@@ -43,6 +43,8 @@ class Properties {
   std::map<std::string,Property*> properties;
 public:
   ~Properties();
+  Properties() = default;
+  Properties(const Properties &other) = delete;
   void setIntegerProperty(const PropertyDescriptor *d, int32_t value) {
     properties.insert(std::make_pair(d->getName(),
                                      new IntegerProperty(d, value)));
