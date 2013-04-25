@@ -22,6 +22,7 @@ class PortSplitter {
   std::map<std::pair<unsigned,unsigned>,PortSplitterSlice*> slices;
 public:
   PortSplitter(RunnableQueue &s, PortInterface *p);
+  PortSplitter(const PortSplitter &) = delete;
   ~PortSplitter();
   PortInterface *getInterface(unsigned beginOffset, unsigned endOffset);
   void seePinsValueChange(uint32_t value, ticks_t time, unsigned shift,

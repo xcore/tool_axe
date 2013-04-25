@@ -18,6 +18,7 @@ class JIT {
   JITImpl *pImpl;
 public:
   JIT();
+  JIT(const JIT &) = delete;
   ~JIT();
   /// Preallocate global state for the JIT. Normally this state is initialized
   /// when the JIT is first used but in a multi-threaded applications it should

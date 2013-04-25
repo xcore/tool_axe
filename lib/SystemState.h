@@ -70,6 +70,7 @@ public:
   typedef std::vector<Node*>::iterator node_iterator;
   typedef std::vector<Node*>::const_iterator const_node_iterator;
   SystemState(bool tracing);
+  SystemState(const SystemState &) = delete;
   ~SystemState();
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }

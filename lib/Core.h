@@ -86,6 +86,7 @@ public:
   uint32_t vector_base;
 
   Core(uint32_t RamSize, uint32_t RamBase, bool tracing);
+  Core(const Core &) = delete;
   ~Core();
 
   void setRamBaseMultiple(unsigned multiple);

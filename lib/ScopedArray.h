@@ -14,10 +14,10 @@ template<class T> class scoped_array
 {
 private:
   T *ptr;
-  scoped_array(scoped_array const &);
-  scoped_array &operator=(scoped_array const &);
 public:
   scoped_array(T *p) : ptr(p) {}
+  scoped_array(const scoped_array &) = delete;
+  scoped_array &operator=(const scoped_array &) = delete;
 
   ~scoped_array() {
     delete[] ptr;

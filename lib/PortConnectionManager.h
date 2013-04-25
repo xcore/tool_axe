@@ -50,6 +50,7 @@ class PortConnectionManager {
                               unsigned endOffset);
 public:
   PortConnectionManager(SystemState &sys, PortAliases &aliases);
+  PortConnectionManager(const PortConnectionManager &) = delete;
   ~PortConnectionManager();
   PortConnectionWrapper get(const PortArg &arg);
   PortConnectionWrapper get(const Properties &properties,

@@ -71,6 +71,7 @@ public:
   typedef std::vector<Core *>::iterator core_iterator;
   typedef std::vector<Core *>::const_iterator const_core_iterator;
   Node(Type t, unsigned numXLinks);
+  Node(const Node &) = delete;
   ~Node();
   unsigned getNodeNumberBits() const;
   void finalize();

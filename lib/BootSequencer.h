@@ -29,6 +29,7 @@ class BootSequencer {
   void setLoadImages(bool value);
 public:
   BootSequencer(SystemState &s);
+  BootSequencer(const BootSequencer &) = delete;
   ~BootSequencer();
   void addElf(Core *c, const XEElfSector *elfSector);
   void addSchedule(Core *c, uint32_t address);

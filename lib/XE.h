@@ -88,6 +88,7 @@ private:
   friend class XECallOrGotoSector;
 public:
   XE(const std::string &fname);
+  XE(const XE &) = delete;
   ~XE();
   const std::string &getFileName() const { return filename; }
   const std::vector<const XESector *> &getSectors() { return sectors; }

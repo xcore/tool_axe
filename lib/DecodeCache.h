@@ -91,6 +91,7 @@ private:
   void initCache();
 public:
   DecodeCache(uint32_t size, uint32_t base, bool writable, bool tracingEnabled);
+  DecodeCache(const DecodeCache &) = delete;
   ~DecodeCache();
   State &getState() { return state; }
   const State &getState() const { return state; }
