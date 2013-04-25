@@ -28,7 +28,7 @@ class CoreSymbolInfo {
 friend class CoreSymbolInfoBuilder;
 private:
   std::vector<ElfSymbol> symbols;
-  typedef std::map<uint32_t, ElfSymbol*, std::greater<uint32_t> >
+  typedef std::map<uint32_t, ElfSymbol*, std::greater<uint32_t>>
     SymbolAddressMap;
   SymbolAddressMap functionSymbols;
   SymbolAddressMap dataSymbols;

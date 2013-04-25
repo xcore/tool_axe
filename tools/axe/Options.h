@@ -16,7 +16,7 @@ namespace axe {
 class PeripheralDescriptor;
 class Properties;
 
-typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
+typedef std::vector<std::pair<PortArg, PortArg>> LoopbackPorts;
 
 struct Options {
   enum BootMode {
@@ -25,7 +25,7 @@ struct Options {
   };
   BootMode bootMode;
   LoopbackPorts loopbackPorts;
-  std::vector<std::pair<PeripheralDescriptor*, Properties*> > peripherals;
+  std::vector<std::pair<PeripheralDescriptor*, Properties*>> peripherals;
   const char *file;
   std::string rom;
   std::string vcdFile;

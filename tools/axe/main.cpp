@@ -40,7 +40,7 @@
 
 using namespace axe;
 
-typedef std::vector<std::pair<PortArg, PortArg> > LoopbackPorts;
+typedef std::vector<std::pair<PortArg, PortArg>> LoopbackPorts;
 
 static bool
 connectLoopbackPorts(PortConnectionManager &connectionManager,
@@ -134,7 +134,7 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
-typedef std::vector<std::pair<PeripheralDescriptor*, Properties*> >
+typedef std::vector<std::pair<PeripheralDescriptor*, Properties*>>
   PeripheralDescriptorWithPropertiesVector;
 
 int

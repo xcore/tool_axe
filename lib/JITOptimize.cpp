@@ -207,7 +207,7 @@ update(InstructionOpcode opc, const Operands &ops, unsigned nextOffset)
 void axe::
 placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                   std::vector<Operands> &operands,
-                  std::queue<std::pair<uint32_t,MemoryCheck*> > &checks)
+                  std::queue<std::pair<uint32_t,MemoryCheck*>> &checks)
 {
   MemoryCheckState state;
 

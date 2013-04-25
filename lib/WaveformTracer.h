@@ -50,7 +50,7 @@ class WaveformTracer {
   std::priority_queue<Event> queue;
   std::fstream out;
   std::vector<WaveformTracerPort> ports;
-  typedef std::map<std::string, std::vector<unsigned> > ModuleMap;
+  typedef std::map<std::string, std::vector<unsigned>> ModuleMap;
   ModuleMap modules;
   bool portsFinalized;
   uint32_t currentTime;

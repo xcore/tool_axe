@@ -12,7 +12,7 @@
 namespace axe {
 
 class PortAliases {
-  std::map<std::string, std::pair<std::string,std::string> > aliases;
+  std::map<std::string, std::pair<std::string,std::string>> aliases;
 public:
   void add(const std::string &name, const std::string &core,
            const std::string &port) {
