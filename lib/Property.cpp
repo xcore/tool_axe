@@ -22,8 +22,7 @@ const PortArg &Property::getAsPort() const {
 
 Properties::~Properties()
 {
-  for (std::map<std::string,Property*>::iterator it = properties.begin(),
-       e = properties.end(); it != e; ++it) {
-    delete it->second;
+  for (const auto &entry : properties) {
+    delete entry.second;
   }
 }
