@@ -107,7 +107,7 @@ This is implemented as follows:
 
 - When generating code for a block the function is compiled using LLVM's
   fastcc calling convention to guarantee efficient tail calls. For each block
-  we also generate a trapoline function that uses the standard C calling
+  we also generate a trampoline function that uses the standard C calling
   convention and calls the function for the block. This trampoline allows the
   block function to be called from the dispatch loop.
 - When a block is compiled if a successor of block has already been compiled
