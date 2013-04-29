@@ -36,7 +36,7 @@ simulate past the end of its timeslice in the following cases:
 - A thread does not need to yield after every instruction even though another
   thread might affect it by writing a register with tsetr or by killing it
   with freer.
-- A thread does not need to yield before do a memory operation even if
+- A thread does not need to yield before a memory operation even if
   another thread may read or write to that memory location.
 
 Although this could cause the behaviour of an application to change due to
