@@ -220,7 +220,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
 
 if (COMPILER_IS_GCC_COMPATIBLE)
   set_source_files_properties(LLVMExtra.cpp PROPERTIES
-                              COMPILE_FLAGS "-fno-rtti")
+                              COMPILE_FLAGS "-fno-rtti -std=c++98")
 endif()
 
 target_link_libraries(
