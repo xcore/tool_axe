@@ -12,8 +12,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-LLVMMemoryBufferRef
-LLVMExtraCreateMemoryBufferWithPtr(const unsigned char *ptr, size_t length);
 
 LLVMBool LLVMExtraInlineFunction(LLVMValueRef call);
 

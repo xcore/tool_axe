@@ -170,9 +170,9 @@ void JITImpl::init()
     return;
   JIT::initializeGlobalState();
   context = LLVMContextCreate();
-  LLVMMemoryBufferRef memBuffer =
-    LLVMExtraCreateMemoryBufferWithPtr(instructionBitcode,
-                                       instructionBitcodeSize);
+  LLVMMemoryBufferRef memBuffer = LLVMCreateMemoryBufferWithMemoryRange(
+    reinterpret_cast<const char*>(instructionBitcode), instructionBitcodeSize,
+    "", 0);
   char *outMessage;
   if (LLVMParseBitcodeInContext(context, memBuffer, &module, &outMessage)) {
     std::cerr << "Error loading bitcode: " << outMessage << '\n';
