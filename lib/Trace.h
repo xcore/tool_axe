@@ -136,6 +136,7 @@ private:
     printOperand(op0);
     traceAux(args...);
   }
+  void syscallBegin(const Thread &t);
 public:
   Tracer(bool tracing) :
     tracingEnabled(tracing),
@@ -173,8 +174,6 @@ public:
 
   void interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
                  uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed);
-
-  void syscallBegin(const Thread &t);
 
   void syscall(const Thread &t, const std::string &s) {
     syscallBegin(t);
