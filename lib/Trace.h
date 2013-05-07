@@ -188,9 +188,6 @@ public:
     *line.buf << s << '(' << op0 << ')';
     reset();
   }
-  void syscallEnd() {
-    printCommonEnd();
-  }
   void timeout(const SystemState &system, ticks_t time);
   void noRunnableThreads(const SystemState &system);
 };
