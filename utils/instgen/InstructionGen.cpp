@@ -1410,7 +1410,7 @@ static void emitInstProperties(Instruction &inst)
 {
   unsigned numOps = getNumOperandsIgnoreSpecial(inst);
   unsigned numImplicit = getNumImplicitOperandsIgnoreSpecial(inst);
-  std::cout << "{ ";
+  std::cout << "  { ";
   if (inst.getCustom() || inst.getDisableJit())
     std::cout << '0';
   else
