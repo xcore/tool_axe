@@ -25,8 +25,9 @@ struct Operands {
   };
 };
 
-void instructionDecode(Core &core, uint32_t addr, InstructionOpcode &opcode,
-                       Operands &operands, bool ignoreBreakpoints = false);
+void instructionDecode(const Core &core, uint32_t addr,
+                       InstructionOpcode &opcode, Operands &operands,
+                       bool ignoreBreakpoints = false);
 
 void
 instructionDecode(uint16_t low, uint16_t high, bool highValid,

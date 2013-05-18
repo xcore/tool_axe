@@ -103,7 +103,9 @@ public:
 
   bool setBreakpoint(uint32_t value);
   void unsetBreakpoint(uint32_t value);
-  bool isBreakpointAddress(uint32_t value) { return breakpoints.count(value); }
+  bool isBreakpointAddress(uint32_t value) const {
+    return breakpoints.count(value);
+  }
 
   // TODO should take address in order to handle ROM.
   void runJIT(uint32_t jitPc);

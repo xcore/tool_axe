@@ -343,8 +343,9 @@ static unsigned bitpValue(unsigned Value)
 }
 
 void axe::
-instructionDecode(Core &core, uint32_t address, InstructionOpcode &opcode,
-                  Operands &operands, bool ignoreBreakpoints)
+instructionDecode(const Core &core, uint32_t address,
+                  InstructionOpcode &opcode, Operands &operands,
+                  bool ignoreBreakpoints)
 {
   assert((address & 1) == 0 && core.isValidAddress(address));
   if (!ignoreBreakpoints && core.isBreakpointAddress(address)) {
