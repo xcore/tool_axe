@@ -9,6 +9,10 @@
 #include "Core.h"
 #include "Resource.h"
 #include "Exceptions.h"
+#include "Instruction.h"
+#include "InstructionProperties.h"
+#include "InstructionTraceInfo.h"
+#include "InstructionOpcode.h"
 #include <iomanip>
 #include <sstream>
 #include <cstring>
@@ -115,6 +119,26 @@ void Tracer::printThreadPC()
   }
 }
 
+static uint32_t getOperand(const InstructionProperties &properties,
+                           const Operands &operands, unsigned i)
+{
+  if (properties.getNumExplicitOperands() > 3) {
+    return operands.lops[i];
+  }
+  return operands.ops[i];
+}
+
+Register::Reg
+getOperandRegister(const InstructionProperties &properties,
+                   const Operands &ops, unsigned i)
+{
+  if (i >= properties.getNumExplicitOperands())
+    return properties.getImplicitOperand(i - properties.getNumExplicitOperands());
+  if (properties.getNumExplicitOperands() > 3)
+    return static_cast<Register::Reg>(ops.lops[i]);
+  return static_cast<Register::Reg>(ops.ops[i]);
+}
+
 void Tracer::printInstructionStart(const Thread &t)
 {
   printCommonStart(t);
@@ -127,31 +151,110 @@ void Tracer::printInstructionStart(const Thread &t)
   if (pos < mnemonicColumn) {
     *line.buf << std::setw(mnemonicColumn - pos) << "";
   }
+
+  // Disassemble instruction.
+  InstructionOpcode opcode;
+  Operands ops;
+  instructionDecode(t.getParent(), t.getRealPc(), opcode, ops, true);
+  const InstructionProperties &properties =
+    instructionProperties[opcode];
+
+  // Special cases.
+  // TODO remove this by describing tsetmr as taking an immediate?
+  if (opcode == InstructionOpcode::TSETMR_2r) {
+    *line.buf << "tsetmr ";
+    printDestRegister(getOperandRegister(properties, ops, 0));
+    *line.buf << ", ";
+    printSrcRegister(getOperandRegister(properties, ops, 1));
+    return;
+  }
+  if (opcode == InstructionOpcode::ADD_2rus &&
+      getOperand(properties, ops, 2) == 0) {
+    *line.buf << "mov ";
+    printDestRegister(getOperandRegister(properties, ops, 0));
+    *line.buf << ", ";
+    printSrcRegister(getOperandRegister(properties, ops, 1));
+    return;
+  }
+
+  const char *fmt = instructionTraceInfo[opcode].string;
+  for (const char *p = fmt; *p != '\0'; ++p) {
+    if (*p != '%') {
+      *line.buf << *p;
+      continue;
+    }
+    ++p;
+    assert(*p != '\0');
+    if (*p == '%') {
+      *line.buf << '%';
+      continue;
+    }
+    enum {
+      RELATIVE_NONE,
+      DP_RELATIVE,
+      CP_RELATIVE,
+    } relType = RELATIVE_NONE;
+    if (std::strncmp(p, "{dp}", 4) == 0) {
+      relType = DP_RELATIVE;
+      p += 4;
+    } else if (std::strncmp(p, "{cp}", 4) == 0) {
+      relType = CP_RELATIVE;
+      p += 4;
+    }
+    assert(isdigit(*p));
+    char *endp;
+    long value = std::strtol(p, &endp, 10);
+    p = endp - 1;
+    assert(value >= 0 && value < properties.getNumOperands());
+    switch (properties.getOperandType(value)) {
+    default: assert(0 && "Unexpected operand type");
+    case OperandProperties::out:
+      printDestRegister(getOperandRegister(properties, ops, value));
+      break;
+    case OperandProperties::in:
+      printSrcRegister(getOperandRegister(properties, ops, value));
+      break;
+    case OperandProperties::inout:
+      printSrcDestRegister(getOperandRegister(properties, ops, value));
+      break;
+    case OperandProperties::imm:
+      switch (relType) {
+      case RELATIVE_NONE:
+        printImm(getOperand(properties, ops, value));
+        break;
+      case CP_RELATIVE:
+        printCPRelOffset(getOperand(properties, ops, value));
+        break;
+      case DP_RELATIVE:
+        printDPRelOffset(getOperand(properties, ops, value));
+        break;
+      }
+      break;
+    }
+  }
 }
 
-void Tracer::printOperand(SrcRegister op)
+void Tracer::printSrcRegister(Register::Reg reg)
 {
-  Register::Reg reg = op.getRegister();
   *line.buf << reg << "(0x" << std::hex << line.thread->regs[reg] << ')'
        << std::dec;
 }
 
-void Tracer::printOperand(DestRegister op)
+void Tracer::printDestRegister(Register::Reg reg)
 {
-  *line.buf << op.getRegister();
+  *line.buf << reg;
 }
 
-void Tracer::printOperand(SrcDestRegister op)
+void Tracer::printSrcDestRegister(Register::Reg reg)
 {
-  Register::Reg reg = op.getRegister();
   *line.buf << reg << "(0x" << std::hex << line.thread->regs[reg] << ')'
        << std::dec;
 }
 
-void Tracer::printOperand(CPRelOffset op)
+void Tracer::printCPRelOffset(uint32_t offset)
 {
   uint32_t cpValue = line.thread->regs[CP];
-  uint32_t address = cpValue + (op.getOffset() << 2);
+  uint32_t address = cpValue + (offset << 2);
   const Core *core = &line.thread->getParent();
   const ElfSymbol *sym, *cpSym;
   if ((sym = symInfo.getDataSymbol(core, address)) &&
@@ -161,14 +264,14 @@ void Tracer::printOperand(CPRelOffset op)
     *line.buf << sym->name;
     *line.buf << "(0x" << std::hex << address << ')';
   } else {
-    *line.buf << op.getOffset();
+    *line.buf << offset;
   }
 }
 
-void Tracer::printOperand(DPRelOffset op)
+void Tracer::printDPRelOffset(uint32_t offset)
 {
   uint32_t dpValue = line.thread->regs[DP];
-  uint32_t address = dpValue + (op.getOffset() << 2);
+  uint32_t address = dpValue + (offset << 2);
   const Core *core = &line.thread->getParent();
   const ElfSymbol *sym, *dpSym;
   if ((sym = symInfo.getDataSymbol(core, address)) &&
@@ -178,7 +281,7 @@ void Tracer::printOperand(DPRelOffset op)
     *line.buf << sym->name;
     *line.buf << "(0x" << std::hex << address << std::dec << ')';
   } else {
-    *line.buf << op.getOffset();
+    *line.buf << offset;
   }
 }
 

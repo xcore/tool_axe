@@ -26,44 +26,6 @@ inline std::ostream &operator<<(std::ostream &out, const Register::Reg &r) {
   return out << getRegisterName(r);
 }
 
-class SrcRegister {
-  Register::Reg reg;
-public:
-  SrcRegister(Register::Reg r) : reg(r) {}
-  SrcRegister(unsigned r) : reg((Register::Reg)r) {}
-  Register::Reg getRegister() const { return reg; }
-};
-
-class DestRegister {
-  Register::Reg reg;
-public:
-  DestRegister(Register::Reg r) : reg(r) {}
-  DestRegister(unsigned r) : reg((Register::Reg)r) {}
-  Register::Reg getRegister() const { return reg; }
-};
-
-class SrcDestRegister {
-  Register::Reg reg;
-public:
-  SrcDestRegister(Register::Reg r) : reg(r) {}
-  SrcDestRegister(unsigned r) : reg((Register::Reg)r) {}
-  Register::Reg getRegister() const { return reg; }
-};
-
-class CPRelOffset {
-  uint32_t offset;
-public:
-  CPRelOffset(uint32_t o) : offset(o) {}
-  uint32_t getOffset() const { return offset; }
-};
-
-class DPRelOffset {
-  uint32_t offset;
-public:
-  DPRelOffset(uint32_t o) : offset(o) {}
-  uint32_t getOffset() const { return offset; }
-};
-
 class Tracer {
 private:
   struct LineState {
@@ -114,28 +76,20 @@ private:
   void printThreadPC();
   void printInstructionStart(const Thread &t);
 
-  template <typename T>
-    void printOperand(const T &op)
+  void printImm(uint32_t op)
   {
     *line.buf << op;
   }
 
-  void printOperand(SrcRegister op);
-  void printOperand(DestRegister op);
-  void printOperand(SrcDestRegister op);
-  void printOperand(CPRelOffset op);
-  void printOperand(DPRelOffset op);
+  void printSrcRegister(Register::Reg op);
+  void printDestRegister(Register::Reg op);
+  void printSrcDestRegister(Register::Reg op);
+  void printCPRelOffset(uint32_t op);
+  void printDPRelOffset(uint32_t op);
 
   void dumpThreadSummary(const Core &core);
   void dumpThreadSummary(const SystemState &system);
-  
-  void traceAux() { }
-  template<typename T, typename... Args>
-  void traceAux(T op0, Args... args)
-  {
-    printOperand(op0);
-    traceAux(args...);
-  }
+
   void syscallBegin(const Thread &t);
 public:
   Tracer(bool tracing) :
@@ -146,11 +100,9 @@ public:
   SymbolInfo *getSymbolInfo() { return &symInfo; }
   void setColour(bool enable);
 
-  template<typename... Args>
-  void trace(const Thread &t, Args... args)
+  void trace(const Thread &t)
   {
     printInstructionStart(t);
-    traceAux(args...);
   }
 
   void regWrite(Register::Reg reg, uint32_t value);

@@ -408,10 +408,10 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define ERROR() std::abort();
 #define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
 #define LOP(n) (THREAD.getOperands(THREAD.pc).lops[(n)])
-#define TRACE(...) \
+#define TRACE() \
 do { \
 if (tracing) { \
-CORE.getTracer().trace(THREAD, __VA_ARGS__); \
+CORE.getTracer().trace(THREAD); \
 } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
@@ -435,7 +435,7 @@ CORE.getTracer().traceEnd(); \
 
 template<bool tracing>
 JITReturn Instruction_TSETMR_2r(Thread &thread) {
-  TRACE("tsetmr ", DestRegister(OP(0)), ", ", SrcRegister(OP(1)));
+  TRACE();
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
   if (sync) {

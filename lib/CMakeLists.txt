@@ -57,6 +57,8 @@ add_library(axe
   InstructionOpcode.h
   InstructionProperties.h
   InstructionProperties.cpp
+  InstructionTraceInfo.h
+  InstructionTraceInfo.cpp
   JIT.h
   JIT.cpp
   JITInstructionFunction.h

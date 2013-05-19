@@ -997,15 +997,6 @@ void FunctionCodeEmitter::emitWritePcUnchecked(const std::string &args)
   std::cout << ";\n";
 }
 
-static void
-emitCode(const Instruction &instruction,
-         const std::string &code)
-{
-  FunctionCodeEmitter emitter(false);
-  emitter.setInstruction(instruction);
-  emitter.emitBare(code);
-}
-
 class CodePropertyExtractor : public CodeEmitter {
   Instruction *inst;
 protected:
@@ -1059,16 +1050,13 @@ quote(const std::string &s)
 }
 
 static void
-scanFormatArgs(const char *format, Instruction &instruction,
-               std::vector<std::string> &args)
+checkFormatArgs(const char *format, Instruction &instruction)
 {
   const std::vector<OpType> &operands = instruction.getOperands();
 
-  std::ostringstream buf;
   for (const char *p = format; *p != '\0'; ++p) {
     switch (*p) {
     default:
-      buf << *p;
       break;
     case '%':
       if (*++p == '\0') {
@@ -1076,7 +1064,6 @@ scanFormatArgs(const char *format, Instruction &instruction,
         std::exit(1);
       }
       if (*p == '%') {
-        buf << '%';
       } else {
         enum {
           RELATIVE_NONE,
@@ -1098,38 +1085,17 @@ scanFormatArgs(const char *format, Instruction &instruction,
             std::cerr << "error: operand out of range in format string\n";
             std::exit(1);
           }
-          if (!buf.str().empty()) {
-            args.push_back(quote(buf.str()));
-            buf.str("");
-          }
           switch (operands[value]) {
           default: assert(0 && "Unexpected operand type");
           case out:
-            buf << "DestRegister(" << getOperandName(instruction, value) << ')';
             break;
           case in:
-            buf << "SrcDestRegister(" << getOperandName(instruction, value);
-            buf << ')';
             break;
           case inout:
-            buf << "SrcRegister(" << getOperandName(instruction, value) << ')';
             break;
           case imm:
-            switch (relType) {
-            case RELATIVE_NONE:
-              buf << "op" << value;
-              break;
-            case CP_RELATIVE:
-              buf << "CPRelOffset(op" << value << ')';
-              break;
-            case DP_RELATIVE:
-              buf << "DPRelOffset(op" << value << ')';
-              break;
-            }
             break;
           }
-          args.push_back(buf.str());
-          buf.str("");
         } else {
           std::cerr << "error: stray % in format string\n";
           std::exit(1);
@@ -1137,10 +1103,6 @@ scanFormatArgs(const char *format, Instruction &instruction,
       }
       break;
     }
-  }
-  if (!buf.str().empty()) {
-    args.push_back(quote(buf.str()));
-    buf.str("");
   }
 }
 
@@ -1151,27 +1113,10 @@ emitTrace(Instruction &instruction)
   if (format.empty())
     return;
 
-  std::vector<std::string> args;
-  scanFormatArgs(format.c_str(), instruction, args);
+  checkFormatArgs(format.c_str(), instruction);
 
   std::cout << "if (tracing) {\n";
-  if (!instruction.getReverseTransform().empty()) {
-    emitCode(instruction, instruction.getReverseTransform());
-    std::cout << '\n';
-  }
-  std::cout << "TRACE(";
-  bool needComma = false;
-  for (const std::string &arg : args) {
-    if (needComma)
-      std::cout << ", ";
-    std::cout << arg;
-    needComma = true;
-  }
-  std::cout << ");\n";
-  if (!instruction.getTransform().empty()) {
-    emitCode(instruction, instruction.getTransform());
-    std::cout << '\n';
-  }
+  std::cout << "TRACE();\n";
   std::cout << "}\n";
 }
 
@@ -1447,6 +1392,25 @@ static void emitInstProperties()
   }
   std::cout << "\n};\n";
   std::cout << "#endif //EMIT_INSTRUCTION_PROPERTIES\n";
+}
+
+static void emitInstTraceInfo()
+{
+  std::cout << "#ifdef EMIT_INSTRUCTION_TRACE_INFO\n";
+  std::cout << "const InstructionTraceInfo axe::instructionTraceInfo[] = {\n";
+  bool needComma = false;
+  for (Instruction *inst : instructions) {
+    if (needComma)
+      std::cout << ",\n";
+    if (inst->getFormat().empty()) {
+      std::cout << "  { nullptr }";
+    } else {
+      std::cout << "  { " << quote(inst->getFormat()) << " }";
+    }
+    needComma = true;
+  }
+  std::cout << "\n};\n";
+  std::cout << "#endif //EMIT_INSTRUCTION_TRACE_INFO\n";
 }
 
 #define INSTRUCTION_CYCLES 4
@@ -2781,4 +2745,5 @@ int main()
   emitJitInstFunctions();
   emitInstList();
   emitInstProperties();
+  emitInstTraceInfo();
 }
