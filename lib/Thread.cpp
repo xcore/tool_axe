@@ -434,7 +434,7 @@ CORE.getTracer().traceEnd(); \
 #define INSTRUCTION_CYCLES 4
 
 template<bool tracing>
-JITReturn Instruction_TSETMR_2r(Thread &thread) {
+InstReturn Instruction_TSETMR_2r(Thread &thread) {
   TRACE();
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
@@ -450,13 +450,13 @@ JITReturn Instruction_TSETMR_2r(Thread &thread) {
   return JIT_RETURN_CONTINUE;
 }
 
-template<bool tracing> JITReturn Instruction_RUN_JIT(Thread &thread) {
+template<bool tracing> InstReturn Instruction_RUN_JIT(Thread &thread) {
   CORE.runJIT(THREAD.pendingPc);
   THREAD.pc = THREAD.pendingPc;
   return JIT_RETURN_END_TRACE;
 }
 
-template<bool tracing> JITReturn Instruction_BREAKPOINT(Thread &thread) {
+template<bool tracing> InstReturn Instruction_BREAKPOINT(Thread &thread) {
   // Arrange for the current instruction to be interpreted so we don't hit the
   // breakpoint again when continuing.
   THREAD.pendingPc = THREAD.pc;
@@ -466,12 +466,12 @@ template<bool tracing> JITReturn Instruction_BREAKPOINT(Thread &thread) {
   throw (BreakpointException(TIME, THREAD));
 }
 
-template<bool tracing> JITReturn Instruction_INTERPRET_ONE(Thread &thread) {
+template<bool tracing> InstReturn Instruction_INTERPRET_ONE(Thread &thread) {
   THREAD.pc = THREAD.pendingPc;
   return THREAD.interpretOne();
 }
 
-template<bool tracing> JITReturn Instruction_DECODE(Thread &thread);
+template<bool tracing> InstReturn Instruction_DECODE(Thread &thread);
 
 static OPCODE_TYPE opcodeMap[] = {
 #define EMIT_INSTRUCTION_LIST
@@ -489,7 +489,7 @@ static OPCODE_TYPE opcodeMapTracing[] = {
 #undef EMIT_INSTRUCTION_LIST
 };
 
-template<bool tracing> JITReturn Instruction_DECODE(Thread &thread) {
+template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
   InstructionOpcode opc;
   Operands ops;
   uint32_t address = THREAD.fromPc(THREAD.pc);
@@ -509,7 +509,7 @@ template<bool tracing> JITReturn Instruction_DECODE(Thread &thread) {
 #undef TRACE_REG_WRITE
 #undef TRACE_END
 
-JITReturn Thread::interpretOne()
+InstReturn Thread::interpretOne()
 {
   Operands &ops = decodeCache.operands[pc];
   Operands oldOps = ops;
@@ -518,7 +518,7 @@ JITReturn Thread::interpretOne()
   instructionDecode(*parent, address, opc, ops, true /*ignoreBreakpoints*/);
   instructionTransform(opc, ops, *parent, address);
   bool tracing = decodeCache.tracingEnabled;
-  JITReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
+  InstReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
   ops = oldOps;
   return retval;
 }

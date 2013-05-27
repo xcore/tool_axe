@@ -10,7 +10,7 @@ namespace axe {
 
 class Thread;
 
-enum JITReturn {
+enum InstReturn {
   /// Continue the current trace.
   JIT_RETURN_CONTINUE,
   /// End the current trace.
@@ -19,7 +19,7 @@ enum JITReturn {
   JIT_RETURN_END_THREAD_EXECUTION,
 };
 
-typedef JITReturn (*JITInstructionFunction_t)(Thread &);
+typedef InstReturn (*JITInstructionFunction_t)(Thread &);
   
 } // End axe namespace
 

@@ -255,7 +255,7 @@ public:
   }
 
   void runJIT(uint32_t pc);
-  JITReturn interpretOne();
+  InstReturn interpretOne();
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
     const DecodeCache::executionFrequency_t threshold = 128;

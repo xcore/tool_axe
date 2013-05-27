@@ -790,7 +790,7 @@ void FunctionCodeEmitter::emitNormalReturn()
 void FunctionCodeEmitter::emitBegin()
 {
   if (inst->getMayStore() && shouldEmitMemoryChecks())
-    std::cout << "JITReturn retval = JIT_RETURN_CONTINUE;\n";
+    std::cout << "InstReturn retval = JIT_RETURN_CONTINUE;\n";
 }
 
 void FunctionCodeEmitter::emitRaw(const std::string &s)
@@ -1141,7 +1141,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
     std::cout << "extern \"C\" ";
   else
     std::cout << "template <bool tracing>\n";
-  std::cout << "JITReturn " << getInstFunctionName(inst) << '(';
+  std::cout << "InstReturn " << getInstFunctionName(inst) << '(';
   std::cout << "Thread &thread";
   if (jit) {
     std::cout << ", uint32_t nextPc";

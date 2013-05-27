@@ -18,7 +18,7 @@
 using namespace axe;
 
 /// Use to get the required LLVM type for instruction functions.
-extern "C" JITReturn jitInstructionTemplate(Thread &t) {
+extern "C" InstReturn jitInstructionTemplate(Thread &t) {
   return JIT_RETURN_CONTINUE;
 }
 
@@ -26,7 +26,7 @@ extern "C" uint32_t jitGetPc(Thread &t) {
   return t.pc;
 }
 
-extern "C" JITReturn jitStubImpl(Thread &t) {
+extern "C" InstReturn jitStubImpl(Thread &t) {
   if (t.updateExecutionFrequencyFromStub(t.pc)) {
     t.pendingPc = t.pc;
     t.pc = t.getParent().getRunJitAddr();
@@ -70,7 +70,7 @@ extern "C" bool jitInvalidateWordCheck(Thread &t, uint32_t address)
   return t.getParent().invalidateWordCheck(address);
 }
 
-extern "C" JITReturn jitInterpretOne(Thread &t) {
+extern "C" InstReturn jitInterpretOne(Thread &t) {
   t.pendingPc = t.pc;
   t.pc = t.getParent().getInterpretOneAddr();
   return JIT_RETURN_END_TRACE;
