@@ -23,7 +23,7 @@
 #include "LLVMExtra.h"
 #include "InstructionProperties.h"
 #include "JITOptimize.h"
-#include "JITInstructionFunction.h"
+#include "InstFunction.h"
 #include <iostream>
 #include <cstdlib>
 #include <cassert>

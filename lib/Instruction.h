@@ -7,7 +7,7 @@
 #define _Instruction_h_
 
 #include "Config.h"
-#include "JITInstructionFunction.h"
+#include "InstFunction.h"
 #include <cstddef>
 
 namespace axe {

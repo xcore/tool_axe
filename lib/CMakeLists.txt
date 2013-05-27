@@ -46,6 +46,7 @@ add_library(axe
   EthernetPhy.cpp
   Exceptions.h
   Exceptions.cpp
+  InstFunction.h
   Instruction.h
   Instruction.cpp
   InstructionBitcode.h
@@ -61,7 +62,6 @@ add_library(axe
   InstructionTraceInfo.cpp
   JIT.h
   JIT.cpp
-  JITInstructionFunction.h
   JITOptimize.h
   JITOptimize.cpp
   LLVMExtra.h
