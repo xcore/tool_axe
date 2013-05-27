@@ -855,20 +855,18 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
 
 void FunctionCodeEmitter::emitYield()
 {
-  emitRegWriteBack();
-  emitUpdateExecutionFrequency();
-  emitYieldIfTimeSliceExpired();
-  emitNormalReturn();
+  std::cout << "if (THREAD.hasTimeSliceExpired()) {\n";
+  std::cout << "  THREAD.schedule();\n";
+  std::cout << "  retval = InstReturn::END_THREAD_EXECUTION;\n";
+  std::cout << "}\n";
+  std::cout << "goto regWriteBack;\n";
 }
 
 void FunctionCodeEmitter::emitForceYield()
 {
-  emitRegWriteBack();
-  emitUpdateExecutionFrequency();
-  std::cout << "  THREAD.schedule();\n";
-  if (!jit)
-    emitTraceEnd(*inst);
-  std::cout << "  return InstReturn::END_THREAD_EXECUTION;\n";
+  std::cout << "THREAD.schedule();\n";
+  std::cout << "retval = InstReturn::END_THREAD_EXECUTION;\n";
+  std::cout << "goto regWriteBack;\n";
 }
 
 void FunctionCodeEmitter::emitDeschedule()
@@ -1182,6 +1180,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
     emitter.emitCycles();
     emitter.emit(inst.getCode());
     std::cout << '\n';
+    std::cout << "regWriteBack:;\n";
     // Write operands.
     emitter.emitRegWriteBack();
     emitter.emitUpdateExecutionFrequency();
