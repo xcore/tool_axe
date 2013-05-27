@@ -1182,7 +1182,8 @@ static void emitInstFunction(Instruction &inst, bool jit)
       emitTrace(inst);
     emitter.emit(inst.getCode());
     std::cout << '\n';
-    std::cout << "regWriteBack:;\n";
+    if (inst.getMayYield())
+      std::cout << "regWriteBack:;\n";
     // Write operands.
     emitter.emitCycles();
     emitter.emitRegWriteBack();
