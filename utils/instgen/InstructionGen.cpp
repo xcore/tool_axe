@@ -832,8 +832,7 @@ void FunctionCodeEmitter::emitException(const std::string &args)
 
 void FunctionCodeEmitter::emitKCall(const std::string &args)
 {
-  emitRegWriteBack();
-  std::cout << "THREAD.pc = exception(THREAD, THREAD.pc, ET_KCALL, ";
+  std::cout << "THREAD.pc = exception(THREAD, nextPc, ET_KCALL, ";
   emitNested(args);
   std::cout << ");\n";
   emitCycles();
