@@ -780,17 +780,12 @@ void FunctionCodeEmitter::emitNormalReturn()
   emitCheckEvents();
   if (!jit)
     emitTraceEnd(*inst);
-  if (inst->getMayStore() && shouldEmitMemoryChecks()) {
-    std::cout << "return retval;\n";
-  } else {
-    std::cout << "return InstReturn::CONTINUE;\n";
-  }
+  std::cout << "return retval;\n";
 }
 
 void FunctionCodeEmitter::emitBegin()
 {
-  if (inst->getMayStore() && shouldEmitMemoryChecks())
-    std::cout << "InstReturn retval = InstReturn::CONTINUE;\n";
+  std::cout << "InstReturn retval = InstReturn::CONTINUE;\n";
 }
 
 void FunctionCodeEmitter::emitRaw(const std::string &s)
