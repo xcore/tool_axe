@@ -16,7 +16,7 @@ class Core;
 class Thread;
 enum InstructionOpcode : short;
 
-typedef JITInstructionFunction_t OPCODE_TYPE;
+typedef InstFunction_t OPCODE_TYPE;
 
 struct Operands {
   union {

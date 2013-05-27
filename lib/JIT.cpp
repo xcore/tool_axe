@@ -35,12 +35,12 @@ using namespace axe;
 struct JITFunctionInfo {
   explicit JITFunctionInfo(uint32_t a) :
     pc(a), value(0), func(0), isStub(false) {}
-  JITFunctionInfo(uint32_t a, LLVMValueRef v, JITInstructionFunction_t f,
+  JITFunctionInfo(uint32_t a, LLVMValueRef v, InstFunction_t f,
                   bool s) :
     pc(a), value(v), func(f), isStub(s) {}
   uint32_t pc;
   LLVMValueRef value;
-  JITInstructionFunction_t func;
+  InstFunction_t func;
   std::set<JITFunctionInfo*> references;
   bool isStub;
 };
@@ -120,7 +120,7 @@ class axe::JITImpl {
   bool emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
                               JITCoreInfo &coreInfo, uint32_t nextPc,
                               JITFunctionInfo *caller);
-  JITInstructionFunction_t getFunctionThunk(JITFunctionInfo &info);
+  InstFunction_t getFunctionThunk(JITFunctionInfo &info);
 public:
   JITImpl() : initialized(false) {}
   ~JITImpl();
@@ -399,8 +399,8 @@ getJITFunctionOrStubImpl(JITCoreInfo &coreInfo, uint32_t pc)
     LLVMDumpValue(f);
     LLVMVerifyFunction(f, LLVMAbortProcessAction);
   }
-  JITInstructionFunction_t code =
-    reinterpret_cast<JITInstructionFunction_t>(
+  InstFunction_t code =
+    reinterpret_cast<InstFunction_t>(
      LLVMGetPointerToGlobal(executionEngine, f));
   info = new JITFunctionInfo(pc, f, code, true);
   LLVMPositionBuilderAtEnd(builder, savedInsertPoint);
@@ -636,8 +636,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     LLVMDumpValue(f);
   }
   // Compile.
-  JITInstructionFunction_t compiledFunction =
-    reinterpret_cast<JITInstructionFunction_t>(
+  InstFunction_t compiledFunction =
+    reinterpret_cast<InstFunction_t>(
       LLVMRecompileAndRelinkFunction(executionEngine, f));
   info->isStub = false;
   info->func = compiledFunction;
@@ -769,7 +769,7 @@ LLVMValueRef JITImpl::getJitInvalidateFunction(unsigned size)
   }
 }
 
-JITInstructionFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)
+InstFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)
 {
   LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
   LLVMValueRef thread = LLVMGetParam(f, 0);
@@ -787,7 +787,7 @@ JITInstructionFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)
     LLVMDumpValue(f);
     LLVMVerifyFunction(f, LLVMAbortProcessAction);
   }
-  return reinterpret_cast<JITInstructionFunction_t>(
+  return reinterpret_cast<InstFunction_t>(
     LLVMGetPointerToGlobal(executionEngine, f));
 }
 

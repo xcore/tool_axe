@@ -19,7 +19,7 @@ enum class InstReturn {
   END_THREAD_EXECUTION,
 };
 
-typedef InstReturn (*JITInstructionFunction_t)(Thread &);
+typedef InstReturn (*InstFunction_t)(Thread &);
   
 } // End axe namespace
 
