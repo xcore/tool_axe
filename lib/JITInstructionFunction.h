@@ -10,13 +10,13 @@ namespace axe {
 
 class Thread;
 
-enum InstReturn {
+enum class InstReturn {
   /// Continue the current trace.
-  JIT_RETURN_CONTINUE,
+  CONTINUE,
   /// End the current trace.
-  JIT_RETURN_END_TRACE,
+  END_TRACE,
   /// End execution of the current thread.
-  JIT_RETURN_END_THREAD_EXECUTION,
+  END_THREAD_EXECUTION,
 };
 
 typedef InstReturn (*JITInstructionFunction_t)(Thread &);

@@ -447,13 +447,13 @@ InstReturn Instruction_TSETMR_2r(Thread &thread) {
   }
   THREAD.pc++;
   TRACE_END();
-  return JIT_RETURN_CONTINUE;
+  return InstReturn::CONTINUE;
 }
 
 template<bool tracing> InstReturn Instruction_RUN_JIT(Thread &thread) {
   CORE.runJIT(THREAD.pendingPc);
   THREAD.pc = THREAD.pendingPc;
-  return JIT_RETURN_END_TRACE;
+  return InstReturn::END_TRACE;
 }
 
 template<bool tracing> InstReturn Instruction_BREAKPOINT(Thread &thread) {
@@ -497,7 +497,7 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
   instructionTransform(opc, ops, CORE, address);
   THREAD.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
                    instructionProperties[opc].size);
-  return JIT_RETURN_END_TRACE;
+  return InstReturn::END_TRACE;
 }
 
 #undef THREAD
@@ -526,7 +526,7 @@ InstReturn Thread::interpretOne()
 void Thread::run(ticks_t time)
 {
   while (1) {
-    if ((*decodeCache.opcode[pc])(*this) == JIT_RETURN_END_THREAD_EXECUTION)
+    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION)
       return;
   }
 }

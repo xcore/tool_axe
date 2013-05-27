@@ -745,7 +745,7 @@ void FunctionCodeEmitter::emitRegWriteBack()
     std::cout << "  THREAD.schedule();\n";
     if (!jit)
       emitTraceEnd(*inst);
-    std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+    std::cout << "  return InstReturn::END_THREAD_EXECUTION;\n";
     std::cout << "}\n";
   }
 }
@@ -771,7 +771,7 @@ void FunctionCodeEmitter::emitCheckEvents() const
   std::cout << "  THREAD.schedule();\n";
   if (!jit)
     emitTraceEnd(*inst);
-  std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+  std::cout << "  return InstReturn::END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
 
@@ -783,14 +783,14 @@ void FunctionCodeEmitter::emitNormalReturn()
   if (inst->getMayStore() && shouldEmitMemoryChecks()) {
     std::cout << "return retval;\n";
   } else {
-    std::cout << "return JIT_RETURN_CONTINUE;\n";
+    std::cout << "return InstReturn::CONTINUE;\n";
   }
 }
 
 void FunctionCodeEmitter::emitBegin()
 {
   if (inst->getMayStore() && shouldEmitMemoryChecks())
-    std::cout << "InstReturn retval = JIT_RETURN_CONTINUE;\n";
+    std::cout << "InstReturn retval = InstReturn::CONTINUE;\n";
 }
 
 void FunctionCodeEmitter::emitRaw(const std::string &s)
@@ -819,7 +819,7 @@ void FunctionCodeEmitter::emitYieldIfTimeSliceExpired(bool endTrace)
   std::cout << "  THREAD.schedule();\n";
   if (!jit && endTrace)
     emitTraceEnd(*inst);
-  std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+  std::cout << "  return InstReturn::END_THREAD_EXECUTION;\n";
   std::cout << "}\n";
 }
 
@@ -832,7 +832,7 @@ void FunctionCodeEmitter::emitException(const std::string &args)
   emitYieldIfTimeSliceExpired();
   if (!jit)
     emitTraceEnd(*inst);
-  std::cout << "return JIT_RETURN_END_TRACE;\n";
+  std::cout << "return InstReturn::END_TRACE;\n";
 }
 
 void FunctionCodeEmitter::emitKCall(const std::string &args)
@@ -845,7 +845,7 @@ void FunctionCodeEmitter::emitKCall(const std::string &args)
   emitYieldIfTimeSliceExpired();
   if (!jit)
     emitTraceEnd(*inst);
-  std::cout << "return JIT_RETURN_END_TRACE;\n";
+  std::cout << "return InstReturn::END_TRACE;\n";
 }
 
 void FunctionCodeEmitter::emitPauseOn(const std::string &args)
@@ -858,7 +858,7 @@ void FunctionCodeEmitter::emitPauseOn(const std::string &args)
   std::cout << "THREAD.waiting() = true;\n";
   if (!jit)
     emitTraceEnd(*inst);
-  std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
+  std::cout << "return InstReturn::END_THREAD_EXECUTION;\n";
 }
 
 void FunctionCodeEmitter::emitYield()
@@ -878,7 +878,7 @@ void FunctionCodeEmitter::emitForceYield()
   std::cout << "  THREAD.schedule();\n";
   if (!jit)
     emitTraceEnd(*inst);
-  std::cout << "  return JIT_RETURN_END_THREAD_EXECUTION;\n";
+  std::cout << "  return InstReturn::END_THREAD_EXECUTION;\n";
 }
 
 void FunctionCodeEmitter::emitDeschedule()
@@ -888,7 +888,7 @@ void FunctionCodeEmitter::emitDeschedule()
   std::cout << "THREAD.waiting() = true;\n";
   if (!jit)
     emitTraceEnd(*inst);
-  std::cout << "return JIT_RETURN_END_THREAD_EXECUTION;\n";
+  std::cout << "return InstReturn::END_THREAD_EXECUTION;\n";
 }
 
 void FunctionCodeEmitter::
@@ -920,7 +920,7 @@ emitStore(const std::string &argString, LoadStoreType type)
   if (shouldEmitMemoryChecks()) {
     std::cout << "  if (INVALIDATE_" << getLoadStoreTypeName(type);
     std::cout << "(StoreAddr)) {\n";
-    std::cout << "    retval = JIT_RETURN_END_TRACE;\n";
+    std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
   }
 

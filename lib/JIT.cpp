@@ -279,7 +279,8 @@ JITImpl::checkReturnValue(LLVMValueRef call, InstructionProperties &properties)
     return;
   LLVMValueRef cmp =
     LLVMBuildICmp(builder, LLVMIntNE, call,
-                  LLVMConstInt(LLVMTypeOf(call), 0, JIT_RETURN_CONTINUE), "");
+                  LLVMConstInt(LLVMTypeOf(call), 0,
+                               static_cast<int>(InstReturn::CONTINUE)), "");
   emitCondEarlyReturn(cmp, call);
 }
 
@@ -614,7 +615,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     // Build return.
     LLVMBuildRet(builder,
                  LLVMConstInt(LLVMGetReturnType(jitFunctionType),
-                              JIT_RETURN_CONTINUE, 0));
+                              static_cast<int>(InstReturn::CONTINUE), 0));
   }
   // Add incoming phi values.
   if (earlyReturnBB) {
@@ -676,7 +677,7 @@ LLVMBasicBlockRef JITImpl::getOrCreateMemoryCheckBailoutBlock(unsigned index)
     ensureEarlyReturnBB(LLVMGetReturnType(jitFunctionType));
     earlyReturnIncomingValues.push_back(
       LLVMConstInt(LLVMGetReturnType(jitFunctionType),
-                   JIT_RETURN_END_TRACE, false));
+                   static_cast<int>(InstReturn::END_TRACE), false));
     earlyReturnIncomingBlocks.push_back(LLVMGetInsertBlock(builder));
     LLVMBuildBr(builder, earlyReturnBB);
     endTraceBB = bailoutBB;
