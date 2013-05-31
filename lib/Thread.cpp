@@ -408,10 +408,10 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define ERROR() std::abort();
 #define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
 #define LOP(n) (THREAD.getOperands(THREAD.pc).lops[(n)])
-#define TRACE() \
+#define TRACE_BEGIN() \
 do { \
 if (tracing) { \
-CORE.getTracer().trace(THREAD); \
+CORE.getTracer().instructionBegin(THREAD); \
 } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
@@ -423,7 +423,7 @@ CORE.getTracer().regWrite(register, value); \
 #define TRACE_END() \
 do { \
 if (tracing) { \
-CORE.getTracer().traceEnd(); \
+CORE.getTracer().instructionEnd(); \
 } \
 } while(0)
 #define EMIT_INSTRUCTION_FUNCTIONS
@@ -435,7 +435,7 @@ CORE.getTracer().traceEnd(); \
 
 template<bool tracing>
 InstReturn Instruction_TSETMR_2r(Thread &thread) {
-  TRACE();
+  TRACE_BEGIN();
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
   if (sync) {
@@ -505,7 +505,7 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
 #undef ERROR
 #undef OP
 #undef LOP
-#undef TRACE
+#undef TRACE_BEGIN
 #undef TRACE_REG_WRITE
 #undef TRACE_END
 

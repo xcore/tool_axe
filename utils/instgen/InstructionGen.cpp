@@ -1106,7 +1106,7 @@ emitTrace(Instruction &instruction)
   checkFormatArgs(format.c_str(), instruction);
 
   std::cout << "if (tracing) {\n";
-  std::cout << "TRACE();\n";
+  std::cout << "  TRACE_BEGIN();\n";
   std::cout << "}\n";
 }
 

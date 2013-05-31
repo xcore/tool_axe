@@ -74,7 +74,6 @@ private:
   void printCommonStart(const Thread &t);
   void printCommonEnd();
   void printThreadPC();
-  void printInstructionStart(const Thread &t);
 
   void printImm(uint32_t op)
   {
@@ -100,14 +99,11 @@ public:
   SymbolInfo *getSymbolInfo() { return &symInfo; }
   void setColour(bool enable);
 
-  void trace(const Thread &t)
-  {
-    printInstructionStart(t);
-  }
+  void instructionBegin(const Thread &t);
 
   void regWrite(Register::Reg reg, uint32_t value);
 
-  void traceEnd() {
+  void instructionEnd() {
     printCommonEnd();
   }
 
@@ -131,6 +127,7 @@ public:
     syscallBegin(t);
     *line.buf << s << "()";
     reset();
+    printCommonEnd();
   }
   template<typename T0>
   void syscall(const Thread &t, const std::string &s,
@@ -138,6 +135,7 @@ public:
     syscallBegin(t);
     *line.buf << s << '(' << op0 << ')';
     reset();
+    printCommonEnd();
   }
   void timeout(const SystemState &system, ticks_t time);
   void noRunnableThreads(const SystemState &system);

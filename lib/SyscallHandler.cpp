@@ -231,7 +231,6 @@ do { \
 Tracer &tracer = thread.getParent().getTracer(); \
 if (tracer.getTracingEnabled()) { \
 tracer.syscall(thread, __VA_ARGS__); \
-tracer.traceEnd(); \
 } \
 } while(0)
 

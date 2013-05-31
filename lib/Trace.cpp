@@ -139,7 +139,7 @@ getOperandRegister(const InstructionProperties &properties,
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
-void Tracer::printInstructionStart(const Thread &t)
+void Tracer::instructionBegin(const Thread &t)
 {
   printCommonStart(t);
   *line.buf << ' ';
