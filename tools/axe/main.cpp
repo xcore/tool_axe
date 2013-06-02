@@ -10,9 +10,6 @@
 #include <cassert>
 #include <memory>
 #include <climits>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #include "AXEInitialize.h"
 #include "Trace.h"
@@ -146,11 +143,6 @@ loop(const Options &options)
   PortAliases portAliases;
   xeReader.readPortAliases(portAliases);
   SystemState &sys = *statePtr;
-#ifndef _WIN32
-  if (isatty(fileno(stdout))) {
-    sys.getTracer().setColour(true);
-  }
-#endif
   PortConnectionManager connectionManager(sys, portAliases);
 
   if (!connectLoopbackPorts(connectionManager, options.loopbackPorts)) {

@@ -11,6 +11,7 @@
 #include "Synchroniser.h"
 #include "Chanend.h"
 #include "ClockBlock.h"
+#include <iostream>
 #include <cstdlib>
 
 using namespace axe;

@@ -6,12 +6,23 @@
 #ifndef _Trace_h_
 #define _Trace_h_
 
+#ifndef __GNU_SOURCE
+#define __GNU_SOURCE
+#endif
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS
+#endif
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#endif
+
 #include "Config.h"
 #include "SymbolInfo.h"
 #include "Register.h"
-#include "TerminalColours.h"
-#include <iostream>
-#include <sstream>
+#include "llvm/Support/raw_ostream.h"
 #include <string>
 #include <memory>
 
@@ -22,26 +33,26 @@ class SystemState;
 class Node;
 class Thread;
 
-inline std::ostream &operator<<(std::ostream &out, const Register::Reg &r) {
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &out,
+                                     const Register::Reg &r) {
   return out << getRegisterName(r);
 }
 
 class Tracer {
 private:
   bool tracingEnabled;
-  std::ostream &out;
-  std::ostringstream buf;
+  bool useColors;
+  llvm::raw_ostream &out;
+  uint64_t pos;
   const Thread *thread;
   uint32_t pc;
   bool emittedLineStart;
-  size_t numEscapeChars;
   SymbolInfo symInfo;
-  TerminalColours colours;
 
-  void escapeCode(const char *s);
-  void reset() { escapeCode(colours.reset); }
-  void red() { escapeCode(colours.red); }
-  void green() { escapeCode(colours.green); }
+  void green();
+  void red();
+  void reset();
+  void align(unsigned column);
 
   void printLinePrefix(const Thread &t);
   void printLinePrefix(const Node &n);
@@ -52,9 +63,8 @@ private:
 
   void printRegWrite(Register::Reg reg, uint32_t value, bool first);
 
-  void printImm(uint32_t op)
-  {
-    buf << op;
+  void printImm(uint32_t op) {
+    out << op;
   }
 
   void printSrcRegister(Register::Reg op);
@@ -63,21 +73,16 @@ private:
   void printCPRelOffset(uint32_t op);
   void printDPRelOffset(uint32_t op);
 
+  unsigned parseOperandNum(const char *p, const char *&end);
+
   void dumpThreadSummary(const Core &core);
   void dumpThreadSummary(const SystemState &system);
 
   void syscallBegin(const Thread &t);
 public:
-  Tracer(bool tracing) :
-    tracingEnabled(tracing),
-    out(std::cout),
-    thread(nullptr),
-    emittedLineStart(false),
-    numEscapeChars(0),
-    colours(TerminalColours::null) {}
+  Tracer(bool tracing);
   bool getTracingEnabled() const { return tracingEnabled; }
   SymbolInfo *getSymbolInfo() { return &symInfo; }
-  void setColour(bool enable);
 
   void instructionBegin(const Thread &t);
 
@@ -103,16 +108,16 @@ public:
 
   void syscall(const Thread &t, const std::string &s) {
     syscallBegin(t);
-    buf << s << "()";
-    reset();
+    out << s << "()";
+    out.changeColor(llvm::raw_ostream::WHITE);
     printLineEnd();
   }
   template<typename T0>
   void syscall(const Thread &t, const std::string &s,
                T0 op0) {
     syscallBegin(t);
-    buf << s << '(' << op0 << ')';
-    reset();
+    out << s << '(' << op0 << ')';
+    out.changeColor(llvm::raw_ostream::WHITE);
     printLineEnd();
   }
   void timeout(const SystemState &system, ticks_t time);

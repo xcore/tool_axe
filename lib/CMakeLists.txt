@@ -133,8 +133,6 @@ add_library(axe
   SystemState.cpp
   SystemStateWrapper.h
   SystemStateWrapper.cpp
-  TerminalColours.h
-  TerminalColours.cpp
   Thread.h
   Thread.cpp
   Timeout.h

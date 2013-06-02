@@ -1075,6 +1075,12 @@ checkFormatArgs(const char *format, Instruction &instruction)
             std::cerr << "error: operand out of range in format string\n";
             std::exit(1);
           }
+          if (value > 9) {
+            // For now restrict the operand number to a single digit to make it
+            // easier for the Tracer to parse the number.
+            std::cerr << "error: too many operands for instruction\n";
+            std::exit(1);
+          }
           switch (operands[value]) {
           default: assert(0 && "Unexpected operand type");
           case out:
