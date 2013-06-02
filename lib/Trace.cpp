@@ -23,24 +23,6 @@ using namespace Register;
 const unsigned mnemonicColumn = 49;
 const unsigned regWriteColumn = 87;
 
-Tracer::PushLineState::PushLineState(Tracer &p) :
-  needRestore(false),
-  line(p.line.pending),
-  parent(p)
-{
-  if (parent.line.thread) {
-    std::swap(parent.line, line);
-    needRestore = true;
-  }
-}
-
-Tracer::PushLineState::~PushLineState()
-{
-  if (needRestore) {
-    std::swap(parent.line, line);
-  }
-}
-
 void Tracer::setColour(bool enable)
 {
   colours = enable ? TerminalColours::ansi : TerminalColours::null;
@@ -48,74 +30,56 @@ void Tracer::setColour(bool enable)
 
 void Tracer::escapeCode(const char *s)
 {
-  *line.buf << s;
-  line.numEscapeChars += std::strlen(s);
+  buf << s;
+  numEscapeChars += std::strlen(s);
 }
 
-void Tracer::printCommonEnd()
+void Tracer::printLineEnd()
 {
-  *line.buf << '\n';
-  if (line.out) {
-    *line.out << line.buf->str() << line.pending->str();
-    line.buf->str("");
-  }
-  line.thread = 0;
+  buf << '\n';
+  out << buf.str();
+  buf.str("");
+  numEscapeChars = 0;
 }
 
-void Tracer::printCommonStart()
+void Tracer::printThreadName(const Thread &t)
 {
-  if (line.pending) {
-    line.pending->str("");
-  }
-  line.numEscapeChars = 0;
-  line.hadRegWrite = false;
-  line.thread = 0;
+  buf << t.getParent().getCoreName();
+  buf << ":t" << t.getNum();
 }
 
-void Tracer::printThreadName()
+void Tracer::printLinePrefix(const Node &n)
 {
-  *line.buf << line.thread->getParent().getCoreName();
-  *line.buf << ":t" << line.thread->getNum();
+  green();
+  buf << '<';
+  buf << 'n' << n.getNodeID();
+  buf << '>';
+  reset();
 }
 
-void Tracer::printCommonStart(const Thread &t)
+void Tracer::printLinePrefix(const Thread &t)
 {
-  printCommonStart();
-  line.thread = &t;
-
   // TODO add option to show cycles?
-  //*line.buf << std::setw(6) << (uint64_t)line.thread->time;
+  //buf << std::setw(6) << (uint64_t)thread->time;
   green();
-  *line.buf << '<';
-  printThreadName();
-  *line.buf << '>';
+  buf << '<';
+  printThreadName(t);
+  buf << '>';
   reset();
 }
 
-void Tracer::printCommonStart(const Node &n)
+void Tracer::printThreadPC(const Thread &t, uint32_t pc)
 {
-  printCommonStart();
-
-  green();
-  *line.buf << '<';
-  *line.buf << 'n' << n.getNodeID();
-  *line.buf << '>';
-  reset();
-}
-
-void Tracer::printThreadPC()
-{
-  unsigned pc = line.thread->getRealPc();
-  const Core *core = &line.thread->getParent();
+  const Core *core = &t.getParent();
   const ElfSymbol *sym;
-  if (line.thread->isInRam() &&
+  if (t.getParent().isValidRamAddress(pc) &&
       (sym = symInfo.getFunctionSymbol(core, pc))) {
-    *line.buf << sym->name;
+    buf << sym->name;
     if (sym->value != pc)
-      *line.buf << '+' << (pc - sym->value);
-    *line.buf << "(0x" << std::hex << pc << std::dec << ')';
+      buf << '+' << (pc - sym->value);
+    buf << "(0x" << std::hex << pc << std::dec << ')';
   } else {
-    *line.buf << "0x" << std::hex << pc << std::dec;
+    buf << "0x" << std::hex << pc << std::dec;
   }
 }
 
@@ -128,7 +92,7 @@ static uint32_t getOperand(const InstructionProperties &properties,
   return operands.ops[i];
 }
 
-Register::Reg
+static Register::Reg
 getOperandRegister(const InstructionProperties &properties,
                    const Operands &ops, unsigned i)
 {
@@ -139,40 +103,40 @@ getOperandRegister(const InstructionProperties &properties,
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
-void Tracer::instructionBegin(const Thread &t)
+void Tracer::printInstructionLineStart(const Thread &t, uint32_t pc)
 {
-  printCommonStart(t);
-  *line.buf << ' ';
-  printThreadPC();
-  *line.buf << ": ";
+  printLinePrefix(*thread);
+  buf << ' ';
+  printThreadPC(t, pc);
+  buf << ": ";
 
   // Align
-  size_t pos = line.buf->str().size() - line.numEscapeChars;
+  size_t pos = buf.str().size() - numEscapeChars;
   if (pos < mnemonicColumn) {
-    *line.buf << std::setw(mnemonicColumn - pos) << "";
+    buf << std::setw(mnemonicColumn - pos) << "";
   }
 
   // Disassemble instruction.
   InstructionOpcode opcode;
   Operands ops;
-  instructionDecode(t.getParent(), t.getRealPc(), opcode, ops, true);
+  instructionDecode(t.getParent(), pc, opcode, ops, true);
   const InstructionProperties &properties =
-    instructionProperties[opcode];
+  instructionProperties[opcode];
 
   // Special cases.
   // TODO remove this by describing tsetmr as taking an immediate?
   if (opcode == InstructionOpcode::TSETMR_2r) {
-    *line.buf << "tsetmr ";
+    buf << "tsetmr ";
     printDestRegister(getOperandRegister(properties, ops, 0));
-    *line.buf << ", ";
+    buf << ", ";
     printSrcRegister(getOperandRegister(properties, ops, 1));
     return;
   }
   if (opcode == InstructionOpcode::ADD_2rus &&
       getOperand(properties, ops, 2) == 0) {
-    *line.buf << "mov ";
+    buf << "mov ";
     printDestRegister(getOperandRegister(properties, ops, 0));
-    *line.buf << ", ";
+    buf << ", ";
     printSrcRegister(getOperandRegister(properties, ops, 1));
     return;
   }
@@ -180,13 +144,13 @@ void Tracer::instructionBegin(const Thread &t)
   const char *fmt = instructionTraceInfo[opcode].string;
   for (const char *p = fmt; *p != '\0'; ++p) {
     if (*p != '%') {
-      *line.buf << *p;
+      buf << *p;
       continue;
     }
     ++p;
     assert(*p != '\0');
     if (*p == '%') {
-      *line.buf << '%';
+      buf << '%';
       continue;
     }
     enum {
@@ -234,191 +198,222 @@ void Tracer::instructionBegin(const Thread &t)
   }
 }
 
+void Tracer::printRegWrite(Register::Reg reg, uint32_t value, bool first)
+{
+  if (first) {
+    buf << ' ';
+    // Align
+    size_t pos = buf.str().size() - numEscapeChars;
+    if (pos < regWriteColumn) {
+      buf << std::setw(regWriteColumn - pos) << "";
+    }
+    buf << "# ";
+  } else {
+    buf << ", ";
+  }
+  buf << reg << "=0x" << std::hex << value << std::dec;
+}
+
+void Tracer::instructionBegin(const Thread &t)
+{
+  assert(!thread);
+  assert(!emittedLineStart);
+  thread = &t;
+  pc = t.getRealPc();
+}
+
+void Tracer::instructionEnd() {
+  assert(thread);
+  if (!emittedLineStart) {
+    printInstructionLineStart(*thread, pc);
+  }
+  thread = nullptr;
+  emittedLineStart = false;
+  printLineEnd();
+}
+
 void Tracer::printSrcRegister(Register::Reg reg)
 {
-  *line.buf << reg << "(0x" << std::hex << line.thread->regs[reg] << ')'
-       << std::dec;
+  buf << reg << "(0x" << std::hex << thread->regs[reg] << ')'
+      << std::dec;
 }
 
 void Tracer::printDestRegister(Register::Reg reg)
 {
-  *line.buf << reg;
+  buf << reg;
 }
 
 void Tracer::printSrcDestRegister(Register::Reg reg)
 {
-  *line.buf << reg << "(0x" << std::hex << line.thread->regs[reg] << ')'
-       << std::dec;
+  buf << reg << "(0x" << std::hex << thread->regs[reg] << ')'
+      << std::dec;
 }
 
 void Tracer::printCPRelOffset(uint32_t offset)
 {
-  uint32_t cpValue = line.thread->regs[CP];
+  uint32_t cpValue = thread->regs[CP];
   uint32_t address = cpValue + (offset << 2);
-  const Core *core = &line.thread->getParent();
+  const Core *core = &thread->getParent();
   const ElfSymbol *sym, *cpSym;
   if ((sym = symInfo.getDataSymbol(core, address)) &&
       sym->value == address &&
       (cpSym = symInfo.getGlobalSymbol(core, "_cp")) &&
       cpSym->value == cpValue) {
-    *line.buf << sym->name;
-    *line.buf << "(0x" << std::hex << address << ')';
+    buf << sym->name;
+    buf << "(0x" << std::hex << address << ')';
   } else {
-    *line.buf << offset;
+    buf << offset;
   }
 }
 
 void Tracer::printDPRelOffset(uint32_t offset)
 {
-  uint32_t dpValue = line.thread->regs[DP];
+  uint32_t dpValue = thread->regs[DP];
   uint32_t address = dpValue + (offset << 2);
-  const Core *core = &line.thread->getParent();
+  const Core *core = &thread->getParent();
   const ElfSymbol *sym, *dpSym;
   if ((sym = symInfo.getDataSymbol(core, address)) &&
       sym->value == address &&
       (dpSym = symInfo.getGlobalSymbol(core, "_dp")) &&
       dpSym->value == dpValue) {
-    *line.buf << sym->name;
-    *line.buf << "(0x" << std::hex << address << std::dec << ')';
+    buf << sym->name;
+    buf << "(0x" << std::hex << address << std::dec << ')';
   } else {
-    *line.buf << offset;
+    buf << offset;
   }
 }
 
 void Tracer::regWrite(Reg reg, uint32_t value)
 {
-  if (!line.hadRegWrite) {
-    *line.buf << ' ';
-    // Align
-    size_t pos = line.buf->str().size() - line.numEscapeChars;
-    if (pos < regWriteColumn) {
-      *line.buf << std::setw(regWriteColumn - pos) << "";
-    }
-    *line.buf << "# ";
-  } else {
-    *line.buf << ", ";
+  assert(thread);
+  bool first = !emittedLineStart;
+  if (!emittedLineStart) {
+    printInstructionLineStart(*thread, pc);
   }
-  *line.buf << reg << "=0x" << std::hex << value << std::dec;
-  line.hadRegWrite = true;
+  printRegWrite(reg, value, first);
+  emittedLineStart = true;
 }
 
 void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
 {
-  PushLineState save(*this);
-  printCommonStart(node);
+  assert(!emittedLineStart);
+  printLinePrefix(node);
   red();
-  *line.buf << " SSwitch read: ";
-  *line.buf << "register 0x" << std::hex << regNum;
-  *line.buf << ", reply address 0x" << retAddress << std::dec;
+  buf << " SSwitch read: ";
+  buf << "register 0x" << std::hex << regNum;
+  buf << ", reply address 0x" << retAddress << std::dec;
   reset();
-  printCommonEnd();
+  printLineEnd();
 }
 
 void Tracer::
 SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
              uint32_t value)
 {
-  PushLineState save(*this);
-  printCommonStart(node);
+  assert(!emittedLineStart);
+  printLinePrefix(node);
   red();
-  *line.buf << " SSwitch write: ";
-  *line.buf << "register 0x" << std::hex << regNum;
-  *line.buf << ", value 0x" << value;
-  *line.buf << ", reply address 0x" << retAddress << std::dec;
+  buf << " SSwitch write: ";
+  buf << "register 0x" << std::hex << regNum;
+  buf << ", value 0x" << value;
+  buf << ", reply address 0x" << retAddress << std::dec;
   reset();
-  printCommonEnd();
+  printLineEnd();
 }
 
 void Tracer::SSwitchNack(const Node &node, uint32_t dest)
 {
-  PushLineState save(*this);
-  printCommonStart(node);
+  assert(!emittedLineStart);
+  printLinePrefix(node);
   red();
-  *line.buf << " SSwitch reply: NACK";
-  *line.buf << ", destintion 0x" << std::hex << dest << std::dec;
+  buf << " SSwitch reply: NACK";
+  buf << ", destintion 0x" << std::hex << dest << std::dec;
   reset();
-  printCommonEnd();
+  printLineEnd();
 }
 
 void Tracer::SSwitchAck(const Node &node, uint32_t dest)
 {
-  PushLineState save(*this);
-  printCommonStart(node);
+  assert(!emittedLineStart);
+  printLinePrefix(node);
   red();
-  *line.buf << " SSwitch reply: ACK";
-  *line.buf << ", destintion 0x" << std::hex << dest << std::dec;
+  buf << " SSwitch reply: ACK";
+  buf << ", destintion 0x" << std::hex << dest << std::dec;
   reset();
-  printCommonEnd();
+  printLineEnd();
 }
 
 void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
 {
-  PushLineState save(*this);
-  printCommonStart(node);
+  assert(!emittedLineStart);
+  printLinePrefix(node);
   red();
-  *line.buf << " SSwitch reply: ACK";
-  *line.buf << ", data 0x" << std::hex << data;
-  *line.buf << ", destintion 0x" << dest << std::dec;
+  buf << " SSwitch reply: ACK";
+  buf << ", data 0x" << std::hex << data;
+  buf << ", destintion 0x" << dest << std::dec;
   reset();
-  printCommonEnd();
+  printLineEnd();
 }
 
 void Tracer::
 event(const Thread &t, const EventableResource &res, uint32_t pc,
       uint32_t ev)
 {
-  PushLineState save(*this);
-  printCommonStart(t);
+  assert(!emittedLineStart);
+  printThreadName(t);
   red();
-  *line.buf << " Event caused by "
+  buf << " Event caused by "
        << Resource::getResourceName(static_cast<const Resource&>(res).getType())
        << " 0x" << std::hex << (uint32_t)res.getID() << std::dec;
   reset();
   regWrite(ED, ev);
-  printCommonEnd();
+  printLineEnd();
 }
 
 void Tracer::
 interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
           uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed)
 {
-  PushLineState save(*this);
-  printCommonStart(t);
+  assert(!emittedLineStart);
+  printThreadName(t);
   red();
-  *line.buf << " Interrupt caused by "
+  buf << " Interrupt caused by "
        << Resource::getResourceName(static_cast<const Resource&>(res).getType())
        << " 0x" << std::hex << (uint32_t)res.getID() << std::dec;
   reset();
-  regWrite(ED, ed);
-  regWrite(SSR, ssr);
-  regWrite(SPC, spc);
-  regWrite(SED, sed);
-  printCommonEnd();
+  printRegWrite(ED, ed, true);
+  printRegWrite(SSR, ssr, false);
+  printRegWrite(SPC, spc, false);
+  printRegWrite(SED, sed, false);
+  printLineEnd();
 }
 
 void Tracer::
 exception(const Thread &t, uint32_t et, uint32_t ed,
           uint32_t sed, uint32_t ssr, uint32_t spc)
 {
-  PushLineState save(*this);
-  printCommonStart(t);
+  assert(!emittedLineStart);
+  printInstructionLineStart(*thread, pc);
+  printLineEnd();
+  printThreadName(t);
   red();
-  *line.buf << ' ' << Exceptions::getExceptionName(et) << " exception";
+  buf << ' ' << Exceptions::getExceptionName(et) << " exception";
   reset();
-  regWrite(ET, et);
-  regWrite(ED, ed);
-  regWrite(SSR, ssr);
-  regWrite(SPC, spc);
-  regWrite(SED, sed);
-  printCommonEnd();
+  printRegWrite(ET, et, true);
+  printRegWrite(ED, ed, false);
+  printRegWrite(SSR, ssr, false);
+  printRegWrite(SPC, spc, false);
+  printRegWrite(SED, sed, false);
+  emittedLineStart = true;
 }
 
 void Tracer::
 syscallBegin(const Thread &t)
 {
-  printCommonStart(t);
+  assert(!emittedLineStart);
+  printLinePrefix(t);
   red();
-  *line.buf << " Syscall ";
+  buf << " Syscall ";
 }
 
 void Tracer::dumpThreadSummary(const Core &core)
@@ -427,29 +422,26 @@ void Tracer::dumpThreadSummary(const Core &core)
     const Thread &t = core.getThread(i);
     if (!t.isInUse())
       continue;
-    const Thread &ts = t;
-    printCommonStart();
-    line.thread = &ts;
-    *line.buf << "Thread ";
-    printThreadName();
-    if (ts.waiting()) {
-      if (Resource *res = ts.pausedOn) {
-        *line.buf << " paused on ";
-        *line.buf << Resource::getResourceName(res->getType());
-        *line.buf << " 0x" << std::hex << res->getID();
-      } else if (ts.eeble()) {
-        *line.buf << " waiting for events";
-        if (ts.ieble())
-          *line.buf << " or interrupts";
-      } else if (ts.ieble()) {
-        *line.buf << " waiting for interrupts";
+    buf << "Thread ";
+    printThreadName(t);
+    if (t.waiting()) {
+      if (Resource *res = t.pausedOn) {
+        buf << " paused on ";
+        buf << Resource::getResourceName(res->getType());
+        buf << " 0x" << std::hex << res->getID();
+      } else if (t.eeble()) {
+        buf << " waiting for events";
+        if (t.ieble())
+          buf << " or interrupts";
+      } else if (t.ieble()) {
+        buf << " waiting for interrupts";
       } else {
-        *line.buf << " paused";
+        buf << " paused";
       }
     }
-    *line.buf << " at ";
-    printThreadPC();
-    printCommonEnd();
+    buf << " at ";
+    printThreadPC(t, t.getRealPc());
+    printLineEnd();
   }
 }
 
@@ -467,21 +459,21 @@ void Tracer::dumpThreadSummary(const SystemState &system)
 
 void Tracer::timeout(const SystemState &system, ticks_t time)
 {
-  printCommonStart();
+  assert(!emittedLineStart);
   red();
-  *line.buf << "Timeout after " << time << " cycles";
+  buf << "Timeout after " << time << " cycles";
   reset();
-  printCommonEnd();
+  printLineEnd();
   dumpThreadSummary(system);
 }
 
 void Tracer::noRunnableThreads(const SystemState &system)
 {
-  printCommonStart();
+  assert(!emittedLineStart);
   red();
-  *line.buf << "No more runnable threads";
+  buf << "No more runnable threads";
   reset();
-  printCommonEnd();
+  printLineEnd();
   dumpThreadSummary(system);
 }
 

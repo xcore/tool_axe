@@ -28,38 +28,13 @@ inline std::ostream &operator<<(std::ostream &out, const Register::Reg &r) {
 
 class Tracer {
 private:
-  struct LineState {
-    LineState(std::ostringstream *b) :
-      thread(0),
-      out(0),
-      buf(b),
-      pending(0) {}
-    LineState(std::ostream &o, std::ostringstream &b, std::ostringstream &pendingBuf) :
-      thread(0),
-      out(&o),
-      buf(&b),
-      pending(&pendingBuf) {}
-    const Thread *thread;
-    bool hadRegWrite;
-    size_t numEscapeChars;
-    std::ostream *out;
-    std::ostringstream *buf;
-    std::ostringstream *pending;
-  };
-  class PushLineState {
-  private:
-    bool needRestore;
-    LineState line;
-    Tracer &parent;
-  public:
-    PushLineState(Tracer &parent);
-    ~PushLineState();
-    bool getRestore() const { return needRestore; }
-  };
   bool tracingEnabled;
+  std::ostream &out;
   std::ostringstream buf;
-  std::ostringstream pendingBuf;
-  LineState line;
+  const Thread *thread;
+  uint32_t pc;
+  bool emittedLineStart;
+  size_t numEscapeChars;
   SymbolInfo symInfo;
   TerminalColours colours;
 
@@ -68,16 +43,18 @@ private:
   void red() { escapeCode(colours.red); }
   void green() { escapeCode(colours.green); }
 
-  void printThreadName();
-  void printCommonStart();
-  void printCommonStart(const Node &n);
-  void printCommonStart(const Thread &t);
-  void printCommonEnd();
-  void printThreadPC();
+  void printLinePrefix(const Thread &t);
+  void printLinePrefix(const Node &n);
+  void printLineEnd();
+  void printThreadName(const Thread &t);
+  void printThreadPC(const Thread &t, uint32_t pc);
+  void printInstructionLineStart(const Thread &t, uint32_t pc);
+
+  void printRegWrite(Register::Reg reg, uint32_t value, bool first);
 
   void printImm(uint32_t op)
   {
-    *line.buf << op;
+    buf << op;
   }
 
   void printSrcRegister(Register::Reg op);
@@ -93,7 +70,10 @@ private:
 public:
   Tracer(bool tracing) :
     tracingEnabled(tracing),
-    line(std::cout, buf, pendingBuf),
+    out(std::cout),
+    thread(nullptr),
+    emittedLineStart(false),
+    numEscapeChars(0),
     colours(TerminalColours::null) {}
   bool getTracingEnabled() const { return tracingEnabled; }
   SymbolInfo *getSymbolInfo() { return &symInfo; }
@@ -103,9 +83,7 @@ public:
 
   void regWrite(Register::Reg reg, uint32_t value);
 
-  void instructionEnd() {
-    printCommonEnd();
-  }
+  void instructionEnd();
 
   void SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum);
   void SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
@@ -125,17 +103,17 @@ public:
 
   void syscall(const Thread &t, const std::string &s) {
     syscallBegin(t);
-    *line.buf << s << "()";
+    buf << s << "()";
     reset();
-    printCommonEnd();
+    printLineEnd();
   }
   template<typename T0>
   void syscall(const Thread &t, const std::string &s,
                T0 op0) {
     syscallBegin(t);
-    *line.buf << s << '(' << op0 << ')';
+    buf << s << '(' << op0 << ')';
     reset();
-    printCommonEnd();
+    printLineEnd();
   }
   void timeout(const SystemState &system, ticks_t time);
   void noRunnableThreads(const SystemState &system);

@@ -726,13 +726,13 @@ void FunctionCodeEmitter::emitRegWriteBack()
         writeSR = true;
         numSR = i;
       } else {
-        std::cout << "THREAD.regs[" << getOperandName(*inst, i);
-        std::cout << "] = ";
-        std::cout << "op" << i << ";\n";
         if (!jit && !inst->getFormat().empty()) {
           std::cout << "TRACE_REG_WRITE((Register::Reg)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
+        std::cout << "THREAD.regs[" << getOperandName(*inst, i);
+        std::cout << "] = ";
+        std::cout << "op" << i << ";\n";
       }
       break;
     }
