@@ -7,7 +7,7 @@
 #include "Thread.h"
 #include "Core.h"
 #include "Exceptions.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include "Synchroniser.h"
 #include "Chanend.h"
 #include "ClockBlock.h"
@@ -23,9 +23,9 @@ uint32_t axe::exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   uint32_t spc = t.fromPc(pc);
   uint32_t ssr = t.sr.to_ulong();
 
-  Tracer &tracer = t.getParent().getTracer();
-  if (tracer.getTracingEnabled()) {
-    tracer.exception(t, et, ed, sed, ssr, spc);
+  Tracer *tracer = t.getParent().getTracer();
+  if (tracer) {
+    tracer->exception(t, et, ed, sed, ssr, spc);
   }
 
   t.regs[SSR] = sed;

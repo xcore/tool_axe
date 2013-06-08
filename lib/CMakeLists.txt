@@ -68,6 +68,8 @@ add_library(axe
   LLVMExtra.cpp
   Lock.cpp
   Lock.h
+  LoggingTracer.cpp
+  LoggingTracer.h
   NetworkLink.h
   NetworkLink.cpp
   ${NETWORK_LINK_TAP_FILES}
@@ -140,8 +142,8 @@ add_library(axe
   Timer.cpp
   Timer.h
   Token.h
-  Trace.h
-  Trace.cpp
+  Tracer.h
+  Tracer.cpp
   UartRx.h
   UartRx.cpp
   WaveformTracer.h

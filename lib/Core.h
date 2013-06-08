@@ -337,7 +337,7 @@ public:
   unsigned getCoreNumber() const { return coreNumber; }
   uint32_t getCoreID() const;
   const Node *getParent() const { return parent; }
-  Tracer &getTracer();
+  Tracer *getTracer();
   Node *getParent() { return parent; }
   void dumpPaused() const;
   Thread &getThread(unsigned num) { return thread[num]; }

@@ -7,7 +7,7 @@
 #include "Resource.h"
 #include "Node.h"
 #include "SystemState.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include <cassert>
 
 using namespace axe;
@@ -92,24 +92,24 @@ void SSwitch::handleRequest(ticks_t time, const Request &request)
   uint32_t value = 0;
   ResourceID destID = ResourceID::chanendID(request.returnNum,
                                             request.returnNode);
-  Tracer &tracer = parent->getParent()->getTracer();
+  Tracer *tracer = parent->getParent()->getTracer();
   if (request.write) {
     ack = regs.write(request.regNum, request.data);
-    if (tracer.getTracingEnabled()) {
-      tracer.SSwitchWrite(*parent, destID, request.regNum, request.data);
+    if (tracer) {
+      tracer->SSwitchWrite(*parent, destID, request.regNum, request.data);
       if (ack)
-        tracer.SSwitchAck(*parent, destID);
+        tracer->SSwitchAck(*parent, destID);
       else
-        tracer.SSwitchNack(*parent, destID);
+        tracer->SSwitchNack(*parent, destID);
     }
   } else {
     ack = regs.read(request.regNum, value);
-    if (tracer.getTracingEnabled()) {
-      tracer.SSwitchRead(*parent, destID, request.regNum);
+    if (tracer) {
+      tracer->SSwitchRead(*parent, destID, request.regNum);
       if (ack)
-        tracer.SSwitchAck(*parent, value, destID);
+        tracer->SSwitchAck(*parent, value, destID);
       else
-        tracer.SSwitchNack(*parent, destID);
+        tracer->SSwitchNack(*parent, destID);
     }
   }
   ChanEndpoint *dest = parent->getChanendDest(destID);

@@ -6,7 +6,7 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
-#include "Trace.h"
+#include "LoggingTracer.h"
 #include "StopReason.h"
 
 using namespace axe;
@@ -15,8 +15,12 @@ using namespace Register;
 SystemState::SystemState(bool tracing) :
   currentRunnable(0),
   rom(0),
-  tracer(new Tracer(tracing)) {
+  tracer(0)
+{
   pendingEvent.set = false;
+  if (tracing) {
+    tracer = new LoggingTracer(symbolInfo);
+  }
 }
 
 SystemState::~SystemState()
@@ -58,7 +62,7 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   t.eeble() = false;
   // EventableResource::completeEvent sets the ED and PC.
   res.completeEvent();
-  if (tracer->getTracingEnabled()) {
+  if (tracer) {
     if (interrupt) {
       tracer->interrupt(t, res, t.fromPc(t.pc), t.regs[SSR], t.regs[SPC],
                         t.regs[SED], t.regs[ED]);
@@ -112,7 +116,7 @@ setRom(const uint8_t *data, uint32_t romSize, uint32_t romBase)
   rom = new uint8_t[romSize];
   std::memcpy(rom, data, romSize);
   romDecodeCache.reset(new DecodeCache(romSize, romBase, false,
-                                       tracer->getTracingEnabled()));
+                                       tracer != nullptr));
   for (Node *node : nodes) {
     for (auto it = node->core_begin(), e = node->core_end(); it != e; ++it) {
       Core *core = *it;

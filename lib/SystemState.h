@@ -12,6 +12,7 @@
 #include "JIT.h"
 #include "RunnableQueue.h"
 #include "Timeout.h"
+#include "SymbolInfo.h"
 
 namespace axe {
 
@@ -57,6 +58,7 @@ class SystemState {
   Runnable *currentRunnable;
   PendingEvent pendingEvent;
   Timeout timeoutRunnable;
+  SymbolInfo symbolInfo;
 
   uint8_t *rom;
   std::auto_ptr<DecodeCache> romDecodeCache;
@@ -75,6 +77,8 @@ public:
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
   void addNode(std::auto_ptr<Node> n);
+
+  SymbolInfo &getSymbolInfo() { return symbolInfo; }
 
   Runnable *getExecutingRunnable() {
     return currentRunnable;
@@ -143,7 +147,7 @@ public:
   }
 
   JIT &getJIT() { return jit; }
-  Tracer &getTracer() { return *tracer; }
+  Tracer *getTracer() { return tracer; }
 
   node_iterator node_begin() { return nodes.begin(); }
   node_iterator node_end() { return nodes.end(); }

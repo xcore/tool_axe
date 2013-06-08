@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include "ScopedArray.h"
-#include "Trace.h"
+#include "Tracer.h"
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -228,10 +228,10 @@ void SyscallHandler::setDoneSyscallsRequired(unsigned count) {
 
 #define TRACE(...) \
 do { \
-Tracer &tracer = thread.getParent().getTracer(); \
-if (tracer.getTracingEnabled()) { \
-tracer.syscall(thread, __VA_ARGS__); \
-} \
+  Tracer *tracer = thread.getParent().getTracer(); \
+  if (tracer) { \
+    tracer->syscall(thread, __VA_ARGS__); \
+  } \
 } while(0)
 
 SyscallHandler::SycallOutcome SyscallHandler::

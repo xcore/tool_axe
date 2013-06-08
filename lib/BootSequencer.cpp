@@ -12,7 +12,7 @@
 #include "ScopedArray.h"
 #include "StopReason.h"
 #include "SymbolInfo.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include <gelf.h>
 #include <iostream>
 #include <algorithm>
@@ -206,20 +206,20 @@ int BootSequenceStepElf::execute(ExecutionState &state)
     }
   }
 
-  SymbolInfo *SI = sys.getTracer().getSymbolInfo();
   std::auto_ptr<CoreSymbolInfo> CSI;
   readSymbols(e, ram_base, ram_base + ram_size, CSI);
-  SI->add(core, CSI);
+  SymbolInfo &SI = sys.getSymbolInfo();
+  SI.add(core, CSI);
 
   // Patch in syscall instruction at the syscall address.
-  if (const ElfSymbol *syscallSym = SI->getGlobalSymbol(core, "_DoSyscall")) {
+  if (const ElfSymbol *syscallSym = SI.getGlobalSymbol(core, "_DoSyscall")) {
     if (!BM.setBreakpoint(*core, syscallSym->value, BreakpointType::Syscall)) {
       std::cout << "Warning: invalid _DoSyscall address "
       << std::hex << syscallSym->value << std::dec << "\n";
     }
   }
   // Patch in exception instruction at the exception address
-  if (const ElfSymbol *doExceptionSym = SI->getGlobalSymbol(core, "_DoException")) {
+  if (const ElfSymbol *doExceptionSym = SI.getGlobalSymbol(core, "_DoException")) {
     if (!BM.setBreakpoint(*core, doExceptionSym->value,
                           BreakpointType::Exception)) {
       std::cout << "Warning: invalid _DoException address "

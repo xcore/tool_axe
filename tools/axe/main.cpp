@@ -12,7 +12,7 @@
 #include <climits>
 
 #include "AXEInitialize.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include "Resource.h"
 #include "Core.h"
 #include "SyscallHandler.h"

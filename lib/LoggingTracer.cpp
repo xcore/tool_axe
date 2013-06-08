@@ -1,9 +1,9 @@
-// Copyright (c) 2011, Richard Osborne, All rights reserved
+// Copyright (c) 2011-2013, Richard Osborne, All rights reserved
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include "Trace.h"
+#include "LoggingTracer.h"
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
@@ -13,6 +13,8 @@
 #include "InstructionProperties.h"
 #include "InstructionTraceInfo.h"
 #include "InstructionOpcode.h"
+
+#include "llvm/Support/raw_ostream.h"
 #include <iomanip>
 #include <sstream>
 #include <cstring>
@@ -23,35 +25,40 @@ using namespace Register;
 const unsigned mnemonicColumn = 49;
 const unsigned regWriteColumn = 87;
 
-Tracer::Tracer(bool tracing) :
-  tracingEnabled(tracing),
+static llvm::raw_ostream &operator<<(llvm::raw_ostream &out,
+                                     const Register::Reg &r) {
+  return out << getRegisterName(r);
+}
+
+LoggingTracer::LoggingTracer(const SymbolInfo &SI) :
   useColors(llvm::outs().has_colors()),
   out(llvm::outs()),
   pos(out.tell()),
   thread(nullptr),
-  emittedLineStart(false)
+  emittedLineStart(false),
+  symInfo(SI)
 {
 }
 
-void Tracer::green()
+void LoggingTracer::green()
 {
   if (useColors)
     out.changeColor(llvm::raw_ostream::GREEN);
 }
 
-void Tracer::red()
+void LoggingTracer::red()
 {
   if (useColors)
     out.changeColor(llvm::raw_ostream::RED);
 }
 
-void Tracer::reset()
+void LoggingTracer::reset()
 {
   if (useColors)
     out.resetColor();
 }
 
-void Tracer::align(unsigned column)
+void LoggingTracer::align(unsigned column)
 {
   uint64_t currentPos = out.tell() - pos;
   if (currentPos >= column) {
@@ -60,7 +67,7 @@ void Tracer::align(unsigned column)
   }
   unsigned numSpaces = column - currentPos;
   static const char spaces[] =
-    "                                                  ";
+  "                                                  ";
   const int arraySize = sizeof(spaces) - 1;
   while (numSpaces >= arraySize) {
     out.write(spaces, arraySize);
@@ -70,19 +77,19 @@ void Tracer::align(unsigned column)
     out.write(spaces, numSpaces);
 }
 
-void Tracer::printLineEnd()
+void LoggingTracer::printLineEnd()
 {
   out << '\n';
   pos = out.tell();
 }
 
-void Tracer::printThreadName(const Thread &t)
+void LoggingTracer::printThreadName(const Thread &t)
 {
   out << t.getParent().getCoreName();
   out << ":t" << t.getNum();
 }
 
-void Tracer::printLinePrefix(const Node &n)
+void LoggingTracer::printLinePrefix(const Node &n)
 {
   green();
   out << '<';
@@ -91,7 +98,7 @@ void Tracer::printLinePrefix(const Node &n)
   reset();
 }
 
-void Tracer::printLinePrefix(const Thread &t)
+void LoggingTracer::printLinePrefix(const Thread &t)
 {
   // TODO add option to show cycles?
   //out << std::setw(6) << (uint64_t)thread->time;
@@ -102,7 +109,7 @@ void Tracer::printLinePrefix(const Thread &t)
   reset();
 }
 
-void Tracer::printThreadPC(const Thread &t, uint32_t pc)
+void LoggingTracer::printThreadPC(const Thread &t, uint32_t pc)
 {
   const Core *core = &t.getParent();
   const ElfSymbol *sym;
@@ -140,7 +147,7 @@ getOperandRegister(const InstructionProperties &properties,
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
-unsigned Tracer::parseOperandNum(const char *p, const char *&end)
+unsigned LoggingTracer::parseOperandNum(const char *p, const char *&end)
 {
   // Operands are currently restricted to one digit.
   assert(isdigit(*p) && !isdigit(*(p + 1)));
@@ -148,23 +155,23 @@ unsigned Tracer::parseOperandNum(const char *p, const char *&end)
   return *p - '0';
 }
 
-void Tracer::printInstructionLineStart(const Thread &t, uint32_t pc)
+void LoggingTracer::printInstructionLineStart(const Thread &t, uint32_t pc)
 {
   printLinePrefix(*thread);
   out << ' ';
   printThreadPC(t, pc);
   out << ":";
-
+  
   // Align
   align(mnemonicColumn);
-
+  
   // Disassemble instruction.
   InstructionOpcode opcode;
   Operands ops;
   instructionDecode(t.getParent(), pc, opcode, ops, true);
   const InstructionProperties &properties =
   instructionProperties[opcode];
-
+  
   // Special cases.
   // TODO remove this by describing tsetmr as taking an immediate?
   if (opcode == InstructionOpcode::TSETMR_2r) {
@@ -182,7 +189,7 @@ void Tracer::printInstructionLineStart(const Thread &t, uint32_t pc)
     printSrcRegister(getOperandRegister(properties, ops, 1));
     return;
   }
-
+  
   const char *fmt = instructionTraceInfo[opcode].string;
   for (const char *p = fmt; *p != '\0'; ++p) {
     if (*p != '%') {
@@ -243,7 +250,7 @@ void Tracer::printInstructionLineStart(const Thread &t, uint32_t pc)
   }
 }
 
-void Tracer::printRegWrite(Register::Reg reg, uint32_t value, bool first)
+void LoggingTracer::printRegWrite(Register::Reg reg, uint32_t value, bool first)
 {
   if (first) {
     align(regWriteColumn);
@@ -255,7 +262,11 @@ void Tracer::printRegWrite(Register::Reg reg, uint32_t value, bool first)
   out.write_hex(value);
 }
 
-void Tracer::instructionBegin(const Thread &t)
+void LoggingTracer::printImm(uint32_t op) {
+  out << op;
+}
+
+void LoggingTracer::instructionBegin(const Thread &t)
 {
   assert(!thread);
   assert(!emittedLineStart);
@@ -263,7 +274,7 @@ void Tracer::instructionBegin(const Thread &t)
   pc = t.getRealPc();
 }
 
-void Tracer::instructionEnd() {
+void LoggingTracer::instructionEnd() {
   assert(thread);
   if (!emittedLineStart) {
     printInstructionLineStart(*thread, pc);
@@ -273,26 +284,26 @@ void Tracer::instructionEnd() {
   printLineEnd();
 }
 
-void Tracer::printSrcRegister(Register::Reg reg)
+void LoggingTracer::printSrcRegister(Register::Reg reg)
 {
   out << reg << "(0x";
   out.write_hex(thread->regs[reg]);
   out << ')';
 }
 
-void Tracer::printDestRegister(Register::Reg reg)
+void LoggingTracer::printDestRegister(Register::Reg reg)
 {
   out << reg;
 }
 
-void Tracer::printSrcDestRegister(Register::Reg reg)
+void LoggingTracer::printSrcDestRegister(Register::Reg reg)
 {
   out << reg << "(0x";
   out.write_hex(thread->regs[reg]);
   out << ')';
 }
 
-void Tracer::printCPRelOffset(uint32_t offset)
+void LoggingTracer::printCPRelOffset(uint32_t offset)
 {
   uint32_t cpValue = thread->regs[CP];
   uint32_t address = cpValue + (offset << 2);
@@ -310,7 +321,7 @@ void Tracer::printCPRelOffset(uint32_t offset)
   }
 }
 
-void Tracer::printDPRelOffset(uint32_t offset)
+void LoggingTracer::printDPRelOffset(uint32_t offset)
 {
   uint32_t dpValue = thread->regs[DP];
   uint32_t address = dpValue + (offset << 2);
@@ -328,7 +339,7 @@ void Tracer::printDPRelOffset(uint32_t offset)
   }
 }
 
-void Tracer::regWrite(Reg reg, uint32_t value)
+void LoggingTracer::regWrite(Reg reg, uint32_t value)
 {
   assert(thread);
   bool first = !emittedLineStart;
@@ -339,7 +350,8 @@ void Tracer::regWrite(Reg reg, uint32_t value)
   emittedLineStart = true;
 }
 
-void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
+void LoggingTracer::SSwitchRead(const Node &node, uint32_t retAddress,
+                                uint16_t regNum)
 {
   assert(!emittedLineStart);
   printLinePrefix(node);
@@ -353,7 +365,7 @@ void Tracer::SSwitchRead(const Node &node, uint32_t retAddress, uint16_t regNum)
   printLineEnd();
 }
 
-void Tracer::
+void LoggingTracer::
 SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
              uint32_t value)
 {
@@ -371,7 +383,7 @@ SSwitchWrite(const Node &node, uint32_t retAddress, uint16_t regNum,
   printLineEnd();
 }
 
-void Tracer::SSwitchNack(const Node &node, uint32_t dest)
+void LoggingTracer::SSwitchNack(const Node &node, uint32_t dest)
 {
   assert(!emittedLineStart);
   printLinePrefix(node);
@@ -383,7 +395,7 @@ void Tracer::SSwitchNack(const Node &node, uint32_t dest)
   printLineEnd();
 }
 
-void Tracer::SSwitchAck(const Node &node, uint32_t dest)
+void LoggingTracer::SSwitchAck(const Node &node, uint32_t dest)
 {
   assert(!emittedLineStart);
   printLinePrefix(node);
@@ -395,7 +407,7 @@ void Tracer::SSwitchAck(const Node &node, uint32_t dest)
   printLineEnd();
 }
 
-void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
+void LoggingTracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
 {
   assert(!emittedLineStart);
   printLinePrefix(node);
@@ -409,7 +421,7 @@ void Tracer::SSwitchAck(const Node &node, uint32_t data, uint32_t dest)
   printLineEnd();
 }
 
-void Tracer::
+void LoggingTracer::
 event(const Thread &t, const EventableResource &res, uint32_t pc,
       uint32_t ev)
 {
@@ -425,7 +437,7 @@ event(const Thread &t, const EventableResource &res, uint32_t pc,
   printLineEnd();
 }
 
-void Tracer::
+void LoggingTracer::
 interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
           uint32_t ssr, uint32_t spc, uint32_t sed, uint32_t ed)
 {
@@ -444,7 +456,7 @@ interrupt(const Thread &t, const EventableResource &res, uint32_t pc,
   printLineEnd();
 }
 
-void Tracer::
+void LoggingTracer::
 exception(const Thread &t, uint32_t et, uint32_t ed,
           uint32_t sed, uint32_t ssr, uint32_t spc)
 {
@@ -463,7 +475,7 @@ exception(const Thread &t, uint32_t et, uint32_t ed,
   emittedLineStart = true;
 }
 
-void Tracer::
+void LoggingTracer::
 syscallBegin(const Thread &t)
 {
   assert(!emittedLineStart);
@@ -472,7 +484,22 @@ syscallBegin(const Thread &t)
   out << " Syscall ";
 }
 
-void Tracer::dumpThreadSummary(const Core &core)
+void LoggingTracer::syscall(const Thread &t, const std::string &s) {
+  syscallBegin(t);
+  out << s << "()";
+  out.changeColor(llvm::raw_ostream::WHITE);
+  printLineEnd();
+}
+
+void LoggingTracer::syscall(const Thread &t, const std::string &s,
+                     uint32_t op0) {
+  syscallBegin(t);
+  out << s << '(' << op0 << ')';
+  out.changeColor(llvm::raw_ostream::WHITE);
+  printLineEnd();
+}
+
+void LoggingTracer::dumpThreadSummary(const Core &core)
 {
   for (unsigned i = 0; i < NUM_THREADS; i++) {
     const Thread &t = core.getThread(i);
@@ -502,7 +529,7 @@ void Tracer::dumpThreadSummary(const Core &core)
   }
 }
 
-void Tracer::dumpThreadSummary(const SystemState &system)
+void LoggingTracer::dumpThreadSummary(const SystemState &system)
 {
   for (auto outerIt = system.node_begin(), outerE = system.node_end();
        outerIt != outerE; ++outerIt) {
@@ -514,7 +541,7 @@ void Tracer::dumpThreadSummary(const SystemState &system)
   }
 }
 
-void Tracer::timeout(const SystemState &system, ticks_t time)
+void LoggingTracer::timeout(const SystemState &system, ticks_t time)
 {
   assert(!emittedLineStart);
   red();
@@ -524,7 +551,7 @@ void Tracer::timeout(const SystemState &system, ticks_t time)
   dumpThreadSummary(system);
 }
 
-void Tracer::noRunnableThreads(const SystemState &system)
+void LoggingTracer::noRunnableThreads(const SystemState &system)
 {
   assert(!emittedLineStart);
   red();
@@ -533,4 +560,3 @@ void Tracer::noRunnableThreads(const SystemState &system)
   printLineEnd();
   dumpThreadSummary(system);
 }
-

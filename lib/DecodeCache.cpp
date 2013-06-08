@@ -5,7 +5,7 @@
 
 #include "DecodeCache.h"
 #include "Thread.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include <cstring>
 
 using namespace axe;

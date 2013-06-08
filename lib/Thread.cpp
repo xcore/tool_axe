@@ -7,7 +7,7 @@
 #include "Core.h"
 #include "Node.h"
 #include "SystemState.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include "Exceptions.h"
 #include "BitManip.h"
 #include "JIT.h"
@@ -410,21 +410,15 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 #define LOP(n) (THREAD.getOperands(THREAD.pc).lops[(n)])
 #define TRACE_BEGIN() \
 do { \
-if (tracing) { \
-CORE.getTracer().instructionBegin(THREAD); \
-} \
+  if (tracing) { CORE.getTracer()->instructionBegin(THREAD); } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
 do { \
-if (tracing) { \
-CORE.getTracer().regWrite(register, value); \
-} \
+  if (tracing) { CORE.getTracer()->regWrite(register, value); } \
 } while(0)
 #define TRACE_END() \
 do { \
-if (tracing) { \
-CORE.getTracer().instructionEnd(); \
-} \
+  if (tracing) { CORE.getTracer()->instructionEnd(); } \
 } while(0)
 #define EMIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"

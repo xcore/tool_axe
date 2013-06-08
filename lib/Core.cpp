@@ -12,7 +12,7 @@
 #include "Lock.h"
 #include "Chanend.h"
 #include "ClockBlock.h"
-#include "Trace.h"
+#include "Tracer.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -155,7 +155,7 @@ void Core::setRamBaseMultiple(unsigned multiple)
   }
 }
 
-Tracer &Core::getTracer()
+Tracer *Core::getTracer()
 {
   return parent->getParent()->getTracer();
 }
