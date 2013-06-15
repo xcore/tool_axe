@@ -11,6 +11,10 @@ Tracer::~Tracer()
 {
 }
 
+void Tracer::attach(const SystemState &systemState)
+{
+}
+
 void Tracer::instructionBegin(const Thread &t)
 {
 }

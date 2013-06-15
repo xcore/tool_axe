@@ -21,7 +21,7 @@ AXESystemRef axeCreateInstance(const char *xeFileName)
   XE xe(xeFileName);
   XEReader xeReader(xe);
   SystemStateWrapper *sysWrapper =
-    new SystemStateWrapper(xeReader.readConfig(false));
+    new SystemStateWrapper(xeReader.readConfig());
   return wrap(sysWrapper);
 }
 

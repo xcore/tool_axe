@@ -13,12 +13,14 @@ namespace axe {
 class XE;
 class SystemState;
 class PortAliases;
+class Tracer;
 
 class XEReader {
   XE &xe;
 public:
   XEReader(XE &x) : xe(x) {}
-  std::auto_ptr<SystemState> readConfig(bool tracing);
+  std::auto_ptr<SystemState>
+    readConfig(std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>());
   void readPortAliases(PortAliases &aliases);
 };
 

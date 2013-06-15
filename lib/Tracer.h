@@ -34,6 +34,8 @@ class Tracer {
 public:
   virtual ~Tracer();
 
+  virtual void attach(const SystemState &systemState);
+
   virtual void instructionBegin(const Thread &t);
 
   virtual void regWrite(Register::Reg reg, uint32_t value);

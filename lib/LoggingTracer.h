@@ -31,7 +31,7 @@ namespace axe {
     const Thread *thread;
     uint32_t pc;
     bool emittedLineStart;
-    const SymbolInfo &symInfo;
+    const SymbolInfo *symInfo;
 
     void green();
     void red();
@@ -62,8 +62,10 @@ namespace axe {
     
     void syscallBegin(const Thread &t);
   public:
-    LoggingTracer(const SymbolInfo &symInfo);
-    
+    LoggingTracer();
+
+    void attach(const SystemState &systemState) override;
+
     void instructionBegin(const Thread &t) override;
     
     void regWrite(Register::Reg reg, uint32_t value) override;

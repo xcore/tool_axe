@@ -30,14 +30,19 @@ static llvm::raw_ostream &operator<<(llvm::raw_ostream &out,
   return out << getRegisterName(r);
 }
 
-LoggingTracer::LoggingTracer(const SymbolInfo &SI) :
+LoggingTracer::LoggingTracer() :
   useColors(llvm::outs().has_colors()),
   out(llvm::outs()),
   pos(out.tell()),
   thread(nullptr),
   emittedLineStart(false),
-  symInfo(SI)
+  symInfo(0)
 {
+}
+
+void LoggingTracer::attach(const SystemState &systemState)
+{
+  symInfo = &systemState.getSymbolInfo();
 }
 
 void LoggingTracer::green()
@@ -114,7 +119,7 @@ void LoggingTracer::printThreadPC(const Thread &t, uint32_t pc)
   const Core *core = &t.getParent();
   const ElfSymbol *sym;
   if (t.getParent().isValidRamAddress(pc) &&
-      (sym = symInfo.getFunctionSymbol(core, pc))) {
+      (sym = symInfo->getFunctionSymbol(core, pc))) {
     out << sym->name;
     if (sym->value != pc)
       out << '+' << (pc - sym->value);
@@ -309,9 +314,9 @@ void LoggingTracer::printCPRelOffset(uint32_t offset)
   uint32_t address = cpValue + (offset << 2);
   const Core *core = &thread->getParent();
   const ElfSymbol *sym, *cpSym;
-  if ((sym = symInfo.getDataSymbol(core, address)) &&
+  if ((sym = symInfo->getDataSymbol(core, address)) &&
       sym->value == address &&
-      (cpSym = symInfo.getGlobalSymbol(core, "_cp")) &&
+      (cpSym = symInfo->getGlobalSymbol(core, "_cp")) &&
       cpSym->value == cpValue) {
     out << sym->name << "(0x";
     out.write_hex(address);
@@ -327,9 +332,9 @@ void LoggingTracer::printDPRelOffset(uint32_t offset)
   uint32_t address = dpValue + (offset << 2);
   const Core *core = &thread->getParent();
   const ElfSymbol *sym, *dpSym;
-  if ((sym = symInfo.getDataSymbol(core, address)) &&
+  if ((sym = symInfo->getDataSymbol(core, address)) &&
       sym->value == address &&
-      (dpSym = symInfo.getGlobalSymbol(core, "_dp")) &&
+      (dpSym = symInfo->getGlobalSymbol(core, "_dp")) &&
       dpSym->value == dpValue) {
     out << sym->name << "(0x";
     out.write_hex(address);

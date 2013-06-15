@@ -6,20 +6,20 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
-#include "LoggingTracer.h"
+#include "Tracer.h"
 #include "StopReason.h"
 
 using namespace axe;
 using namespace Register;
 
-SystemState::SystemState(bool tracing) :
+SystemState::SystemState(std::auto_ptr<Tracer> t) :
   currentRunnable(0),
   rom(0),
-  tracer(0)
+  tracer(t.release())
 {
   pendingEvent.set = false;
-  if (tracing) {
-    tracer = new LoggingTracer(symbolInfo);
+  if (tracer) {
+    tracer->attach(*this);
   }
 }
 

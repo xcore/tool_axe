@@ -128,8 +128,9 @@ lookupNodeChecked(const std::map<long,Node*> &nodeNumberMap, unsigned nodeID)
 static std::auto_ptr<SystemState>
 createSystemFromConfig(const std::string &filename,
                        const XESector *configSector,
-                       bool tracing)
+                       std::auto_ptr<Tracer> tracer)
 {
+  bool tracing = tracer.get() != nullptr;
   uint64_t length = configSector->getLength();
   const scoped_array<char> buf(new char[length + 1]);
   if (!configSector->getData(buf.get())) {
@@ -151,7 +152,7 @@ createSystemFromConfig(const std::string &filename,
   xmlNode *root = xmlDocGetRootElement(doc);
   xmlNode *system = findChild(root, "System");
   xmlNode *nodes = findChild(system, "Nodes");
-  std::auto_ptr<SystemState> systemState(new SystemState(tracing));
+  std::auto_ptr<SystemState> systemState(new SystemState(tracer));
   std::map<long,Node*> nodeNumberMap;
   for (xmlNode *child = nodes->children; child; child = child->next) {
     if (child->type != XML_ELEMENT_NODE ||
@@ -200,7 +201,7 @@ createSystemFromConfig(const std::string &filename,
   return systemState;
 }
 
-std::auto_ptr<SystemState> XEReader::readConfig(bool tracing)
+std::auto_ptr<SystemState> XEReader::readConfig(std::auto_ptr<Tracer> tracer)
 {
   // Load the file into memory.
   if (!xe) {
@@ -215,7 +216,7 @@ std::auto_ptr<SystemState> XEReader::readConfig(bool tracing)
     std::exit(1);
   }
   std::auto_ptr<SystemState> system =
-  createSystemFromConfig(xe.getFileName(), configSector, tracing);
+  createSystemFromConfig(xe.getFileName(), configSector, tracer);
   return system;
 }
 

@@ -42,6 +42,8 @@ add_library(axe
   CRC.h
   DecodeCache.h
   DecodeCache.cpp
+  DelegatingTracer.h
+  DelegatingTracer.cpp
   EthernetPhy.h
   EthernetPhy.cpp
   Exceptions.h
@@ -123,6 +125,8 @@ add_library(axe
   SSwitch.cpp
   SSwitchCtrlRegs.h
   SSwitchCtrlRegs.cpp
+  StatsTracer.h
+  StatsTracer.cpp
   StopReason.h
   StopReason.cpp
   SymbolInfo.h

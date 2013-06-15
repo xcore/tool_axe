@@ -28,6 +28,8 @@
 #include "PortConnectionManager.h"
 #include "XEReader.h"
 #include "Property.h"
+#include "LoggingTracer.h"
+#include "DelegatingTracer.h"
 
 // SDL must be included before main so that SDL can substitute main() with
 // SDL_main() if required.
@@ -131,6 +133,28 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
+static std::auto_ptr<Tracer>
+createTracerFromOptions(const Options &options)
+{
+  std::vector<Tracer *> tracers;
+  if (options.tracing) {
+    tracers.push_back(new LoggingTracer);
+  }
+  std::auto_ptr<Tracer> tracer;
+  if (!tracers.empty()) {
+    if (tracers.size() == 1) {
+      tracer.reset(tracers.front());
+    } else {
+      std::auto_ptr<DelegatingTracer> delegatingTracer(new DelegatingTracer);
+      for (Tracer *subTracer : tracers) {
+        delegatingTracer->addDelegate(std::auto_ptr<Tracer>(subTracer));
+      }
+      tracer.reset(delegatingTracer.release());
+    }
+  }
+  return tracer;
+}
+
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties*>>
   PeripheralDescriptorWithPropertiesVector;
 
@@ -139,7 +163,8 @@ loop(const Options &options)
 {
   XE xe(options.file);
   XEReader xeReader(xe);
-  std::auto_ptr<SystemState> statePtr = xeReader.readConfig(options.tracing);
+  std::auto_ptr<Tracer> tracer = createTracerFromOptions(options);
+  std::auto_ptr<SystemState> statePtr = xeReader.readConfig(tracer);
   PortAliases portAliases;
   xeReader.readPortAliases(portAliases);
   SystemState &sys = *statePtr;

@@ -71,14 +71,16 @@ class SystemState {
 public:
   typedef std::vector<Node*>::iterator node_iterator;
   typedef std::vector<Node*>::const_iterator const_node_iterator;
-  SystemState(bool tracing);
+  SystemState(std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>());
   SystemState(const SystemState &) = delete;
   ~SystemState();
+
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
   void addNode(std::auto_ptr<Node> n);
 
   SymbolInfo &getSymbolInfo() { return symbolInfo; }
+  const SymbolInfo &getSymbolInfo() const { return symbolInfo; }
 
   Runnable *getExecutingRunnable() {
     return currentRunnable;
