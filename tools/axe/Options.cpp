@@ -17,6 +17,7 @@ Options::Options() :
   bootMode(BOOT_SIM),
   file(0),
   tracing(false),
+  stats(false),
   maxCycles(0)
 {
 }
@@ -40,6 +41,7 @@ static void printUsage(const char *ProgName) {
   "  --rom FILE                  Specify boot rom.\n"
   "  --max-cycles <n>            Exit after <n> cycles\n"
   "  -t                          Enable instruction tracing.\n"
+  "  --stats                     Display simulator statistics on exit.\n"
   "\n"
   "Peripherals:\n";
   for (PeripheralRegistry::iterator it = PeripheralRegistry::begin(),
@@ -182,6 +184,8 @@ void Options::parse(int argc, char **argv)
     arg = argv[i];
     if (arg == "-t") {
       tracing = true;
+    } else if (arg == "--stats") {
+      stats = true;
     } else if (arg == "--max-cycles") {
       if (i + 1 > argc) {
         printUsage(argv[0]);

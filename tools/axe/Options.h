@@ -30,6 +30,7 @@ struct Options {
   std::string rom;
   std::string vcdFile;
   bool tracing;
+  bool stats;
   ticks_t maxCycles;
 
   Options();

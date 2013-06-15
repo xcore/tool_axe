@@ -29,6 +29,7 @@
 #include "XEReader.h"
 #include "Property.h"
 #include "LoggingTracer.h"
+#include "StatsTracer.h"
 #include "DelegatingTracer.h"
 
 // SDL must be included before main so that SDL can substitute main() with
@@ -139,6 +140,9 @@ createTracerFromOptions(const Options &options)
   std::vector<Tracer *> tracers;
   if (options.tracing) {
     tracers.push_back(new LoggingTracer);
+  }
+  if (options.stats) {
+    tracers.push_back(new StatsTracer);
   }
   std::auto_ptr<Tracer> tracer;
   if (!tracers.empty()) {
