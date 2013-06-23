@@ -438,7 +438,7 @@ event(const Thread &t, const EventableResource &res, uint32_t pc,
   out << " 0x";
   out.write_hex((uint32_t)res.getID());
   reset();
-  regWrite(ED, ev);
+  printRegWrite(ED, ev, true);
   printLineEnd();
 }
 

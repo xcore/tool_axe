@@ -18,6 +18,7 @@ Options::Options() :
   file(0),
   tracing(false),
   stats(false),
+  warnPacketOvertake(false),
   maxCycles(0)
 {
 }
@@ -42,6 +43,7 @@ static void printUsage(const char *ProgName) {
   "  --max-cycles <n>            Exit after <n> cycles\n"
   "  -t                          Enable instruction tracing.\n"
   "  --stats                     Display simulator statistics on exit.\n"
+  "  --warn-packet-overtake      Warn about possible packet overtaking.\n"
   "\n"
   "Peripherals:\n";
   for (PeripheralRegistry::iterator it = PeripheralRegistry::begin(),
@@ -221,6 +223,8 @@ void Options::parse(int argc, char **argv)
       }
       rom = argv[i + 1];
       i++;
+    } else if (arg == "--warn-packet-overtake") {
+      warnPacketOvertake = true;
     } else if (arg == "--boot-spi") {
       bootMode = BOOT_SPI;
     } else if (arg == "--help") {

@@ -27,18 +27,29 @@ private:
 public:
   Token(uint8_t v = 0, bool c = false)
   : value(v), control(c) { }
-  
-  bool isControl() const
-  {
+
+  bool isControl() const {
     return control;
   }
   
-  uint8_t getValue() const
-  {
+  uint8_t getValue() const {
     return value;
   }
-  
+
+  bool isCtEnd() const {
+    return control && value == CT_END;
+  }
+
+  bool isCtPause() const {
+    return control && value == CT_PAUSE;
+  }
+
   operator uint8_t() const { return value; }
+
+  bool operator==(const Token &other) const {
+    return value == other.value &&
+           control == other.control;
+  }
 };
   
 } // End axe namespace

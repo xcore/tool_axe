@@ -31,6 +31,7 @@
 #include "LoggingTracer.h"
 #include "StatsTracer.h"
 #include "DelegatingTracer.h"
+#include "CheckPacketOvertakeTracer.h"
 
 // SDL must be included before main so that SDL can substitute main() with
 // SDL_main() if required.
@@ -143,6 +144,9 @@ createTracerFromOptions(const Options &options)
   }
   if (options.stats) {
     tracers.push_back(new StatsTracer);
+  }
+  if (options.warnPacketOvertake) {
+    tracers.push_back(new CheckPacketOvertakeTracer);
   }
   std::auto_ptr<Tracer> tracer;
   if (!tracers.empty()) {

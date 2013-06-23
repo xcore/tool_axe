@@ -31,6 +31,7 @@ struct Options {
   std::string vcdFile;
   bool tracing;
   bool stats;
+  bool warnPacketOvertake;
   ticks_t maxCycles;
 
   Options();

@@ -33,6 +33,8 @@ add_library(axe
   Chanend.cpp
   ChanEndpoint.h
   ChanEndpoint.cpp
+  CheckPacketOvertakeTracer.h
+  CheckPacketOvertakeTracer.cpp
   ClockBlock.h
   ClockBlock.cpp
   Config.h
