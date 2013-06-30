@@ -823,6 +823,7 @@ void FunctionCodeEmitter::emitException(const std::string &args)
   std::cout << "THREAD.pc = exception(THREAD, THREAD.pc, ";
   emitNested(args);
   std::cout << ");\n";
+  emitCycles();
   emitYieldIfTimeSliceExpired();
   if (!jit)
     emitTraceEnd(*inst);
@@ -835,6 +836,7 @@ void FunctionCodeEmitter::emitKCall(const std::string &args)
   std::cout << "THREAD.pc = exception(THREAD, THREAD.pc, ET_KCALL, ";
   emitNested(args);
   std::cout << ");\n";
+  emitCycles();
   emitYieldIfTimeSliceExpired();
   if (!jit)
     emitTraceEnd(*inst);
@@ -843,6 +845,7 @@ void FunctionCodeEmitter::emitKCall(const std::string &args)
 
 void FunctionCodeEmitter::emitPauseOn(const std::string &args)
 {
+  emitCycles();
   emitCheckEvents();
   std::cout << "THREAD.pausedOn = ";
   emitNested(args);
@@ -871,6 +874,7 @@ void FunctionCodeEmitter::emitForceYield()
 
 void FunctionCodeEmitter::emitDeschedule()
 {
+  emitCycles();
   emitCheckEvents();
   std::cout << "THREAD.waiting() = true;\n";
   if (!jit)
@@ -1177,11 +1181,11 @@ static void emitInstFunction(Instruction &inst, bool jit)
     }
     if (!jit)
       emitTrace(inst);
-    emitter.emitCycles();
     emitter.emit(inst.getCode());
     std::cout << '\n';
     std::cout << "regWriteBack:;\n";
     // Write operands.
+    emitter.emitCycles();
     emitter.emitRegWriteBack();
     emitter.emitUpdateExecutionFrequency();
     emitter.emitNormalReturn();
