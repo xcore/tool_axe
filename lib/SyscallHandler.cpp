@@ -105,7 +105,7 @@ char *SyscallHandler::getString(Thread &thread, uint32_t startAddress)
   if (address >= end) {
     return 0;
   }
-  return reinterpret_cast<char*>(core.ramBytePtr(address));
+  return reinterpret_cast<char*>(core.ramBytePtr(startAddress));
 }
 
 /// Returns a pointer to a buffer in memory of the given size.
