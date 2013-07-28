@@ -47,19 +47,18 @@ static bool
 connectLoopbackPorts(PortConnectionManager &connectionManager,
                      const LoopbackPorts &ports)
 {
-  for (LoopbackPorts::const_iterator it = ports.begin(), e = ports.end();
-       it != e; ++it) {
-    PortConnectionWrapper first = connectionManager.get(it->first);
+  for (const auto &entry : ports) {
+    PortConnectionWrapper first = connectionManager.get(entry.first);
     if (!first) {
       std::cerr << "Error: Invalid port ";
-      it->first.dump(std::cerr);
+      entry.first.dump(std::cerr);
       std::cerr << '\n';
       return false;
     }
-    PortConnectionWrapper second = connectionManager.get(it->second);
+    PortConnectionWrapper second = connectionManager.get(entry.second);
     if (!second) {
       std::cerr << "Error: Invalid port ";
-      it->second.dump(std::cerr);
+      entry.second.dump(std::cerr);
       std::cerr << '\n';
       return false;
     }
@@ -71,22 +70,17 @@ connectLoopbackPorts(PortConnectionManager &connectionManager,
 
 static void connectWaveformTracer(Core &core, WaveformTracer &waveformTracer)
 {
-  for (Core::port_iterator it = core.port_begin(), e = core.port_end();
-       it != e; ++it) {
-    waveformTracer.add(core.getCoreName(), *it);
+  for (Port *port : core.getPorts()) {
+    waveformTracer.add(core.getCoreName(), port);
   }
 }
 
 static void
 connectWaveformTracer(SystemState &system, WaveformTracer &waveformTracer)
 {
-  for (SystemState::node_iterator outerIt = system.node_begin(),
-       outerE = system.node_end(); outerIt != outerE; ++outerIt) {
-    Node &node = **outerIt;
-    for (Node::core_iterator innerIt = node.core_begin(),
-         innerE = node.core_end(); innerIt != innerE; ++innerIt) {
-      Core &core = **innerIt;
-      connectWaveformTracer(core, waveformTracer);
+  for (Node *node : system.getNodes()) {
+    for (Core *core : node->getCores()) {
+      connectWaveformTracer(*core, waveformTracer);
     }
   }
   waveformTracer.finalizePorts();
@@ -97,11 +91,10 @@ checkPeripheralPorts(PortConnectionManager &connectionManager,
                      const PeripheralDescriptor *descriptor,
                      const Properties &properties)
 {
-  for (PeripheralDescriptor::const_iterator it = descriptor->properties_begin(),
-       e = descriptor->properties_end(); it != e; ++it) {
-    if (it->getType() != PropertyDescriptor::PORT)
+  for (const PropertyDescriptor &pd : descriptor->getProperties()) {
+    if (pd.getType() != PropertyDescriptor::PORT)
       continue;
-    const Property *property = properties.get(it->getName());
+    const Property *property = properties.get(pd.getName());
     if (!property)
       continue;
     const PortArg &portArg = property->getAsPort();
@@ -184,12 +177,11 @@ loop(const Options &options)
 
   const PeripheralDescriptorWithPropertiesVector &peripherals =
     options.peripherals;
-  for (PeripheralDescriptorWithPropertiesVector::const_iterator it = peripherals.begin(),
-       e = peripherals.end(); it != e; ++it) {
-    if (!checkPeripheralPorts(connectionManager, it->first, *it->second)) {
+  for (auto &entry : peripherals) {
+    if (!checkPeripheralPorts(connectionManager, entry.first, *entry.second)) {
       std::exit(1);
     }
-    it->first->createInstance(sys, connectionManager, *it->second);
+    entry.first->createInstance(sys, connectionManager, *entry.second);
   }
 
   std::auto_ptr<WaveformTracer> waveformTracer;

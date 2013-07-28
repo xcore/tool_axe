@@ -89,10 +89,6 @@ public:
   static bool getTypeFromJtagID(unsigned jtagID, Type &type);
   bool hasMatchingNodeID(ResourceID ID);
   SSwitch *getSSwitch() { return &sswitch; }
-  core_iterator core_begin() { return cores.begin(); }
-  core_iterator core_end() { return cores.end(); }
-  const_core_iterator core_begin() const { return cores.begin(); }
-  const_core_iterator core_end() const { return cores.end(); }
   unsigned getNumXLinks() const { return xLinks.size(); }
   XLink &getXLink(unsigned num) { return xLinks[num]; }
   const XLink &getXLink(unsigned num) const { return xLinks[num]; }

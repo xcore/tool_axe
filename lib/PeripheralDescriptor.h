@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include "AccessSecondIterator.h"
+#include "Range.h"
 
 namespace axe {
 
@@ -70,8 +71,15 @@ public:
   typedef AccessSecondIterator<std::map<std::string,PropertyDescriptor>::const_iterator> const_iterator;
   iterator properties_begin() { return properties.begin(); }
   iterator properties_end() { return properties.end(); }
+  range<iterator> getProperties() {
+    return make_range(properties_begin(), properties_end());
+  }
+
   const_iterator properties_begin() const { return properties.begin(); }
   const_iterator properties_end() const { return properties.end(); }
+  range<const_iterator> getProperties() const {
+    return make_range(properties_begin(), properties_end());
+  }
 };
   
 } // End axe namespace

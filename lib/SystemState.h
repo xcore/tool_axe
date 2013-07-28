@@ -151,10 +151,7 @@ public:
   JIT &getJIT() { return jit; }
   Tracer *getTracer() { return tracer; }
 
-  node_iterator node_begin() { return nodes.begin(); }
-  node_iterator node_end() { return nodes.end(); }
-  const_node_iterator node_begin() const { return nodes.begin(); }
-  const_node_iterator node_end() const { return nodes.end(); }
+  const std::vector<Node*> &getNodes() const { return nodes; }
 };
 
 } // End axe namespace

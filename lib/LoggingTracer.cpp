@@ -536,12 +536,9 @@ void LoggingTracer::dumpThreadSummary(const Core &core)
 
 void LoggingTracer::dumpThreadSummary(const SystemState &system)
 {
-  for (auto outerIt = system.node_begin(), outerE = system.node_end();
-       outerIt != outerE; ++outerIt) {
-    const Node &node = **outerIt;
-    for (auto innerIt = node.core_begin(), innerE = node.core_end();
-         innerIt != innerE; ++innerIt) {
-      dumpThreadSummary(**innerIt);
+  for (Node *node : system.getNodes()) {
+    for (Core *core : node->getCores()) {
+      dumpThreadSummary(*core);
     }
   }
 }

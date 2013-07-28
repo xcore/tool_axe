@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cerrno>
+#include "Range.h"
 
 using namespace axe;
 
@@ -46,14 +47,11 @@ static void printUsage(const char *ProgName) {
   "  --warn-packet-overtake      Warn about possible packet overtaking.\n"
   "\n"
   "Peripherals:\n";
-  for (PeripheralRegistry::iterator it = PeripheralRegistry::begin(),
-       e = PeripheralRegistry::end(); it != e; ++it) {
-    PeripheralDescriptor *periph = *it;
+  for (PeripheralDescriptor *periph : make_range(PeripheralRegistry::begin(),
+                                                 PeripheralRegistry::end())) {
     std::cout << "  --" << periph->getName() << ' ';
     bool needComma = false;
-    for (PeripheralDescriptor::iterator propIt = periph->properties_begin(),
-         propE = periph->properties_end(); propIt != propE; ++propIt) {
-      const PropertyDescriptor &prop = *propIt;
+    for (const PropertyDescriptor &prop : periph->getProperties()) {
       if (needComma)
         std::cout << ',';
       std::cout << prop.getName() << '=';
@@ -157,10 +155,9 @@ static void checkRequiredProperties(const PeripheralDescriptor *periph,
                                     const Properties &properties)
 {
   // Check required properties have been set.
-  for (PeripheralDescriptor::const_iterator it = periph->properties_begin(),
-       e = periph->properties_end(); it != e; ++it) {
-    if (it->getRequired() && !properties.get(it->getName())) {
-      std::cerr << "Error: Required property \"" << it->getName() << "\"";
+  for (const PropertyDescriptor &property : periph->getProperties()) {
+    if (property.getRequired() && !properties.get(property.getName())) {
+      std::cerr << "Error: Required property \"" << property.getName() << "\"";
       std::cerr << " for " << periph->getName();
       std::cerr << " is not set " << std::endl;
       std::exit(1);

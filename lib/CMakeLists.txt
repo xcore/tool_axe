@@ -113,6 +113,7 @@ add_library(axe
   Register.cpp
   registerAllPeripherals.h
   registerAllPeripherals.cpp
+  Range.h
   Resource.h
   Resource.cpp
   ring_buffer.h

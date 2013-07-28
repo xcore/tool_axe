@@ -397,9 +397,8 @@ static inline void
 addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
              SystemState &system)
 {
-  for (SystemState::node_iterator it = system.node_begin(),
-       e = system.node_end(); it != e; ++it) {
-    addToCoreMap(coreMap, **it);
+  for (Node *node : system.getNodes()) {
+    addToCoreMap(coreMap, *node);
   }
 }
 
@@ -495,12 +494,8 @@ void BootSequencer::adjustForSPIBoot()
   eraseAllButLastImage();
   setEntryPointToRom();
   setLoadImages(false);
-  for (auto outerIt = sys.node_begin(), outerE = sys.node_end();
-       outerIt != outerE; ++outerIt) {
-    Node &node = **outerIt;
-    for (auto innerIt = node.core_begin(), innerE = node.core_end();
-         innerIt != innerE; ++innerIt) {
-      Core *core = *innerIt;
+  for (Node *node : sys.getNodes()) {
+    for (Core *core : node->getCores()) {
       core->setBootConfig(1 << 2);
     }
   }

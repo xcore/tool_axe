@@ -33,8 +33,7 @@ void axeDeleteInstance(AXESystemRef system)
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
   SystemState *sys = unwrap(system)->getSystemState();
-  for (auto it = sys->node_begin(), e = sys->node_end(); it != e; ++it) {
-    Node *node = *it;
+  for (Node *node : sys->getNodes()) {
     if (node->getJtagIndex() != jtagIndex)
       continue;
     const std::vector<Core*> &cores = node->getCores();

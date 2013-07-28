@@ -118,8 +118,7 @@ setRom(const uint8_t *data, uint32_t romSize, uint32_t romBase)
   romDecodeCache.reset(new DecodeCache(romSize, romBase, false,
                                        tracer != nullptr));
   for (Node *node : nodes) {
-    for (auto it = node->core_begin(), e = node->core_end(); it != e; ++it) {
-      Core *core = *it;
+    for (Core *core : node->getCores()) {
       core->setRom(rom, romBase, romSize);
     }
   }

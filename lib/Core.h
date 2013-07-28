@@ -18,6 +18,7 @@
 #include <string>
 #include <climits>
 #include <set>
+#include "Range.h"
 
 namespace axe {
 
@@ -381,6 +382,9 @@ public:
   };
   port_iterator port_begin() { return port_iterator(this, 1, 0); }
   port_iterator port_end() { return port_iterator(this, 33, 0); }
+  range<port_iterator> getPorts() {
+    return make_range(port_begin(), port_end());
+  }
 };
   
 } // End axe namespace
