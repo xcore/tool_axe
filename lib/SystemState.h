@@ -86,6 +86,8 @@ public:
     return currentRunnable;
   }
 
+  ticks_t getLatestThreadTime() const;
+
   void setTimeout(ticks_t time);
   void clearTimeout();
 

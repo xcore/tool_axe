@@ -343,6 +343,9 @@ public:
   void dumpPaused() const;
   Thread &getThread(unsigned num) { return thread[num]; }
   const Thread &getThread(unsigned num) const { return thread[num]; }
+  range<Thread *> getThreads() {
+    return make_range(thread, thread + NUM_THREADS);
+  }
   void setCodeReference(const std::string &value) { codeReference = value; }
   const std::string &getCodeReference() const { return codeReference; }
   std::string getCoreName() const;

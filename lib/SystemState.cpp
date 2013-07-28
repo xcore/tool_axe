@@ -72,6 +72,19 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   }
 }
 
+ticks_t SystemState::getLatestThreadTime() const
+{
+  ticks_t time = 0;
+  for (Node *node : nodes) {
+    for (Core *core : node->getCores()) {
+      for (Thread &thread : core->getThreads()) {
+        time = std::max(time, thread.time);
+      }
+    }
+  }
+  return time;
+}
+
 void SystemState::setTimeout(ticks_t time)
 {
   scheduler.push(timeoutRunnable, time);
@@ -106,8 +119,7 @@ StopReason SystemState::run()
     return StopReason::getBreakpoint(be.getTime(), be.getThread());
   }
   tracer->noRunnableThreads(*this);
-  // TODO use a sensible time here.
-  return StopReason::getNoRunnableThreads(0);
+  return StopReason::getNoRunnableThreads(getLatestThreadTime());
 }
 
 void SystemState::
