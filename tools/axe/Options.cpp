@@ -18,6 +18,7 @@ Options::Options() :
   bootMode(BOOT_SIM),
   file(0),
   tracing(false),
+  time(false),
   stats(false),
   warnPacketOvertake(false),
   maxCycles(0)
@@ -43,6 +44,7 @@ static void printUsage(const char *ProgName) {
   "  --rom FILE                  Specify boot rom.\n"
   "  --max-cycles <n>            Exit after <n> cycles\n"
   "  -t                          Enable instruction tracing.\n"
+  "  --time                      Display elapsed time on exit.\n"
   "  --stats                     Display simulator statistics on exit.\n"
   "  --warn-packet-overtake      Warn about possible packet overtaking.\n"
   "\n"
@@ -183,6 +185,8 @@ void Options::parse(int argc, char **argv)
     arg = argv[i];
     if (arg == "-t") {
       tracing = true;
+    } else if (arg == "--time") {
+      time = true;
     } else if (arg == "--stats") {
       stats = true;
     } else if (arg == "--max-cycles") {

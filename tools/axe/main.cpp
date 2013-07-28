@@ -10,6 +10,7 @@
 #include <cassert>
 #include <memory>
 #include <climits>
+#include <ctime>
 
 #include "AXEInitialize.h"
 #include "Tracer.h"
@@ -156,6 +157,21 @@ createTracerFromOptions(const Options &options)
   return tracer;
 }
 
+static void displayElapsedTime(ticks_t simTime, clock_t realTime)
+{
+  double simTimeSeconds =
+    static_cast<double>(simTime) / (CYCLES_PER_TICK * 100000000);
+  double realTimeSeconds =
+    static_cast<double>(realTime) / CLOCKS_PER_SEC;
+  double relativeSpeed = simTimeSeconds / realTimeSeconds;
+  std::cout << "Time:\n";
+  std::cout << "-----\n";
+  std::cout << std::fixed;
+  std::cout << "Elapsed simulated time: " << simTimeSeconds << "s\n";
+  std::cout << "Elapsed real time: " << realTimeSeconds << "s\n";
+  std::cout << "Relative simulator speed: " << relativeSpeed << '\n';
+}
+
 typedef std::vector<std::pair<PeripheralDescriptor*, Properties*>>
   PeripheralDescriptorWithPropertiesVector;
 
@@ -209,7 +225,15 @@ loop(const Options &options)
   if (options.maxCycles != 0) {
     sys.setTimeout(options.maxCycles);
   }
-  return bootSequencer.execute();
+  ticks_t before;
+  if (options.time)
+    before = std::clock();
+  int retval = bootSequencer.execute();
+  if (options.time) {
+    ticks_t after = std::clock();
+    displayElapsedTime(sys.getLatestThreadTime(), after - before);
+  }
+  return retval;
 }
 
 int

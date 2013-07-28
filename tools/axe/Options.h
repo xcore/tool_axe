@@ -30,6 +30,7 @@ struct Options {
   std::string rom;
   std::string vcdFile;
   bool tracing;
+  bool time;
   bool stats;
   bool warnPacketOvertake;
   ticks_t maxCycles;
