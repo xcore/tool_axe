@@ -71,15 +71,7 @@ void LoggingTracer::align(unsigned column)
     return;
   }
   unsigned numSpaces = column - currentPos;
-  static const char spaces[] =
-  "                                                  ";
-  const int arraySize = sizeof(spaces) - 1;
-  while (numSpaces >= arraySize) {
-    out.write(spaces, arraySize);
-    numSpaces -= arraySize;
-  }
-  if (numSpaces)
-    out.write(spaces, numSpaces);
+  out.indent(numSpaces);
 }
 
 void LoggingTracer::printLineEnd()
