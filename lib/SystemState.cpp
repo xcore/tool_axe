@@ -109,16 +109,21 @@ StopReason SystemState::run()
   } catch (ExitException &ee) {
     return StopReason::getExit(ee.getTime(), ee.getStatus());
   } catch (TimeoutException &te) {
-    tracer->timeout(*this, te.getTime());
     if (scheduler.empty()) {
-      tracer->noRunnableThreads(*this);
+      // TODO this should be displayed even if tracing isn't enabled.
+      if (tracer)
+        tracer->noRunnableThreads(*this);
       return StopReason::getNoRunnableThreads(te.getTime());
     }
+    if (tracer)
+      tracer->timeout(*this, te.getTime());
     return StopReason::getTimeout(te.getTime());
   } catch (BreakpointException &be) {
     return StopReason::getBreakpoint(be.getTime(), be.getThread());
   }
-  tracer->noRunnableThreads(*this);
+  // TODO this should be displayed even if tracing isn't enabled.
+  if (tracer)
+    tracer->noRunnableThreads(*this);
   return StopReason::getNoRunnableThreads(getLatestThreadTime());
 }
 
