@@ -15,10 +15,10 @@ using namespace Register;
 SystemState::SystemState(std::auto_ptr<Tracer> t) :
   currentRunnable(0),
   rom(0),
-  tracer(t.release())
+  tracer(t)
 {
   pendingEvent.set = false;
-  if (tracer) {
+  if (tracer.get()) {
     tracer->attach(*this);
   }
 }
@@ -29,7 +29,12 @@ SystemState::~SystemState()
     delete node;
   }
   delete[] rom;
-  delete tracer;
+}
+
+void SystemState::setExitTracer(std::auto_ptr<Tracer> t)
+{
+  exitTracer = t;
+  exitTracer->attach(*this);
 }
 
 void SystemState::finalize()
@@ -62,7 +67,7 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   t.eeble() = false;
   // EventableResource::completeEvent sets the ED and PC.
   res.completeEvent();
-  if (tracer) {
+  if (tracer.get()) {
     if (interrupt) {
       tracer->interrupt(t, res, t.fromPc(t.pc), t.regs[SSR], t.regs[SPC],
                         t.regs[SED], t.regs[ED]);
@@ -110,20 +115,24 @@ StopReason SystemState::run()
     return StopReason::getExit(ee.getTime(), ee.getStatus());
   } catch (TimeoutException &te) {
     if (scheduler.empty()) {
-      // TODO this should be displayed even if tracing isn't enabled.
-      if (tracer)
+      if (tracer.get())
         tracer->noRunnableThreads(*this);
+      if (exitTracer.get())
+        exitTracer->noRunnableThreads(*this);
       return StopReason::getNoRunnableThreads(te.getTime());
     }
-    if (tracer)
+    if (tracer.get())
       tracer->timeout(*this, te.getTime());
+    if (exitTracer.get())
+      exitTracer->timeout(*this, te.getTime());
     return StopReason::getTimeout(te.getTime());
   } catch (BreakpointException &be) {
     return StopReason::getBreakpoint(be.getTime(), be.getThread());
   }
-  // TODO this should be displayed even if tracing isn't enabled.
-  if (tracer)
+  if (tracer.get())
     tracer->noRunnableThreads(*this);
+  if (exitTracer.get())
+    exitTracer->noRunnableThreads(*this);
   return StopReason::getNoRunnableThreads(getLatestThreadTime());
 }
 
@@ -133,7 +142,7 @@ setRom(const uint8_t *data, uint32_t romSize, uint32_t romBase)
   rom = new uint8_t[romSize];
   std::memcpy(rom, data, romSize);
   romDecodeCache.reset(new DecodeCache(romSize, romBase, false,
-                                       tracer != nullptr));
+                                       tracer.get() != nullptr));
   for (Node *node : nodes) {
     for (Core *core : node->getCores()) {
       core->setRom(rom, romBase, romSize);

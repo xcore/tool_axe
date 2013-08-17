@@ -182,6 +182,8 @@ loop(const Options &options)
   XEReader xeReader(xe);
   std::auto_ptr<Tracer> tracer = createTracerFromOptions(options);
   std::auto_ptr<SystemState> statePtr = xeReader.readConfig(tracer);
+  if (!options.tracing)
+    statePtr->setExitTracer(std::auto_ptr<Tracer>(new LoggingTracer));
   PortAliases portAliases;
   xeReader.readPortAliases(portAliases);
   SystemState &sys = *statePtr;

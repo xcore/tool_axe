@@ -64,7 +64,8 @@ class SystemState {
   std::auto_ptr<DecodeCache> romDecodeCache;
 
   JIT jit;
-  Tracer *tracer;
+  std::auto_ptr<Tracer> tracer;
+  std::auto_ptr<Tracer> exitTracer;
 
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
 
@@ -74,6 +75,8 @@ public:
   SystemState(std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>());
   SystemState(const SystemState &) = delete;
   ~SystemState();
+
+  void setExitTracer(std::auto_ptr<Tracer> exitTracer);
 
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
@@ -151,7 +154,7 @@ public:
   }
 
   JIT &getJIT() { return jit; }
-  Tracer *getTracer() { return tracer; }
+  Tracer *getTracer() { return tracer.get(); }
 
   const std::vector<Node*> &getNodes() const { return nodes; }
 };
