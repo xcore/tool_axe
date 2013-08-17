@@ -25,6 +25,7 @@ namespace axe {
   
   class LoggingTracer : public Tracer {
   private:
+    bool traceCycles;
     bool useColors;
     llvm::raw_ostream &out;
     uint64_t pos;
@@ -62,7 +63,7 @@ namespace axe {
     
     void syscallBegin(const Thread &t);
   public:
-    LoggingTracer();
+    LoggingTracer(bool traceCycles);
 
     void attach(const SystemState &systemState) override;
 

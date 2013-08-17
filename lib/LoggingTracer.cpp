@@ -30,7 +30,8 @@ static llvm::raw_ostream &operator<<(llvm::raw_ostream &out,
   return out << getRegisterName(r);
 }
 
-LoggingTracer::LoggingTracer() :
+LoggingTracer::LoggingTracer(bool traceCycles) :
+  traceCycles(traceCycles),
   useColors(llvm::outs().has_colors()),
   out(llvm::outs()),
   pos(out.tell()),
@@ -97,8 +98,8 @@ void LoggingTracer::printLinePrefix(const Node &n)
 
 void LoggingTracer::printLinePrefix(const Thread &t)
 {
-  // TODO add option to show cycles?
-  //out << std::setw(6) << (uint64_t)thread->time;
+  if (traceCycles)
+    out << '@' << thread->time << ' ';
   green();
   out << '<';
   printThreadName(t);
