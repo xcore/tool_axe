@@ -1,4 +1,4 @@
-include_directories(${AXE_SOURCE_DIR}/lib)
+include_directories(${AXE_SOURCE_DIR}/lib;${AXE_BINARY_DIR}/lib)
 include_directories(${AXE_SOURCE_DIR}/thirdparty/boost)
 
 add_executable(axe-bin

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(AXE)
+include(Version.txt)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -98,6 +99,9 @@ if (MSVC)
 else()
   SET(CPACK_GENERATOR "TGZ")
 endif()
+set(CPACK_PACKAGE_VERSION
+    "${AXE_VERSION_MAJOR}.${AXE_VERSION_MINOR}${AXE_VERSION_TWEAK}")
+set(CPACK_PACKAGE_NAME "axe")
 INCLUDE(CPack)
 
 configure_file(${CMAKE_SOURCE_DIR}/test/lit.site.cfg.in ${CMAKE_BINARY_DIR}/test/lit.site.cfg)

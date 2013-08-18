@@ -1,3 +1,8 @@
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/AXEVersion.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/AXEVersion.h"
+  )
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(NETWORK_LINK_TAP_FILES "NetworkLinkTapLinux.cpp")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

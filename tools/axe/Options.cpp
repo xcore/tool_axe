@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cerrno>
 #include "Range.h"
+#include "AXEVersion.h"
 
 using namespace axe;
 
@@ -38,6 +39,7 @@ static void printUsage(const char *ProgName) {
   std::cout <<
   "General Options:\n"
   "  -help                       Display this information.\n"
+  "  --version                   Print version information and then exit.\n"
   "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
   "  --vcd FILE                  Write VCD trace to FILE.\n"
   "  --boot-spi                  Specify boot from SPI\n"
@@ -175,6 +177,16 @@ static PeripheralDescriptor *parsePeripheralOption(const std::string arg)
   return PeripheralRegistry::get(arg.substr(2));
 }
 
+
+static void printVersion()
+{
+  std::cout << "AXE ";
+  std::cout << AXE_VERSION_MAJOR;
+  std::cout << '.' << AXE_VERSION_MINOR;
+  std::cout << AXE_VERSION_TWEAK;
+  std::cout << '\n';
+}
+
 void Options::parse(int argc, char **argv)
 {
   if (argc < 2) {
@@ -231,6 +243,9 @@ void Options::parse(int argc, char **argv)
       warnPacketOvertake = true;
     } else if (arg == "--boot-spi") {
       bootMode = BOOT_SPI;
+    } else if (arg == "--version") {
+      printVersion();
+      std::exit(0);
     } else if (arg == "--help") {
       printUsage(argv[0]);
       std::exit(0);
