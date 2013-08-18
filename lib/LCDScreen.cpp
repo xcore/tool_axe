@@ -13,6 +13,9 @@
 #include "Signal.h"
 #include "SystemState.h"
 #include "SDL.h"
+#include "SDL_events.h"
+#include "SDL_video.h"
+#include "SDL_pixels.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -20,7 +23,7 @@ using namespace axe;
 
 const bool showFPS = false;
 
-static int filterSDLEvents(const SDL_Event *event)
+static int filterSDLEvents(void *userdata, SDL_Event *event)
 {
   return event->type == SDL_QUIT;
 }
@@ -43,42 +46,53 @@ public:
 
 class SDLScreen {
   unsigned width;
-  unsigned heigth;
+  unsigned height;
   Uint32 Rmask;
   Uint32 Gmask;
   Uint32 Bmask;
-  SDL_Surface *screen;
-  SDL_Surface *buffer;
+  SDL_Window *screen;
+  SDL_Renderer *renderer;
+  SDL_Texture *texture;
+  Uint16 *pixels;
   Uint32 lastPollEvent;
   Uint32 lastFrameTime;
   unsigned frameCount;
 
 public:
   SDLScreen(unsigned w, unsigned h, Uint32 r, Uint32 g, Uint32 b) :
-    width(w), heigth(h), Rmask(r), Gmask(g), Bmask(b), screen(0), buffer(0),
-    lastPollEvent(0) {}
+    width(w), height(h), Rmask(r), Gmask(g), Bmask(b), screen(nullptr),
+    renderer(nullptr), texture(nullptr), pixels(nullptr), lastPollEvent(0) {}
   ~SDLScreen();
 
   bool init();
   bool pollForEvents();
   void writePixel(unsigned x, unsigned, uint16_t);
   unsigned getWidth() const { return width; }
-  unsigned getHeigth() const { return heigth; }
+  unsigned getHeigth() const { return height; }
   void flip();
 };
 
 bool SDLScreen::init() {
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
     return false;
-  SDL_SetEventFilter(&filterSDLEvents);
-  SDL_WM_SetCaption("AXE", "AXE");
+  SDL_FilterEvents(&filterSDLEvents, nullptr);
 
-  screen = SDL_SetVideoMode(width, heigth, 0, SDL_SWSURFACE | SDL_ANYFORMAT);
+  screen = SDL_CreateWindow("AXE", SDL_WINDOWPOS_UNDEFINED,
+                            SDL_WINDOWPOS_UNDEFINED, width, height, 0);
   if (!screen)
     return false;
-  buffer =
-    SDL_CreateRGBSurface(SDL_SWSURFACE, width, heigth, 16, Rmask, Gmask, Bmask,
-                         0);
+  renderer = SDL_CreateRenderer(screen, -1, 0);
+  if (!renderer)
+    return false;
+  auto pixelFormat = SDL_MasksToPixelFormatEnum(16, Rmask, Gmask, Bmask, 0);
+  if (pixelFormat == SDL_PIXELFORMAT_UNKNOWN)
+    return false;
+  texture =
+    SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR565,
+                      SDL_TEXTUREACCESS_STREAMING, width, height);
+  if (!texture)
+    return false;
+  pixels = new Uint16[width * height];
   if (showFPS) {
     lastFrameTime = SDL_GetTicks();
     frameCount = 0;
@@ -111,19 +125,23 @@ void SDLScreen::flip()
     frameCount = 0;
     lastFrameTime = newTime;
   }
-  SDL_BlitSurface(buffer, NULL, screen, NULL);
-  SDL_Flip(screen);
+  SDL_UpdateTexture(texture, NULL, pixels, width * sizeof(Uint16));
+  SDL_RenderClear(renderer);
+  SDL_RenderCopy(renderer, texture, NULL, NULL);
+  SDL_RenderPresent(renderer);
 }
 
 void SDLScreen::writePixel(unsigned x, unsigned y, Uint16 value)
 {
-  SDLScopedSurfaceLock lock(buffer);
-  Uint16 *pixels = reinterpret_cast<Uint16*>(buffer->pixels);
   pixels[x + y * width] = value;
 }
 
 SDLScreen::~SDLScreen() {
+  SDL_DestroyTexture(texture);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(screen);
   SDL_Quit();
+  delete[] pixels;
 }
 
 const ticks_t minUpdateTicks = 20000;

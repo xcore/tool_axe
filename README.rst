@@ -49,7 +49,7 @@ Optional Libraries
 
 AXE can be configured to link against the following libraries:
 
-* SDL_ (for LCD Screen peripheral)
+* SDL2_ (for LCD Screen peripheral)
 
 Building
 ========
@@ -74,4 +74,4 @@ before running the tests.
 .. _libxslt: http://xmlsoft.org/XSLT
 .. _LLVM: http://llvm.org
 .. _Python: http://www.python.org
-.. _SDL: http://www.libsdl.org
+.. _SDL2: http://www.libsdl.org
