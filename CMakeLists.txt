@@ -48,6 +48,9 @@ find_package(LibXslt REQUIRED)
 find_package(LibElf REQUIRED)
 find_package(LLVM REQUIRED)
 find_package(Clang REQUIRED)
+
+llvm_map_components_to_libraries(LLVM_LIBRARIES scalaropts engine bitreader)
+
 list(APPEND
   AXE_LINK_LIBRARIES
   ${LIBELF_LIBRARIES}
@@ -56,9 +59,12 @@ list(APPEND
   ${LLVM_LIBRARIES})
 include_directories(
   ${LIBELF_INCLUDE_DIRS}
-  ${LIBXML2_INCLUDE_DIR})
+  ${LIBXML2_INCLUDE_DIR}
+  ${LLVM_INCLUDE_DIRS})
+link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(
-  ${LIBXSLT_DEFINITIONS})
+  ${LIBXSLT_DEFINITIONS}
+  ${LLVM_DEFINITIONS})
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
   # On Linux LibXslt requires librt.
   find_package(LibRt REQUIRED)
