@@ -43,6 +43,7 @@ set(CMAKE_MODULE_PATH
 
 option(AXE_ENABLE_SDL "Use SDL if available" ON)
 
+find_package(Boost REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(LibXslt REQUIRED)
 find_package(LibElf REQUIRED)
@@ -58,6 +59,7 @@ list(APPEND
   ${LIBXSLT_LIBRARIES}
   ${LLVM_LIBRARIES})
 include_directories(
+  ${Boost_INCLUDE_DIRS}
   ${LIBELF_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR}
   ${LLVM_INCLUDE_DIRS})
