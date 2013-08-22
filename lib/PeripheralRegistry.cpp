@@ -28,10 +28,10 @@ PeripheralDescriptor *PeripheralRegistry::get(const std::string &name)
 
 PeripheralRegistry::iterator PeripheralRegistry::begin()
 {
-  return peripherals.begin();
+  return iterator(peripherals.begin());
 }
 
 PeripheralRegistry::iterator PeripheralRegistry::end()
 {
-  return peripherals.end();
+  return iterator(peripherals.end());
 }

@@ -6,43 +6,23 @@
 #ifndef _AccessSecondIterator_h_
 #define _AccessSecondIterator_h_
 
+#include <boost/iterator/transform_iterator.hpp>
 #include <iterator>
 
 namespace axe {
 
 template <typename Iterator>
-class AccessSecondIterator :
-public std::iterator<
-       std::forward_iterator_tag,
-       typename std::iterator_traits<Iterator>::value_type::second_type> {
-  Iterator it;
-public:
-  AccessSecondIterator() {}
-  AccessSecondIterator(Iterator i) : it(i) {}
-  AccessSecondIterator &operator++() {
-    ++it;
-    return *this;
-  }
-  AccessSecondIterator operator++(int) {
-    AccessSecondIterator tmp(*this);
-    operator++();
-    return tmp;
-  }
-  const typename std::iterator_traits<Iterator>::value_type::second_type &
-  operator*() const {
-    return it->second;
-  }
-  const typename std::iterator_traits<Iterator>::value_type::second_type *
-  operator->() const {
-    return &**this;
-  }
-  bool operator==(const AccessSecondIterator &other) {
-    return it == other.it;
-  }
-  bool operator!=(const AccessSecondIterator &other) {
-    return !(*this == other);
+struct ValueGetter
+{
+  const typename Iterator::value_type::second_type &
+  operator() (const typename Iterator::value_type& p) const {
+    return p.second;
   }
 };
+
+template <typename Iterator> using AccessSecondIterator =
+boost::transform_iterator<
+ValueGetter<Iterator>, Iterator>;
 
 } // End axe namespace
 
