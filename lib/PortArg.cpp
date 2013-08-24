@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <cerrno>
 #include "SystemState.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "Core.h"
 #include "PortAliases.h"
 
@@ -108,7 +108,9 @@ static bool convertPortString(const std::string &s, uint32_t &id)
 static Core *findMatchingCore(const std::string &s, SystemState &system)
 {
   for (Node *node : system.getNodes()) {
-    for (Core *core : node->getCores()) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
       if (s.empty() || core->getCodeReference() == s)
         return core;
     }

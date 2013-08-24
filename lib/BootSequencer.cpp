@@ -5,7 +5,7 @@
 
 #include "BootSequencer.h"
 #include "Core.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "SystemState.h"
 #include "SyscallHandler.h"
 #include "XE.h"
@@ -381,7 +381,7 @@ int BootSequencer::execute() {
 
 static inline void
 addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
-             Node &node)
+             ProcessorNode &node)
 {
   unsigned jtagIndex = node.getJtagIndex();
   const std::vector<Core*> &cores = node.getCores();
@@ -398,7 +398,9 @@ addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
              SystemState &system)
 {
   for (Node *node : system.getNodes()) {
-    addToCoreMap(coreMap, *node);
+    if (!node->isProcessorNode())
+      continue;
+    addToCoreMap(coreMap, static_cast<ProcessorNode&>(*node));
   }
 }
 
@@ -495,7 +497,9 @@ void BootSequencer::adjustForSPIBoot()
   setEntryPointToRom();
   setLoadImages(false);
   for (Node *node : sys.getNodes()) {
-    for (Core *core : node->getCores()) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
       core->setBootConfig(1 << 2);
     }
   }

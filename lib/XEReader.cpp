@@ -6,7 +6,7 @@
 #include "XEReader.h"
 #include "BitManip.h"
 #include "Core.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "PortAliases.h"
 #include "ScopedArray.h"
 #include "SystemState.h"
@@ -77,8 +77,8 @@ createNodeFromConfig(xmlNode *config,
                      std::map<long,Node*> &nodeNumberMap, bool tracing)
 {
   long jtagID = readNumberAttribute(config, "jtagId");
-  Node::Type nodeType;
-  if (!Node::getTypeFromJtagID(jtagID, nodeType)) {
+  ProcessorNode::Type nodeType;
+  if (!ProcessorNode::getTypeFromJtagID(jtagID, nodeType)) {
     std::cerr << "Unknown jtagId 0x" << std::hex << jtagID << std::dec << '\n';
     std::exit(1);
   }
@@ -88,14 +88,15 @@ createNodeFromConfig(xmlNode *config,
       numXLinks = readNumberAttribute(switchNode, "sLinks");
     }
   }
-  std::auto_ptr<Node> node(new Node(nodeType, numXLinks));
+  std::auto_ptr<Node> node(new ProcessorNode(nodeType, numXLinks));
+  ProcessorNode *processorNode = static_cast<ProcessorNode*>(node.get());
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
   for (xmlNode *child = config->children; child; child = child->next) {
     if (child->type != XML_ELEMENT_NODE ||
         strcmp("Processor", (char*)child->name) != 0)
       continue;
-    node->addCore(createCoreFromConfig(child, tracing));
+    processorNode->addCore(createCoreFromConfig(child, tracing));
   }
   return node;
 }

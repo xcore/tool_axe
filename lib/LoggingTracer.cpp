@@ -5,7 +5,7 @@
 
 #include "LoggingTracer.h"
 #include "SystemState.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "Core.h"
 #include "Resource.h"
 #include "Exceptions.h"
@@ -530,7 +530,9 @@ void LoggingTracer::dumpThreadSummary(const Core &core)
 void LoggingTracer::dumpThreadSummary(const SystemState &system)
 {
   for (Node *node : system.getNodes()) {
-    for (Core *core : node->getCores()) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
       dumpThreadSummary(*core);
     }
   }

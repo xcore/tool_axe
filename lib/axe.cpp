@@ -8,7 +8,7 @@
 #include "XEReader.h"
 #include "SystemState.h"
 #include "SystemStateWrapper.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "Core.h"
 #include "Thread.h"
 #include "StopReason.h"
@@ -34,9 +34,12 @@ AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
   SystemState *sys = unwrap(system)->getSystemState();
   for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
     if (node->getJtagIndex() != jtagIndex)
       continue;
-    const std::vector<Core*> &cores = node->getCores();
+    const std::vector<Core*> &cores =
+      static_cast<ProcessorNode*>(node)->getCores();
     if (core >= cores.size())
       return 0;
     return wrap(cores[core]);

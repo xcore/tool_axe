@@ -4,7 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "SSwitchCtrlRegs.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "BitManip.h"
 #include <algorithm>
 

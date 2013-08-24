@@ -14,10 +14,10 @@
 
 namespace axe {
 
-class Core;
 class SystemState;
 
 class Node;
+class ProcessorNode;
 
 class XLink {
   friend class Node;
@@ -53,40 +53,32 @@ public:
     XS1_L,
     XS1_G
   };
-private:
-  std::vector<Core *> cores;
+  Type type;
   std::vector<XLink> xLinks;
   std::vector<uint8_t> directions;
   unsigned jtagIndex;
   unsigned nodeID;
   SystemState *parent;
-  Type type;
   SSwitch sswitch;
-  unsigned coreNumberBits;
-
-  void computeCoreNumberBits();
-  unsigned getCoreNumberBits() const;
+  unsigned nodeNumberBits;
   XLink *getXLinkForDirection(unsigned direction);
+protected:
+  void setNodeNumberBits(unsigned value);
 public:
-  typedef std::vector<Core *>::iterator core_iterator;
-  typedef std::vector<Core *>::const_iterator const_core_iterator;
-  Node(Type t, unsigned numXLinks);
+  Node(Type type, unsigned numXLinks);
   Node(const Node &) = delete;
-  ~Node();
+  virtual ~Node();
+  virtual bool isProcessorNode() { return false; }
   unsigned getNodeNumberBits() const;
-  void finalize();
-  void addCore(std::auto_ptr<Core> cores);
+  unsigned getNonNodeNumberBits() const;
+  virtual void finalize();
   void setJtagIndex(unsigned value) { jtagIndex = value; }
   unsigned getJtagIndex() const { return jtagIndex; }
-  const std::vector<Core*> &getCores() const { return cores; }
   void setParent(SystemState *value) { parent = value; }
   const SystemState *getParent() const { return parent; }
   SystemState *getParent() { return parent; }
-  void setNodeID(unsigned value);
+  virtual void setNodeID(unsigned value);
   uint32_t getNodeID() const { return nodeID; }
-  uint32_t getCoreID(unsigned coreNum) const;
-  Type getType() const { return type; }
-  static bool getTypeFromJtagID(unsigned jtagID, Type &type);
   bool hasMatchingNodeID(ResourceID ID);
   SSwitch *getSSwitch() { return &sswitch; }
   unsigned getNumXLinks() const { return xLinks.size(); }
@@ -94,8 +86,10 @@ public:
   const XLink &getXLink(unsigned num) const { return xLinks[num]; }
   void connectXLink(unsigned num, Node *destNode, unsigned destNum);
   ChanEndpoint *getChanendDest(ResourceID ID);
+  virtual ChanEndpoint *getLocalChanendDest(ResourceID ID) = 0;
   uint8_t getDirection(unsigned num) const { return directions[num]; }
   void setDirection(unsigned num, uint8_t value) { directions[num] = value; }
+  Type getType() const { return type; }
 };
   
 } // End axe namespace

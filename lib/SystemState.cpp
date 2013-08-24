@@ -4,7 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "SystemState.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "Core.h"
 #include "Tracer.h"
 #include "StopReason.h"
@@ -81,7 +81,9 @@ ticks_t SystemState::getLatestThreadTime() const
 {
   ticks_t time = 0;
   for (Node *node : nodes) {
-    for (Core *core : node->getCores()) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
       for (Thread &thread : core->getThreads()) {
         time = std::max(time, thread.time);
       }
@@ -144,7 +146,9 @@ setRom(const uint8_t *data, uint32_t romSize, uint32_t romBase)
   romDecodeCache.reset(new DecodeCache(romSize, romBase, false,
                                        tracer.get() != nullptr));
   for (Node *node : nodes) {
-    for (Core *core : node->getCores()) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
       core->setRom(rom, romBase, romSize);
     }
   }

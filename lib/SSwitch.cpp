@@ -5,7 +5,7 @@
 
 #include "SSwitch.h"
 #include "Resource.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "SystemState.h"
 #include "Tracer.h"
 #include <cassert>
@@ -14,7 +14,7 @@ using namespace axe;
 
 SSwitch::SSwitch(Node *p) :
   parent(p),
-  regs(p),
+  regs(static_cast<ProcessorNode*>(p)),
   recievedTokens(0),
   junkIncomingTokens(0),
   sendingResponse(false),

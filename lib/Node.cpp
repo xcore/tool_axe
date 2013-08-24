@@ -4,7 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "Node.h"
-#include "Core.h"
+#include "BitManip.h"
 
 using namespace axe;
 
@@ -40,112 +40,20 @@ bool XLink::isConnected() const
 }
 
 Node::Node(Type t, unsigned numXLinks) :
+  type(t),
   jtagIndex(0),
   nodeID(0),
   parent(0),
-  type(t),
   sswitch(this),
-  coreNumberBits(0)
+  nodeNumberBits(16)
 {
   xLinks.resize(numXLinks);
 }
 
 Node::~Node()
 {
-  for (Core *core : cores) {
-    delete core;
-  }
 }
 
-void Node::finalize()
-{
-  computeCoreNumberBits();
-  directions.resize(getNodeNumberBits());
-  if (type == XS1_G) {
-    for (unsigned i = 0, e = directions.size(); i != e; ++i) {
-      directions[i] = i;
-    }
-  }
-  for (Core *core : cores) {
-    core->updateIDs();
-    core->finalize();
-  }
-  sswitch.initRegisters();
-}
-
-void Node::addCore(std::auto_ptr<Core> c)
-{
-  c->setParent(this);
-  cores.push_back(c.get());
-  c.release();
-}
-
-
-void Node::setNodeID(unsigned value)
-{
-  nodeID = value;
-  for (Core *core : cores) {
-    core->updateIDs();
-  }
-}
-
-/// Returns the minimum number of bits needed to encode the specified number
-/// of values.
-static unsigned getMinimumBits(unsigned values)
-{
-  if (values == 0)
-    return 0;
-  return 32 - countLeadingZeros(values - 1);
-}
-
-void Node::computeCoreNumberBits()
-{
-  coreNumberBits = getMinimumBits(cores.size());
-  if (getType() == Node::XS1_G && coreNumberBits < 8)
-    coreNumberBits = 8;
-}
-
-
-unsigned Node::getCoreNumberBits() const
-{
-  return coreNumberBits;
-}
-
-unsigned Node::getNodeNumberBits() const
-{
-  return 16 - coreNumberBits;
-}
-
-uint32_t Node::getCoreID(unsigned coreNum) const
-{
-  unsigned coreBits = getCoreNumberBits();
-  assert(coreNum <= makeMask(getCoreNumberBits()));
-  return (getNodeID() << coreBits) | coreNum;
-}
-
-bool Node::getTypeFromJtagID(unsigned jtagID, Type &type)
-{
-  switch (jtagID) {
-  default:
-    return false;
-  case 0x2731:
-    type = XS1_G;
-    return true;
-  case 0x2633:
-    type = XS1_L;
-    return true;
-  }
-}
-
-bool Node::hasMatchingNodeID(ResourceID ID)
-{
-  switch (type) {
-    case Node::XS1_G:
-      return ((ID.node() >> 8) & 0xff) == nodeID;
-    case Node::XS1_L:
-      return ID.node() == nodeID;
-  }
-}
 
 void Node::connectXLink(unsigned num, Node *destNode, unsigned destNum)
 {
@@ -162,6 +70,32 @@ XLink *Node::getXLinkForDirection(unsigned direction)
   return 0;
 }
 
+void Node::setNodeNumberBits(unsigned value)
+{
+  nodeNumberBits = value;
+  directions.resize(nodeNumberBits);
+}
+
+unsigned Node::getNodeNumberBits() const
+{
+  return nodeNumberBits;
+}
+
+unsigned Node::getNonNodeNumberBits() const
+{
+  return 16 - nodeNumberBits;
+}
+
+void Node::setNodeID(unsigned value)
+{
+  nodeID = value;
+}
+
+void Node::finalize()
+{
+  sswitch.initRegisters();
+}
+
 ChanEndpoint *Node::getChanendDest(ResourceID ID)
 {
   Node *node = this;
@@ -170,7 +104,7 @@ ChanEndpoint *Node::getChanendDest(ResourceID ID)
   unsigned hops = 0;
   unsigned leapCount = 8;
   while (1) {
-    unsigned destNode = ID.node() >> node->getCoreNumberBits();
+    unsigned destNode = ID.node() >> node->getNonNodeNumberBits();
     unsigned diff = destNode ^ node->getNodeID();
     if (diff == 0)
       break;
@@ -194,10 +128,10 @@ ChanEndpoint *Node::getChanendDest(ResourceID ID)
   if (ID.isConfig() && ID.num() == RES_CONFIG_SSCTRL) {
     return &node->sswitch;
   }
-  unsigned destCore = ID.node() & makeMask(node->getCoreNumberBits());
-  if (destCore >= node->cores.size())
-    return 0;
-  ChanEndpoint *dest = 0;
-  node->getCores()[destCore]->getLocalChanendDest(ID, dest);
-  return dest;
+  return node->getLocalChanendDest(ID);
+}
+
+bool Node::hasMatchingNodeID(ResourceID ID)
+{
+  return (ID.node() >> getNonNodeNumberBits()) == nodeID;
 }

@@ -33,7 +33,7 @@ class Tracer;
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-class Node;
+class ProcessorNode;
 
 enum ProcessorState {
   PS_RAM_BASE = 0x00b,
@@ -68,7 +68,7 @@ private:
   static bool allocatable[LAST_STD_RES_TYPE + 1];
   uint32_t * const memory;
   unsigned coreNumber;
-  Node *parent;
+  ProcessorNode *parent;
   std::string codeReference;
   uint32_t bootConfig;
   uint32_t bootStatus;
@@ -331,15 +331,15 @@ public:
 
   /// Set the parent of the current core. updateIDs() must be called to update
   /// The core IDs and the channel end resource IDs.
-  void setParent(Node *n) {
+  void setParent(ProcessorNode *n) {
     parent = n;
   }
   void setCoreNumber(unsigned value) { coreNumber = value; }
   unsigned getCoreNumber() const { return coreNumber; }
   uint32_t getCoreID() const;
-  const Node *getParent() const { return parent; }
+  const ProcessorNode *getParent() const { return parent; }
   Tracer *getTracer();
-  Node *getParent() { return parent; }
+  ProcessorNode *getParent() { return parent; }
   void dumpPaused() const;
   Thread &getThread(unsigned num) { return thread[num]; }
   const Thread &getThread(unsigned num) const { return thread[num]; }

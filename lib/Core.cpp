@@ -5,7 +5,7 @@
 
 #include "Core.h"
 #include "SystemState.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "JIT.h"
 #include "Timer.h"
 #include "Synchroniser.h"

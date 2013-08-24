@@ -5,7 +5,7 @@
 
 #include "Resource.h"
 #include "Core.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "SystemState.h"
 
 using namespace axe;

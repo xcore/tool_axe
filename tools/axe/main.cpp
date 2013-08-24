@@ -19,7 +19,7 @@
 #include "SyscallHandler.h"
 #include "XE.h"
 #include "Config.h"
-#include "Node.h"
+#include "ProcessorNode.h"
 #include "SystemState.h"
 #include "WaveformTracer.h"
 #include "registerAllPeripherals.h"
@@ -80,7 +80,9 @@ static void
 connectWaveformTracer(SystemState &system, WaveformTracer &waveformTracer)
 {
   for (Node *node : system.getNodes()) {
-    for (Core *core : node->getCores()) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
       connectWaveformTracer(*core, waveformTracer);
     }
   }
