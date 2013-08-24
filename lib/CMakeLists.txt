@@ -87,6 +87,8 @@ add_library(axe
   Peripheral.cpp
   PeripheralDescriptor.h
   PeripheralDescriptor.cpp
+  PeripheralNode.cpp
+  PeripheralNode.cpp
   PeripheralRegistry.h
   PeripheralRegistry.cpp
   ProcessorNode.h

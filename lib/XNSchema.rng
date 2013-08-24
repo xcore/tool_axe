@@ -3,9 +3,9 @@
     <element name="Network" ns="http://www.xmos.com">
       <ref name="anyAttributes"/>
       <interleave>
-        <optional>
+        <zeroOrMore>
           <ref name="Packages"/>
-        </optional>
+        </zeroOrMore>
         <zeroOrMore>
           <element>
             <anyName>
@@ -87,9 +87,9 @@
     <element name="Node" ns="http://www.xmos.com">
       <ref name="anyAttributes"/>
       <interleave>
-        <oneOrMore>
+        <zeroOrMore>
           <ref name="Tile"/>
-        </oneOrMore>
+        </zeroOrMore>
         <zeroOrMore>
           <element>
             <anyName>

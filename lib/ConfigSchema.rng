@@ -37,10 +37,14 @@
           <ref name="Node"/>
         </oneOrMore>
         <zeroOrMore>
+          <ref name="GlxNode"/>
+        </zeroOrMore>
+        <zeroOrMore>
           <element>
             <anyName>
               <except>
                 <name>Node</name>
+                <name>GlxNode</name>
               </except>
             </anyName>
             <ref name="anyContent"/>
@@ -137,6 +141,24 @@
           </element>
         </zeroOrMore>
       </interleave>
+    </element>
+  </define>
+
+  <define name="GlxNode">
+    <element name="GlxNode">
+      <attribute name="number">
+        <ref name="numberAnyBase"/>
+      </attribute>
+      <zeroOrMore>
+        <attribute>
+          <anyName>
+            <except>
+              <name>number</name>
+            </except>
+          </anyName>
+        </attribute>
+      </zeroOrMore>
+      <ref name="anyElements"/>
     </element>
   </define>
 

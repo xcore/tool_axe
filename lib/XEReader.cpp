@@ -6,6 +6,7 @@
 #include "XEReader.h"
 #include "BitManip.h"
 #include "Core.h"
+#include "PeripheralNode.h"
 #include "ProcessorNode.h"
 #include "PortAliases.h"
 #include "ScopedArray.h"
@@ -101,6 +102,15 @@ createNodeFromConfig(xmlNode *config,
   return node;
 }
 
+static std::auto_ptr<Node>
+createGlxNodeFromConfig(xmlNode *config, std::map<long,Node*> &nodeNumberMap)
+{
+  std::auto_ptr<Node> node(new PeripheralNode);
+  long nodeID = readNumberAttribute(config, "number");
+  nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
+  return node;
+}
+
 static bool parseXLinkEnd(xmlAttr *attr, long &node, long &xlink)
 {
   const char *s = (char*)attr->children->content;
@@ -156,10 +166,13 @@ createSystemFromConfig(const std::string &filename,
   std::auto_ptr<SystemState> systemState(new SystemState(tracer));
   std::map<long,Node*> nodeNumberMap;
   for (xmlNode *child = nodes->children; child; child = child->next) {
-    if (child->type != XML_ELEMENT_NODE ||
-        strcmp("Node", (char*)child->name) != 0)
+    if (child->type != XML_ELEMENT_NODE)
       continue;
-    systemState->addNode(createNodeFromConfig(child, nodeNumberMap, tracing));
+    if (std::strcmp("Node", (char*)child->name) == 0) {
+      systemState->addNode(createNodeFromConfig(child, nodeNumberMap, tracing));
+    } else if (std::strcmp("GlxNode", (char*)child->name) == 0) {
+      systemState->addNode(createGlxNodeFromConfig(child, nodeNumberMap));
+    }
   }
   xmlNode *connections = findChild(system, "Connections");
   for (xmlNode *child = connections->children; child; child = child->next) {
