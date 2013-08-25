@@ -41,6 +41,7 @@ add_library(axe
   CheckPacketOvertakeTracer.cpp
   ClockBlock.h
   ClockBlock.cpp
+  Compiler.h
   Config.h
   ConfigSchema.rng
   Core.h
@@ -50,6 +51,7 @@ add_library(axe
   DecodeCache.cpp
   DelegatingTracer.h
   DelegatingTracer.cpp
+  Endianness.h
   EthernetPhy.h
   EthernetPhy.cpp
   Exceptions.h

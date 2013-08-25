@@ -19,6 +19,7 @@
 #include <climits>
 #include <set>
 #include "Range.h"
+#include "Endianness.h"
 
 namespace axe {
 

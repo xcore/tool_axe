@@ -7,7 +7,6 @@
 #define _Config_h_
 
 #include <stdint.h>
-#include <boost/detail/endian.hpp>
 
 /// Number of threads per core.
 #define NUM_THREADS 8
@@ -52,21 +51,5 @@
 #define CYCLES_PER_TICK 4
 
 typedef uint64_t ticks_t;
-
-#ifdef __GNUC__
-#define UNUSED(x) x __attribute__((__unused__))
-#endif // __GNUC__
-
-#ifndef UNUSED
-#define UNUSED(x) x
-#endif
-
-#if defined(BOOST_LITTLE_ENDIAN)
-#define HOST_LITTLE_ENDIAN 1
-#elif defined(BOOST_BIG_ENDIAN)
-#define HOST_LITTLE_ENDIAN 0
-#else
-#error "Unknown endianness"
-#endif
 
 #endif // _Config_h_

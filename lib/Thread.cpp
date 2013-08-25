@@ -20,6 +20,7 @@
 #include "InstructionProperties.h"
 #include <iostream>
 #include <cstdlib>
+#include "Compiler.h"
 
 using namespace axe;
 using namespace Register;

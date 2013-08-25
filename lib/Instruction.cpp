@@ -6,6 +6,7 @@
 #include "Instruction.h"
 #include "InstructionOpcode.h"
 #include "Core.h"
+#include "Compiler.h"
 #include <cassert>
 
 using namespace axe;
