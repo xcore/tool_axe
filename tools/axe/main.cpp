@@ -37,7 +37,7 @@
 
 // SDL must be included before main so that SDL can substitute main() with
 // SDL_main() if required.
-#ifdef AXE_ENABLE_SDL
+#if AXE_ENABLE_SDL
 #include <SDL.h>
 #endif
 

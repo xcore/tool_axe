@@ -2,6 +2,10 @@ configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/AXEVersion.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/AXEVersion.h"
   )
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/Config.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/Config.h"
+  )
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(NETWORK_LINK_TAP_FILES "NetworkLinkTapLinux.cpp")
@@ -174,11 +178,13 @@ add_library(axe
   XNSchema.rng
   XNTransform.xslt
   ${AXE_OPTIONAL_FILES}
-  ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/AXEVersion.h
+  ${CMAKE_CURRENT_BINARY_DIR}/Config.h
   ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
   ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
   ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
-  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
   )
 
 # add the executable that will do the generation

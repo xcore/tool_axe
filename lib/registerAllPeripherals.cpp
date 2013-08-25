@@ -10,6 +10,7 @@
 #include "EthernetPhy.h"
 #include "LCDScreen.h"
 #include "PeripheralDescriptor.h"
+#include "Config.h"
 
 using namespace axe;
 
@@ -18,7 +19,7 @@ void axe::registerAllPeripherals()
   PeripheralRegistry::add(getPeripheralDescriptorUartRx());
   PeripheralRegistry::add(getPeripheralDescriptorSPIFlash());
   PeripheralRegistry::add(getPeripheralDescriptorEthernetPhy());
-#ifdef AXE_ENABLE_SDL
+#if AXE_ENABLE_SDL
   PeripheralRegistry::add(getPeripheralDescriptorLCDScreen());
 #endif
 }
