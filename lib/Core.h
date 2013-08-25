@@ -51,7 +51,7 @@ public:
     ILLEGAL_PC_THREAD_ADDR_OFFSET = 4
   };
 private:
-  uint32_t * memoryOffset;
+  uint8_t * memoryOffset;
   unsigned char *invalidationInfoOffset;
   DecodeCache ramDecodeCache;
   const uint32_t ramSizeLog2;
@@ -67,7 +67,7 @@ private:
   Resource ***resource;
   unsigned *resourceNum;
   static bool allocatable[LAST_STD_RES_TYPE + 1];
-  uint32_t * const memory;
+  uint8_t * const memory;
   unsigned coreNumber;
   ProcessorNode *parent;
   std::string codeReference;

@@ -33,7 +33,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   portNum(new unsigned[33]),
   resource(new Resource**[LAST_STD_RES_TYPE + 1]),
   resourceNum(new unsigned[LAST_STD_RES_TYPE + 1]),
-  memory(new uint32_t[RamSize >> 2]),
+  memory(new uint8_t[RamSize]),
   coreNumber(0),
   parent(0),
   bootConfig(0),
@@ -42,7 +42,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   romBase(0),
   romSize(0)
 {
-  memoryOffset = memory - (RamBase / 4);
+  memoryOffset = memory - RamBase;
   invalidationInfoOffset =
     ramDecodeCache.getState().getInvalidationInfo() - (RamBase / 2);
 
@@ -145,7 +145,7 @@ void Core::setRamBaseMultiple(unsigned multiple)
   ramBaseMultiple = multiple;
   uint32_t ramBase = getRamBase();
   ramDecodeCache.getState().setBase(ramBase);
-  memoryOffset = memory - (ramBase / 4);
+  memoryOffset = memory - ramBase;
   invalidationInfoOffset =
     ramDecodeCache.getState().getInvalidationInfo() - (ramBase / 2);
 
