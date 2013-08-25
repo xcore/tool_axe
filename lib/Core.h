@@ -162,23 +162,11 @@ private:
 
 public:
   uint32_t loadRomWord(uint32_t address) const {
-    uint32_t word;
-    std::memcpy(&word, &rom[address - romBase], 4);
-    if (HOST_LITTLE_ENDIAN) {
-      return word;
-    } else {
-      return bswap32(word);
-    }
+    return endianness::read32le(&rom[address - romBase]);
   }
 
   uint16_t loadRomShort(uint32_t address) const {
-    if (HOST_LITTLE_ENDIAN) {
-      uint16_t halfWord;
-      std::memcpy(&halfWord, &rom[address - romBase], 2);
-      return halfWord;
-    } else {
-      return loadRomByte(address) | loadRomByte(address + 1) << 8;
-    }
+    return endianness::read16le(&rom[address - romBase]);
   }
 
   uint8_t loadRomByte(uint32_t address) const {
@@ -186,16 +174,11 @@ public:
   }
 
   uint32_t loadRamWord(uint32_t address) const {
-    if (HOST_LITTLE_ENDIAN) {
-      return *reinterpret_cast<const uint32_t*>((memOffset() + address));
-    } else {
-      return
-        bswap32(*reinterpret_cast<const uint32_t*>((memOffset() + address)));
-    }
+    return endianness::read32le(memOffset() + address);
   }
 
   uint16_t loadRamShort(uint32_t address) const {
-    return loadRamByte(address) | loadRamByte(address + 1) << 8;
+    return endianness::read16le(memOffset() + address);
   }
 
   uint8_t loadRamByte(uint32_t address) const {
@@ -270,17 +253,12 @@ public:
 
   void storeWord(uint32_t value, uint32_t address)
   {
-    if (HOST_LITTLE_ENDIAN) {
-      *reinterpret_cast<uint32_t*>((memOffset() + address)) = value;
-    } else {
-      *reinterpret_cast<uint32_t*>((memOffset() + address)) = bswap32(value);
-    }
+    endianness::write32le(memOffset() + address, value);
   }
 
   void storeShort(int16_t value, uint32_t address)
   {
-    memOffset()[address] = static_cast<uint8_t>(value);
-    memOffset()[address + 1] = static_cast<uint8_t>(value >> 8);
+    endianness::write16le(memOffset() + address, value);
   }
 
   void storeByte(uint8_t value, uint32_t address)
