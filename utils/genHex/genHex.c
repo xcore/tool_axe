@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Usage: genHex input output");
     return 1;
   }
-  in = fopen(argv[1], "r");
+  in = fopen(argv[1], "rb");
   if (!in) {
     fprintf(stderr, "failed to open %s: %s", argv[1], strerror(errno));
     return 1;
