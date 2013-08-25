@@ -11,6 +11,7 @@
 #include <memory>
 #include <climits>
 #include <ctime>
+#include <cstdlib>
 
 #include "AXEInitialize.h"
 #include "Tracer.h"
