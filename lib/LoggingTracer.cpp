@@ -99,7 +99,7 @@ void LoggingTracer::printLinePrefix(const Node &n)
 void LoggingTracer::printLinePrefix(const Thread &t)
 {
   if (traceCycles)
-    out << '@' << thread->time << ' ';
+    out << '@' << t.time << ' ';
   green();
   out << '<';
   printThreadName(t);
