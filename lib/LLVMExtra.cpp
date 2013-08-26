@@ -5,6 +5,7 @@
 
 #include "LLVMExtra.h"
 #include "llvm-c/Disassembler.h"
+#include "llvm-c/Target.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/Support/CallSite.h"
@@ -27,6 +28,7 @@ class JitDisassembler : public JITEventListener {
   LLVMDisasmContextRef DC;
 public:
   JitDisassembler(const char *triple) {
+    LLVMInitializeX86Disassembler();
     DC = LLVMCreateDisasm(triple, 0, 0, 0, 0);
   }
   ~JitDisassembler() {

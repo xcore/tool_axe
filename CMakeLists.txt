@@ -50,7 +50,7 @@ find_package(LibXslt REQUIRED)
 find_package(LibElf REQUIRED)
 find_package(LLVM REQUIRED)
 
-llvm_map_components_to_libraries(LLVM_LIBRARIES scalaropts engine bitreader)
+llvm_map_components_to_libraries(LLVM_LIBRARIES scalaropts engine bitreader MCDisassembler X86Disassembler)
 
 list(APPEND
   AXE_LINK_LIBRARIES
