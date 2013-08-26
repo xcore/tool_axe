@@ -78,7 +78,8 @@ bool SDLScreen::init() {
   SDL_FilterEvents(&filterSDLEvents, nullptr);
 
   screen = SDL_CreateWindow("AXE", SDL_WINDOWPOS_UNDEFINED,
-                            SDL_WINDOWPOS_UNDEFINED, width, height, 0);
+                            SDL_WINDOWPOS_UNDEFINED, width, height,
+                            SDL_WINDOW_RESIZABLE);
   if (!screen)
     return false;
   renderer = SDL_CreateRenderer(screen, -1, 0);
