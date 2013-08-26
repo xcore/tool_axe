@@ -14,8 +14,8 @@ namespace axe {
 template <typename Iterator>
 struct ValueGetter
 {
-  const typename Iterator::value_type::second_type &
-  operator() (const typename Iterator::value_type& p) const {
+  typedef const typename Iterator::value_type::second_type &result_type;
+  result_type operator() (const typename Iterator::value_type& p) const {
     return p.second;
   }
 };
