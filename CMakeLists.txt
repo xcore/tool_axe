@@ -41,6 +41,7 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules"
   )
 
+option(AXE_ENABLE_JIT "Enable LLVM based JIT" ON)
 option(AXE_ENABLE_SDL "Use SDL if available" ON)
 
 find_package(Boost REQUIRED)
@@ -48,7 +49,6 @@ find_package(LibXml2 REQUIRED)
 find_package(LibXslt REQUIRED)
 find_package(LibElf REQUIRED)
 find_package(LLVM REQUIRED)
-find_package(Clang REQUIRED)
 
 llvm_map_components_to_libraries(LLVM_LIBRARIES scalaropts engine bitreader)
 
@@ -71,6 +71,19 @@ if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
   # On Linux LibXslt requires librt.
   find_package(LibRt REQUIRED)
   list(APPEND AXE_LINK_LIBRARIES ${LIBRT_LIBRARIES})
+endif()
+
+if(AXE_ENABLE_JIT)
+  find_package(Clang)
+  if(NOT CLANG_FOUND)
+    set(AXE_ENABLE_JIT 0)
+  endif()
+endif()
+
+if(AXE_ENABLE_JIT)
+  message(STATUS "JIT enabled")
+else()
+  message(STATUS "JIT disabled")
 endif()
 
 if(AXE_ENABLE_SDL)

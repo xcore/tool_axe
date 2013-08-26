@@ -22,6 +22,16 @@ list(APPEND
   LCDScreen.cpp)
 endif()
 
+if(AXE_ENABLE_JIT)
+list(APPEND
+  AXE_OPTIONAL_FILES
+  JITOptimize.h
+  JITOptimize.cpp
+  InstructionBitcode.h
+  InstructionBitcode.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc)
+endif()
+
 include_directories(${AXE_SOURCE_DIR}/include)
 # make sure cmake addes the current binary to the include path
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -63,8 +73,6 @@ add_library(axe
   InstFunction.h
   Instruction.h
   Instruction.cpp
-  InstructionBitcode.h
-  InstructionBitcode.cpp
   InstructionDefinitions.cpp
   InstructionHelpers.h
   InstructionHelpers.cpp
@@ -76,8 +84,6 @@ add_library(axe
   InstructionTraceInfo.cpp
   JIT.h
   JIT.cpp
-  JITOptimize.h
-  JITOptimize.cpp
   LLVMExtra.h
   LLVMExtra.cpp
   Lock.cpp
@@ -181,7 +187,6 @@ add_library(axe
   ${CMAKE_CURRENT_BINARY_DIR}/AXEVersion.h
   ${CMAKE_CURRENT_BINARY_DIR}/Config.h
   ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
-  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
   ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
   ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
   ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
@@ -196,29 +201,6 @@ add_custom_command(
  COMMAND ${INSTGEN_EXE} > ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
  DEPENDS instgen
  )
-# add the custom command that compiles InstructionDefinitions.cpp to LLVM
-# bitcode
-get_directory_property(INCLUDES_DIRS INCLUDE_DIRECTORIES)
-set(CLANG_INCLUDE_FLAGS "")
-foreach(dir ${INCLUDES_DIRS})
-  set(CLANG_INCLUDE_FLAGS ${CLANG_INCLUDE_FLAGS} "-I${dir}")
-endforeach()
-string(REPLACE " " ";" CLANG_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
-  COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CLANG_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
-  -c -emit-llvm ${CMAKE_CURRENT_SOURCE_DIR}/InstructionDefinitions.cpp
-  -o ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
-  IMPLICIT_DEPENDS CXX InstructionDefinitions.cpp
-  )
-# add the custom command that turns the LLVM bitcode into hex
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
-  COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
-          ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
-  DEPENDS genHex ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
-  )
 
 # add the custom command that turns the schema into hex
 add_custom_command(
@@ -239,6 +221,32 @@ add_custom_command(
          ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
  DEPENDS genHex XNTransform.xslt
  )
+
+if (AXE_ENABLE_JIT)
+  # add the custom command that compiles InstructionDefinitions.cpp to LLVM
+  # bitcode
+  get_directory_property(INCLUDES_DIRS INCLUDE_DIRECTORIES)
+  set(CLANG_INCLUDE_FLAGS "")
+  foreach(dir ${INCLUDES_DIRS})
+    set(CLANG_INCLUDE_FLAGS ${CLANG_INCLUDE_FLAGS} "-I${dir}")
+  endforeach()
+  string(REPLACE " " ";" CLANG_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+    COMMAND ${CLANGPLUSPLUS_EXECUTABLE} ${CLANG_CXX_FLAGS} -O2 -g0 ${CLANG_INCLUDE_FLAGS}
+    -c -emit-llvm ${CMAKE_CURRENT_SOURCE_DIR}/InstructionDefinitions.cpp
+    -o ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
+    IMPLICIT_DEPENDS CXX InstructionDefinitions.cpp
+    )
+  # add the custom command that turns the LLVM bitcode into hex
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
+    COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+            ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
+    DEPENDS genHex ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+    )
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CFLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")

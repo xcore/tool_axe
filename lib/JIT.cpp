@@ -5,9 +5,12 @@
 
 // TODO call LLVMDisposeBuilder(), other cleanup.
 
-#define DEBUG_JIT false
-
 #include "JIT.h"
+#include "Config.h"
+
+#ifdef AXE_ENABLE_JIT
+
+#include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/ExecutionEngine.h"
@@ -29,6 +32,8 @@
 #include <cassert>
 #include <map>
 #include <vector>
+
+#define DEBUG_JIT false
 
 using namespace axe;
 
@@ -125,6 +130,7 @@ public:
   JITImpl() : initialized(false) {}
   ~JITImpl();
   static JITImpl instance;
+  static void initializeGlobalState();
   bool invalidate(Core &c, uint32_t pc);
   void compileBlock(Core &core, uint32_t pc);
 };
@@ -162,6 +168,16 @@ void JITImpl::Functions::init(LLVMModuleRef module)
     *initInfo[i].ref = LLVMGetNamedFunction(module, initInfo[i].name);
     assert(*initInfo[i].ref && "function not found in module");
   }
+}
+
+void JITImpl::initializeGlobalState()
+{
+  static bool initialized = false;
+  if (initialized)
+    return;
+  LLVMLinkInJIT();
+  LLVMInitializeNativeTarget();
+  initialized = true;
 }
 
 void JITImpl::init()
@@ -821,6 +837,20 @@ bool JITImpl::invalidate(Core &core, uint32_t pc)
   return true;
 }
 
+#else
+
+using namespace axe;
+
+class axe::JITImpl {
+public:
+  static void initializeGlobalState() {}
+  void init() {}
+  void compileBlock(Core &core, uint32_t pc) {}
+  bool invalidate(Core &core, uint32_t pc) { return false; }
+};
+
+#endif
+
 JIT::JIT() {
   pImpl = new JITImpl;
 }
@@ -831,12 +861,7 @@ JIT::~JIT() {
 
 void JIT::initializeGlobalState()
 {
-  static bool initialized = false;
-  if (initialized)
-    return;
-  LLVMLinkInJIT();
-  LLVMInitializeNativeTarget();
-  initialized = true;
+  JITImpl::initializeGlobalState();
 }
 
 void JIT::compileBlock(Core &core, uint32_t pc)

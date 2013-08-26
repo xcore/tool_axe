@@ -10,6 +10,8 @@
 
 #cmakedefine01 AXE_ENABLE_SDL
 
+#cmakedefine01 AXE_ENABLE_JIT
+
 /// Number of threads per core.
 #define NUM_THREADS 8
 
