@@ -8,7 +8,7 @@
 #include "JIT.h"
 #include "Config.h"
 
-#ifdef AXE_ENABLE_JIT
+#if AXE_ENABLE_JIT
 
 #include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
