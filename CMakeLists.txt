@@ -114,7 +114,7 @@ include_directories(
   ${LIBXML2_INCLUDE_DIR}
   ${LIBXSLT_INCLUDE_DIR})
 
-if (MSVC)
+if (WIN32)
   SET(CPACK_GENERATOR "ZIP")
 else()
   SET(CPACK_GENERATOR "TGZ")
