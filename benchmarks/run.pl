@@ -88,11 +88,19 @@ sub main
 {
   doBench(
     "dhrystone",
-    "xcc -w dhry_1.c dhry_2.c -O2 -target=XK-1A -o dhry.xe",
+    "xcc -w -DTHREADS=1 dhry_main.xc dhry_1.c dhry_2.c -O2 -target=XK-1A -o dhry.xe",
     "dhry.xe",
     "dhry.xe",
     1000,
     2000000
+  );
+  doBench(
+    "dhrystone-mt",
+    "xcc -w -DTHREADS=4 dhry_main.xc dhry_1.c dhry_2.c -O2 -target=XK-1A -o dhry-mt.xe",
+    "dhry-mt.xe",
+    "dhry-mt.xe",
+    1000,
+    1000000
   );
   doBench(
     "ports",

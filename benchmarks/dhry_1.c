@@ -65,7 +65,7 @@ float           Microseconds,
 /* end of variables for time measurement */
 
 
-main ()
+dhry ()
 /*****/
 
   /* main program, corresponds to procedures        */
@@ -388,5 +388,4 @@ register int    l;
         while (l--) *d++ = *s++;
 }
 #endif
-
 
