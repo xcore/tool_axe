@@ -185,7 +185,7 @@ public:
             PortConnectionWrapper hsync, PortConnectionWrapper vsync,
             unsigned width, unsigned height);
 
-  void run(ticks_t time);
+  void run(ticks_t time) override;
 };
 
 

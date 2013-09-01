@@ -24,7 +24,7 @@ public:
     EventableResource(RES_TYPE_TIMER),
     pausedIn(0) {}
 
-  bool alloc(Thread &t)
+  bool alloc(Thread &t) override
   {
     assert(!isInUse() && "Trying to allocate in use timer");
     after = false;
@@ -33,24 +33,24 @@ public:
     return true;
   }
 
-  bool free()
+  bool free() override
   {
     eventableSetInUseOff();
     return true;
   }
 
-  bool setCondition(Thread &thread, Condition c, ticks_t time);
-  bool setData(Thread &thread, uint32_t d, ticks_t time);
+  bool setCondition(Thread &thread, Condition c, ticks_t time) override;
+  bool setData(Thread &thread, uint32_t d, ticks_t time) override;
 
-  ResOpResult in(Thread &thread, ticks_t time, uint32_t &val);
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &val) override;
 
   /// Returns the earliest time at which the timer will become ready.
   ticks_t getEarliestReadyTime(ticks_t time) const;
   
-  void run(ticks_t time);
+  void run(ticks_t time) override;
 
 protected:
-  bool seeEventEnable(ticks_t time);
+  bool seeEventEnable(ticks_t time) override;
 };
   
 } // End axe namespace

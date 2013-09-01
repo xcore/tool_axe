@@ -328,7 +328,7 @@ public:
     return seeEventEnable(time);
   }
 
-  virtual bool isEventable() const
+  virtual bool isEventable() const override final
   {
     return true;
   }

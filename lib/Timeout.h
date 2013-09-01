@@ -12,7 +12,7 @@ namespace axe {
 
 class Timeout : public Runnable {
 public:
-  virtual void run(ticks_t time);
+  void run(ticks_t time) override;
 };
 
 } // End namespace axe

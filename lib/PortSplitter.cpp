@@ -10,7 +10,7 @@
 
 using namespace axe;
 
-class axe::PortSplitterSlice : public PortHandleClockMixin<PortSplitterSlice> {
+class axe::PortSplitterSlice final : public PortHandleClockMixin<PortSplitterSlice> {
   PortSplitter *parent;
   unsigned shift;
   uint32_t mask;

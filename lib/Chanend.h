@@ -49,27 +49,27 @@ private:
   /// \return Whether a route was succesfully opened.
   bool claim(ChanEndpoint *Source, bool &junkPacket);
 
-  bool canAcceptToken();
-  bool canAcceptTokens(unsigned tokens);
+  bool canAcceptToken() override;
+  bool canAcceptTokens(unsigned tokens) override;
 
   /// Recieve data token. The caller must check sufficient room is available
   /// using canAcceptToken().
-  void receiveDataToken(ticks_t time, uint8_t value);
+  void receiveDataToken(ticks_t time, uint8_t value) override;
 
   /// Recieve data tokens. The caller must check sufficient room is available
   /// using canAcceptTokens().
-  void receiveDataTokens(ticks_t time, uint8_t *values, unsigned num);
+  void receiveDataTokens(ticks_t time, uint8_t *values, unsigned num) override;
 
   /// Recieve control token. The caller must check sufficient room is available
   /// using canAcceptTokens().
-  void receiveCtrlToken(ticks_t time, uint8_t value);
+  void receiveCtrlToken(ticks_t time, uint8_t value) override;
 
   /// Give notification that a route to the destination has been opened.
-  void notifyDestClaimed(ticks_t time);
+  void notifyDestClaimed(ticks_t time) override;
 
   /// Give notification that the destination can accept  in the buffer has
   /// become available.
-  void notifyDestCanAcceptTokens(ticks_t time, unsigned tokens);
+  void notifyDestCanAcceptTokens(ticks_t time, unsigned tokens) override;
 
   /// Input a token. You must check beforehand if there is data available.
   uint8_t poptoken(ticks_t time);
@@ -79,7 +79,7 @@ private:
 public:
   Chanend() : EventableResource(RES_TYPE_CHANEND) {}
 
-  bool alloc(Thread &t)
+  bool alloc(Thread &t) override
   {
     assert(!isInUse() && "Trying to allocate in use chanend");
     dest = 0;
@@ -102,12 +102,12 @@ public:
     return true;
   }
 
-  bool setData(Thread &thread, uint32_t value, ticks_t time);
+  bool setData(Thread &thread, uint32_t value, ticks_t time) override;
 
   ResOpResult outt(Thread &thread, uint8_t value, ticks_t time);
   ResOpResult outct(Thread &thread, uint8_t value, ticks_t time);
   
-  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t time) override;
   ResOpResult intoken(Thread &thread, ticks_t time, uint32_t &val);
   ResOpResult inct(Thread &thread, ticks_t time, uint32_t &val);
   ResOpResult chkct(Thread &thread, ticks_t time, uint32_t value);
@@ -123,11 +123,11 @@ public:
   /// word.
   bool testwct(Thread &thread, ticks_t time, unsigned &position);
 
-  ResOpResult in(Thread &thread, ticks_t time, uint32_t &val);
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &val) override;
 
-  void run(ticks_t time);
+  void run(ticks_t time) override;
 protected:
-  bool seeEventEnable(ticks_t time);
+  bool seeEventEnable(ticks_t time) override;
 };
   
 } // End axe namespace

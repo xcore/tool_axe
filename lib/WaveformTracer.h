@@ -33,7 +33,7 @@ public:
     prev(0),
     time(0) {}
   void update(ticks_t time);
-  void seePinsChange(const Signal &value, ticks_t time);
+  void seePinsChange(const Signal &value, ticks_t time) override;
   Port *getPort() { return port; }
   const std::string &getIdentifier() const { return identifier; }
 };

@@ -109,7 +109,7 @@ public:
     useElfEntryPoint(true),
     core(c),
     elfSector(e) {}
-  int execute(ExecutionState &state);
+  int execute(ExecutionState &state) override;
   Core *getCore() const { return core; }
   void setUseElfEntryPoint(bool value) { useElfEntryPoint = value; }
   void setLoadImage(bool value) { loadImage = value; }
@@ -123,7 +123,7 @@ public:
     BootSequenceStep(SCHEDULE),
     core(c),
     address(a) {}
-  int execute(ExecutionState &state);
+  int execute(ExecutionState &state) override;
 };
 
 class BootSequenceStepRun : public BootSequenceStep {
@@ -133,7 +133,7 @@ public:
   BootSequenceStepRun(unsigned n) :
     BootSequenceStep(RUN),
     numDoneSyscalls(n) {}
-  int execute(ExecutionState &state);
+  int execute(ExecutionState &state) override;
 };
 
 int BootSequenceStepElf::execute(ExecutionState &state)

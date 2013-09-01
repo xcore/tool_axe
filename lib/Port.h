@@ -172,7 +172,7 @@ private:
   uint32_t getEffectiveDataPortInputPinsValue(ticks_t time) const {
     return getEffectiveDataPortInputPinsValue().getValue(time);
   }
-  bool seeEventEnable(ticks_t time);
+  bool seeEventEnable(ticks_t time) override;
 public:
   Port();
   std::string getName() const;
@@ -180,10 +180,10 @@ public:
     return getEffectiveValue(getPinsValue());
   }
   /// Update the pin buffer with the change.
-  void seePinsChange(const Signal &value, ticks_t time);
-  bool setCInUse(Thread &thread, bool val, ticks_t time);
+  void seePinsChange(const Signal &value, ticks_t time) override;
+  bool setCInUse(Thread &thread, bool val, ticks_t time) override;
 
-  bool setCondition(Thread &thread, Condition c, ticks_t time);
+  bool setCondition(Thread &thread, Condition c, ticks_t time) override;
   bool setData(Thread &thread, uint32_t d, ticks_t time);
   bool setPortInv(Thread &thread, bool value, ticks_t time);
   void setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time);
@@ -224,7 +224,7 @@ public:
 
   void setClk(Thread &thread, ClockBlock *c, ticks_t time);
 
-  bool setReady(Thread &thread, Port *p, ticks_t time);
+  bool setReady(Thread &thread, Port *p, ticks_t time) override;
 
   bool setBuffered(Thread &thread, bool value, ticks_t time);
 
@@ -308,9 +308,9 @@ public:
   void clearReadyOut(ticks_t time);
   void updateReadyOut(ticks_t time);
 
-  virtual void completeEvent();
+  void completeEvent() override;
 
-  void run(ticks_t time) {
+  void run(ticks_t time) override {
     update(time);
     scheduleUpdateIfNeeded();
   }

@@ -12,6 +12,8 @@
 namespace axe {
 
 class Runnable {
+protected:
+  ~Runnable() = default;
 public:
   Runnable *prev;
   Runnable *next;

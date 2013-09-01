@@ -42,7 +42,7 @@ private:
 public:
   ClockBlock();
   
-  bool setCInUse(Thread &thread, bool val, ticks_t time);
+  bool setCInUse(Thread &thread, bool val, ticks_t time) override;
 
   bool setSource(Thread &thread, Port *p, ticks_t time);
 
@@ -82,7 +82,7 @@ public:
     return getValue().getValue(time) != 0;
   }
 
-  bool setReady(Thread &thread, Port *p, ticks_t time);
+  bool setReady(Thread &thread, Port *p, ticks_t time) override;
 
   void start(Thread &thread, ticks_t time);
   void stop(Thread &thread, ticks_t time);

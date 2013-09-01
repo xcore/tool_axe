@@ -15,7 +15,7 @@ class PortSignalTracker : public PortInterface {
   Signal signal;
 public:
   PortSignalTracker();
-  void seePinsChange(const Signal &s, ticks_t time) { signal = s; }
+  void seePinsChange(const Signal &s, ticks_t time) override { signal = s; }
   const Signal &getSignal() const { return signal; }
 };
   

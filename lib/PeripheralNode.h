@@ -13,7 +13,7 @@ namespace axe {
 class PeripheralNode : public Node {
 public:
   PeripheralNode();
-  virtual ChanEndpoint *getLocalChanendDest(ResourceID ID);
+  ChanEndpoint *getLocalChanendDest(ResourceID ID) override;
 };
 
 }  // End axe namespace

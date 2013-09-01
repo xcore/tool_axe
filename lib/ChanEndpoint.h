@@ -29,8 +29,9 @@ protected:
   /// is registered with the destination and notifyDestClaimed() will be called
   /// when the route becomes available.
   bool openRoute();
-public:
   ChanEndpoint();
+  ~ChanEndpoint() = default;
+public:
   /// Give notification that a route to the destination has been opened.
   virtual void notifyDestClaimed(ticks_t time) = 0;
 

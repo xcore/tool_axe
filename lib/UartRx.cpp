@@ -52,8 +52,8 @@ private:
   void scheduleUpdate(ticks_t time);
 public:
   UartRx(RunnableQueue &s, PortConnectionWrapper p, ticks_t bitTime);
-  virtual void seePinsChange(const Signal &value, ticks_t time);
-  virtual void run(ticks_t time);
+  void seePinsChange(const Signal &value, ticks_t time) override;
+  void run(ticks_t time) override;
 };
 
 UartRx::UartRx(RunnableQueue &s, PortConnectionWrapper p, ticks_t bt) :

@@ -43,18 +43,18 @@ private:
 public:
   SSwitch(Node *parent);
   void initRegisters() { regs.initRegisters(); }
-  virtual void notifyDestClaimed(ticks_t time);
+  void notifyDestClaimed(ticks_t time) override;
 
-  virtual void notifyDestCanAcceptTokens(ticks_t time, unsigned tokens);
+  void notifyDestCanAcceptTokens(ticks_t time, unsigned tokens) override;
 
-  virtual bool canAcceptToken();
-  virtual bool canAcceptTokens(unsigned tokens);
+  bool canAcceptToken() override;
+  bool canAcceptTokens(unsigned tokens) override;
 
-  virtual void receiveDataToken(ticks_t time, uint8_t value);
+  void receiveDataToken(ticks_t time, uint8_t value) override;
 
-  virtual void receiveDataTokens(ticks_t time, uint8_t *values, unsigned num);
+  void receiveDataTokens(ticks_t time, uint8_t *values, unsigned num) override;
 
-  virtual void receiveCtrlToken(ticks_t time, uint8_t value);
+  void receiveCtrlToken(ticks_t time, uint8_t value) override;
 };
   
 } // End axe namespace

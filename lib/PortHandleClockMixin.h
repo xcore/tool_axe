@@ -24,11 +24,13 @@ class PortHandleClockMixin : public PortInterface, public Runnable {
   RunnableQueue &scheduler;
   uint32_t currentValue;
   Signal currentSignal;
+protected:
+  ~PortHandleClockMixin() = default;
 public:
   PortHandleClockMixin(RunnableQueue &s) :
   scheduler(s), currentValue(0), currentSignal(0) {}
-  void seePinsChange(const Signal &value, ticks_t time);
-  void run(ticks_t time);
+  void seePinsChange(const Signal &value, ticks_t time) override;
+  void run(ticks_t time) override;
 };
 
 

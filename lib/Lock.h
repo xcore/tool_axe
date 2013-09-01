@@ -20,7 +20,7 @@ private:
 public:
   Lock() : Resource(RES_TYPE_LOCK) {}
 
-  bool alloc(Thread &master)
+  bool alloc(Thread &master) override
   {
     assert(!isInUse() && "Trying to allocate in use lock");
     setInUse(true);
@@ -31,7 +31,7 @@ public:
     return true;
   }
   
-  bool free()
+  bool free() override
   {
     // TODO what if there are still threads paused on the lock?
     setInUse(false);
@@ -39,8 +39,8 @@ public:
   }
 
 
-  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
-  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value) override;
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t time) override;
 };
   
 } // End axe namespace

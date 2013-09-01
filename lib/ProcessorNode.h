@@ -19,7 +19,7 @@ private:
   
   void computeCoreNumberBits();
 public:
-  virtual bool isProcessorNode() { return true; }
+  bool isProcessorNode() override { return true; }
   typedef std::vector<Core *>::iterator core_iterator;
   typedef std::vector<Core *>::const_iterator const_core_iterator;
   ProcessorNode(Type t, unsigned numXLinks);

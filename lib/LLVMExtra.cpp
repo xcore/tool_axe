@@ -34,9 +34,8 @@ public:
   ~JitDisassembler() {
     LLVMDisasmDispose(DC);
   }
-  virtual void NotifyFunctionEmitted(const Function &f, void *code,
-                                     size_t size,
-                                     const EmittedFunctionDetails &) {
+  void NotifyFunctionEmitted(const Function &f, void *code, size_t size,
+                             const EmittedFunctionDetails &) override {
     uint8_t *bytes = (uint8_t*)code;
     uint8_t *end = bytes + size;
     char buf[256];

@@ -25,8 +25,8 @@ class NetworkLinkTap : public NetworkLink {
   int fd;
 public:
   NetworkLinkTap(const std::string &ifname);
-  virtual void transmitFrame(const uint8_t *data, unsigned size);
-  virtual bool receiveFrame(uint8_t *data, unsigned &size);
+  virtual void transmitFrame(const uint8_t *data, unsigned size) override;
+  virtual bool receiveFrame(uint8_t *data, unsigned &size) override;
 };
 
 static int tun_alloc(std::string &dev)

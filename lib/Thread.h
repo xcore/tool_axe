@@ -119,13 +119,13 @@ public:
     return time > scheduler->front().wakeUpTime;
   }
 
-  bool alloc(Thread &CurrentThread)
+  bool alloc(Thread &CurrentThread) override
   {
     alloc(CurrentThread.time);
     return true;
   }
 
-  bool free()
+  bool free() override
   {
     setInUse(false);
     return true;
@@ -310,7 +310,7 @@ public:
     }
   }
   bool isExecuting() const;
-  void run(ticks_t time);
+  void run(ticks_t time) override;
   bool setC(ticks_t time, ResourceID resID, uint32_t val);
 
   const Operands &getOperands(uint32_t pc) const {

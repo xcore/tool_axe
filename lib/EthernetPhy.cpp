@@ -57,7 +57,7 @@ public:
                 PortConnectionWrapper txer, PortConnectionWrapper txclk);
   void setLink(NetworkLink *value) { link = value; }
   void connectTX_ER(PortConnectionWrapper p) { p.attach(&TX_ERTracker); }
-  void run(ticks_t time);
+  void run(ticks_t time) override;
 };
 
 EthernetPhyTx::
@@ -200,7 +200,7 @@ public:
                 PortConnectionWrapper rxer);
 
   void setLink(NetworkLink *value) { link = value; }
-  void run(ticks_t time);
+  void run(ticks_t time) override;
 };
 
 EthernetPhyRx::

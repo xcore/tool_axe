@@ -33,7 +33,7 @@ private:
 public:
   Synchroniser() : Resource(RES_TYPE_SYNC) {}
   
-  bool alloc(Thread &master)
+  bool alloc(Thread &master) override
   {
     assert(!isInUse() && "Trying to allocate in use synchroniser");
     setInUse(true);
@@ -51,7 +51,7 @@ public:
     NumPaused++;
   }
   
-  bool free()
+  bool free() override
   {
     setInUse(false);
     return true;
@@ -76,7 +76,7 @@ public:
   SyncResult msync(Thread &thread) { return sync(thread, true); }
   SyncResult mjoin(Thread &thread);
 
-  void cancel();
+  void cancel() override;
 };
   
 } // End axe namespace

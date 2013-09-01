@@ -13,8 +13,9 @@ namespace axe {
 struct Signal;
 
 class PortInterface {
+protected:
+  ~PortInterface();
 public:
-  virtual ~PortInterface();
   virtual void seePinsChange(const Signal &value, ticks_t time) = 0;
 };
 
@@ -28,7 +29,7 @@ public:
   PortInterfaceMemberFuncDelegate(T &o, void (T::*f)(const Signal &value, ticks_t time)) :
   obj(o),
   func(f) {}
-  void seePinsChange(const Signal &value, ticks_t time) {
+  void seePinsChange(const Signal &value, ticks_t time) override {
     (obj.*func)(value, time);
   }
 };
