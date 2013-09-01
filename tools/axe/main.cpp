@@ -248,5 +248,9 @@ main(int argc, char **argv) {
   options.parse(argc, argv);
   int retval = loop(options);
   AXECleanup();
+  // llvm::outs() closes the file descriptor for stdout in a destructor.
+  // Flush std::cout to ensure we don't lose any messages.
+  // TODO find a better workaround.
+  std::cout.flush();
   return retval;
 }
