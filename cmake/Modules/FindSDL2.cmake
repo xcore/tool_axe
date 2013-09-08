@@ -2,7 +2,8 @@
 # This module defines
 #  SDL2_FOUND - System has SDL2
 #  SDL2_CONFIG_EXECUTABLE - The sdl2-config executable
-#  SDL2_CFLAGS - C preprocessor flags for files that include SDL2 headers
+#  SDL2_INCLUDE_DIRS - SDL2 include directories
+#  SDL2_DEFINITIONS - SDL2 compiler definitions
 #  SDL2_LIBRARIES - Libraries needed to link against SDL2
 
 find_program(SDL2_CONFIG_EXECUTABLE
@@ -41,6 +42,17 @@ if (SDL2_FOUND)
     )
   endif()
 
+  # Extract include directories / defines
+  string(REPLACE " " ";" SDL2_CFLAGS_LIST ${SDL2_CFLAGS})
+  foreach(FLAG ${SDL2_CFLAGS_LIST})
+    if(${FLAG} MATCHES "^-I")
+      STRING(REGEX REPLACE "^-I" "" FLAG ${FLAG})
+      list(APPEND SDL2_INCLUDE_DIRS ${FLAG})
+    elseif(${FLAG} MATCHES "^-D")
+      STRING(REGEX REPLACE "^-D" "" FLAG ${FLAG})
+      list(APPEND SDL2_DEFINITIONS ${FLAG})
+    endif()
+  endforeach()
 endif()
 
 mark_as_advanced(SDL2_CONFIG_EXECUTABLE)

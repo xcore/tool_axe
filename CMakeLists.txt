@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.11)
 project(AXE)
 include(Version.txt)
 
@@ -44,35 +44,6 @@ set(CMAKE_MODULE_PATH
 option(AXE_ENABLE_JIT "Enable LLVM based JIT" ON)
 option(AXE_ENABLE_SDL "Use SDL if available" ON)
 
-find_package(Boost REQUIRED)
-find_package(LibXml2 REQUIRED)
-find_package(LibXslt REQUIRED)
-find_package(LibElf REQUIRED)
-find_package(LLVM REQUIRED)
-
-llvm_map_components_to_libraries(LLVM_LIBRARIES scalaropts engine bitreader MCDisassembler X86Disassembler)
-
-list(APPEND
-  AXE_LINK_LIBRARIES
-  ${LIBELF_LIBRARIES}
-  ${LIBXML2_LIBRARIES}
-  ${LIBXSLT_LIBRARIES}
-  ${LLVM_LIBRARIES})
-include_directories(
-  ${Boost_INCLUDE_DIRS}
-  ${LIBELF_INCLUDE_DIRS}
-  ${LIBXML2_INCLUDE_DIR}
-  ${LLVM_INCLUDE_DIRS})
-link_directories(${LLVM_LIBRARY_DIRS})
-add_definitions(
-  ${LIBXSLT_DEFINITIONS}
-  ${LLVM_DEFINITIONS})
-if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
-  # On Linux LibXslt requires librt.
-  find_package(LibRt REQUIRED)
-  list(APPEND AXE_LINK_LIBRARIES ${LIBRT_LIBRARIES})
-endif()
-
 if(AXE_ENABLE_JIT)
   find_package(Clang)
   if(NOT CLANG_FOUND)
@@ -95,10 +66,6 @@ endif()
 
 if(AXE_ENABLE_SDL)
   message(STATUS "SDL enabled")
-  include_directories(${SDL2_INCLUDE_DIR})
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SDL2_CFLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SDL2_CFLAGS}")
-  list(APPEND AXE_LINK_LIBRARIES ${SDL2_LIBRARIES})
 else()
   message(STATUS "SDL disabled")
 endif()
@@ -108,11 +75,6 @@ add_subdirectory(utils/not)
 add_subdirectory(utils/genHex)
 add_subdirectory(lib)
 add_subdirectory(tools/axe)
-
-include_directories(
-  ${LIBELF_INCLUDE_DIRS}
-  ${LIBXML2_INCLUDE_DIR}
-  ${LIBXSLT_INCLUDE_DIR})
 
 if (WIN32)
   SET(CPACK_GENERATOR "ZIP")

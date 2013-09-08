@@ -1,8 +1,18 @@
-configure_file (
+
+find_package(Boost REQUIRED)
+find_package(LibXml2 REQUIRED)
+find_package(LibXslt REQUIRED)
+find_package(LibElf REQUIRED)
+find_package(LLVM REQUIRED)
+if(AXE_ENABLE_SDL)
+  find_package(SDL2 REQUIRED)
+endif()
+
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/AXEVersion.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/AXEVersion.h"
   )
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Config.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/Config.h"
   )
@@ -31,10 +41,6 @@ list(APPEND
   InstructionBitcode.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc)
 endif()
-
-include_directories(${AXE_SOURCE_DIR}/include)
-# make sure cmake addes the current binary to the include path
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(axe
   AccessSecondIterator.h
@@ -222,12 +228,84 @@ add_custom_command(
  DEPENDS genHex XNTransform.xslt
  )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CFLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
+
+if (COMPILER_IS_GCC_COMPATIBLE)
+  set_source_files_properties(LLVMExtra.cpp PROPERTIES
+                              COMPILE_FLAGS "-fno-rtti -std=c++98")
+endif()
+
+llvm_map_components_to_libraries(
+  LLVM_LIBNAMES
+  scalaropts
+  engine
+  bitreader
+  MCDisassembler
+  X86Disassembler)
+
+foreach(LLVM_LIBNAME ${LLVM_LIBNAMES})
+  # Don't cache the library location as we are searching for a different library
+  # each time around the loop.
+  set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
+  find_library(LLVM_LIBRARY ${LLVM_LIBNAME}
+               PATHS ${LLVM_LIBRARY_DIRS})
+  list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
+endforeach()
+
+target_link_libraries(
+  axe
+  ${LIBELF_LIBRARIES}
+  ${LIBXML2_LIBRARIES}
+  ${LIBXSLT_LIBRARIES}
+  ${LLVM_LIBRARIES}
+  )
+
+target_include_directories(
+  axe PUBLIC
+  ${AXE_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${LIBELF_INCLUDE_DIRS}
+  ${LIBXML2_INCLUDE_DIR}
+  ${LIBXSLT_INCLUDE_DIR}
+  )
+
+target_include_directories(
+  axe INTERFACE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+target_compile_definitions(
+  axe PUBLIC
+  ${LIBXSLT_DEFINITIONS}
+  ${LLVM_DEFINITIONS}
+  )
+
+if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
+  # On Linux LibXslt requires librt.
+  find_package(LibRt REQUIRED)
+  target_link_libraries(axe ${LIBRT_LIBRARIES})
+endif()
+
+if(AXE_ENABLE_SDL)
+  target_include_directories(
+    axe PUBLIC
+    ${SDL2_INCLUDE_DIRS}
+    )
+  target_compile_definitions(
+    axe PUBLIC
+    ${SDL2_DEFINITIONS}
+    )
+  target_link_libraries(axe ${SDL2_LIBRARIES})
+endif()
+
 if (AXE_ENABLE_JIT)
   # add the custom command that compiles InstructionDefinitions.cpp to LLVM
   # bitcode
-  get_directory_property(INCLUDES_DIRS INCLUDE_DIRECTORIES)
+  get_target_property(AXE_INCLUDES_DIRS axe INCLUDE_DIRECTORIES)
   set(CLANG_INCLUDE_FLAGS "")
-  foreach(dir ${INCLUDES_DIRS})
+  foreach(dir ${AXE_INCLUDES_DIRS})
     set(CLANG_INCLUDE_FLAGS ${CLANG_INCLUDE_FLAGS} "-I${dir}")
   endforeach()
   string(REPLACE " " ";" CLANG_CXX_FLAGS ${CMAKE_CXX_FLAGS})
@@ -247,14 +325,3 @@ if (AXE_ENABLE_JIT)
     DEPENDS genHex ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
     )
 endif()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CFLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
-
-if (COMPILER_IS_GCC_COMPATIBLE)
-  set_source_files_properties(LLVMExtra.cpp PROPERTIES
-                              COMPILE_FLAGS "-fno-rtti -std=c++98")
-endif()
-
-target_link_libraries(
-  axe ${AXE_LINK_LIBRARIES})
