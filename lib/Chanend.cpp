@@ -39,15 +39,16 @@ void Chanend::receiveCtrlToken(ticks_t time, uint8_t value)
   case CT_END:
     buf.push_back(Token(value, true));
     release(time);
+    update(time);
     break;
   case CT_PAUSE:
     release(time);
     break;
   default:
     buf.push_back(Token(value, true));
+    update(time);
     break;
   }
-  update(time);
 }
 
 void Chanend::notifyDestClaimed(ticks_t time)
