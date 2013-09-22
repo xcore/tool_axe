@@ -2155,7 +2155,12 @@ void add()
           "} else {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
           "}\n");
-  fl2r("GETD", "getd %0, res[%1]", "").setUnimplemented();
+  fl2r("GETD", "getd %0, res[%1]",
+       "ResourceID resID(%1);\n"
+       "Resource *res = checkResource(CORE, resID);\n"
+       "if (!res || !res->getData(THREAD, %0, TIME)) {\n"
+       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+       "};\n").setYieldBefore();
   fl2r("TESTLCL", "testlcl %0, res[%1]", "").setUnimplemented();
   fl2r_in("SETN", "setn res[%1], %0", "").setUnimplemented();
   fl2r("GETN", "getn %0, res[%1]", "").setUnimplemented();

@@ -184,7 +184,8 @@ public:
   bool setCInUse(Thread &thread, bool val, ticks_t time) override;
 
   bool setCondition(Thread &thread, Condition c, ticks_t time) override;
-  bool setData(Thread &thread, uint32_t d, ticks_t time);
+  bool setData(Thread &thread, uint32_t d, ticks_t time) override;
+  bool getData(Thread &thread, uint32_t &value, ticks_t time) override;
   bool setPortInv(Thread &thread, bool value, ticks_t time);
   void setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time);
   bool setPinDelay(Thread &thread, unsigned value, ticks_t time);

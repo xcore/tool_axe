@@ -39,6 +39,13 @@ setData(Thread &thread, uint32_t d, ticks_t time)
   return true;
 }
 
+bool Timer::getData(Thread &thread, uint32_t &result, ticks_t time)
+{
+  updateOwner(thread);
+  result = data;
+  return true;
+}
+
 Resource::ResOpResult Timer::
 in(Thread &thread, ticks_t time, uint32_t &val)
 {

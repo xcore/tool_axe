@@ -41,6 +41,7 @@ public:
 
   bool setCondition(Thread &thread, Condition c, ticks_t time) override;
   bool setData(Thread &thread, uint32_t d, ticks_t time) override;
+  bool getData(Thread &thread, uint32_t &value, ticks_t time) override;
 
   ResOpResult in(Thread &thread, ticks_t time, uint32_t &val) override;
 

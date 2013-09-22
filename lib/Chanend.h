@@ -103,6 +103,7 @@ public:
   }
 
   bool setData(Thread &thread, uint32_t value, ticks_t time) override;
+  bool getData(Thread &thread, uint32_t &value, ticks_t time) override;
 
   ResOpResult outt(Thread &thread, uint8_t value, ticks_t time);
   ResOpResult outct(Thread &thread, uint8_t value, ticks_t time);

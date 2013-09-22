@@ -17,6 +17,9 @@ main:
   getr r1, XS1_RES_TYPE_CHANEND
   setd res[r0], r1
   setd res[r1], r0
+  getd r2, res[r0]
+  eq r2, r2, r1
+  ecallf r2
   ldw r11, cp[const1]
   outt res[r0], r11
   testct r11, res[r1]

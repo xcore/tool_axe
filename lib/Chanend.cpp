@@ -98,6 +98,13 @@ bool Chanend::setData(Thread &thread, uint32_t value, ticks_t time)
   return true;
 }
 
+bool Chanend::getData(Thread &thread, uint32_t &result, ticks_t time)
+{
+  updateOwner(thread);
+  result = destID;
+  return true;
+}
+
 Resource::ResOpResult Chanend::
 outt(Thread &thread, uint8_t value, ticks_t time)
 {

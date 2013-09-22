@@ -108,6 +108,15 @@ setData(Thread &thread, uint32_t d, ticks_t time)
   return true;
 }
 
+bool Port::getData(Thread &thread, uint32_t &result, ticks_t time)
+{
+  update(time);
+  updateOwner(thread);
+  result = data;
+  scheduleUpdateIfNeeded();
+  return true;
+}
+
 bool Port::setPortInv(Thread &thread, bool value, ticks_t time)
 {
   update(time);

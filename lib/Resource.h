@@ -212,6 +212,11 @@ public:
     return false;
   }
 
+  virtual bool getData(Thread &thread, uint32_t &value, ticks_t time)
+  {
+    return false;
+  }
+
   virtual bool setReady(Thread &thread, Port *p, ticks_t time)
   {
     return false;
