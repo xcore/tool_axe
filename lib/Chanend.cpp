@@ -87,7 +87,6 @@ bool Chanend::openRoute()
 
 bool Chanend::setData(Thread &thread, uint32_t value, ticks_t time)
 {
-  updateOwner(thread);
   if (inPacket)
     return false;
   ResourceID id(value);
@@ -100,7 +99,6 @@ bool Chanend::setData(Thread &thread, uint32_t value, ticks_t time)
 
 bool Chanend::getData(Thread &thread, uint32_t &result, ticks_t time)
 {
-  updateOwner(thread);
   result = destID;
   return true;
 }
@@ -108,7 +106,6 @@ bool Chanend::getData(Thread &thread, uint32_t &result, ticks_t time)
 Resource::ResOpResult Chanend::
 outt(Thread &thread, uint8_t value, ticks_t time)
 {
-  updateOwner(thread);
   if (!openRoute()) {
     pausedOut = &thread;
     return DESCHEDULE;
@@ -126,7 +123,6 @@ outt(Thread &thread, uint8_t value, ticks_t time)
 Resource::ResOpResult Chanend::
 out(Thread &thread, uint32_t value, ticks_t time)
 {
-  updateOwner(thread);
   if (!openRoute()) {
     pausedOut = &thread;
     return DESCHEDULE;
@@ -151,7 +147,6 @@ out(Thread &thread, uint32_t value, ticks_t time)
 Resource::ResOpResult Chanend::
 outct(Thread &thread, uint8_t value, ticks_t time)
 {
-  updateOwner(thread);
   if (!openRoute()) {
     pausedOut = &thread;
     return DESCHEDULE;
