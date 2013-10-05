@@ -21,6 +21,9 @@ class ChanEndpoint;
 class DecodeCache;
 class Tracer;
 class StopReason;
+#if AXE_ENABLE_SDL
+class SDLEventPoller;
+#endif
 
 class StopException {
   ticks_t time;
@@ -66,6 +69,9 @@ class SystemState {
   JIT jit;
   std::auto_ptr<Tracer> tracer;
   std::auto_ptr<Tracer> exitTracer;
+#if AXE_ENABLE_SDL
+  std::auto_ptr<SDLEventPoller> SDLPoller;
+#endif
 
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
 
@@ -155,6 +161,9 @@ public:
 
   JIT &getJIT() { return jit; }
   Tracer *getTracer() { return tracer.get(); }
+#if AXE_ENABLE_SDL
+  SDLEventPoller *initSDL();
+#endif
 
   const std::vector<Node*> &getNodes() const { return nodes; }
 };

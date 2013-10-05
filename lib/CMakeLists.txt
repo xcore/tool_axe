@@ -29,7 +29,9 @@ if(AXE_ENABLE_SDL)
 list(APPEND
   AXE_OPTIONAL_FILES
   LCDScreen.h
-  LCDScreen.cpp)
+  LCDScreen.cpp
+  SDLEventPoller.h
+  SDLEventPoller.cpp)
 endif()
 
 if(AXE_ENABLE_JIT)

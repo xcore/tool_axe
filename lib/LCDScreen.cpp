@@ -12,21 +12,16 @@
 #include "PeripheralDescriptor.h"
 #include "Signal.h"
 #include "SystemState.h"
-#include "SDL.h"
-#include "SDL_events.h"
-#include "SDL_video.h"
-#include "SDL_pixels.h"
+#include "SDLEventPoller.h"
+#include <SDL.h>
+#include <SDL_video.h>
+#include <SDL_pixels.h>
 #include <iostream>
 #include <cstdlib>
 
 using namespace axe;
 
 const bool showFPS = false;
-
-static int filterSDLEvents(void *userdata, SDL_Event *event)
-{
-  return event->type == SDL_QUIT;
-}
 
 class SDLScopedSurfaceLock {
   SDL_Surface *surface;
@@ -54,18 +49,16 @@ class SDLScreen {
   SDL_Renderer *renderer;
   SDL_Texture *texture;
   Uint16 *pixels;
-  Uint32 lastPollEvent;
   Uint32 lastFrameTime;
   unsigned frameCount;
 
 public:
   SDLScreen(unsigned w, unsigned h, Uint32 r, Uint32 g, Uint32 b) :
     width(w), height(h), Rmask(r), Gmask(g), Bmask(b), screen(nullptr),
-    renderer(nullptr), texture(nullptr), pixels(nullptr), lastPollEvent(0) {}
+    renderer(nullptr), texture(nullptr), pixels(nullptr) {}
   ~SDLScreen();
 
   bool init();
-  bool pollForEvents();
   void writePixel(unsigned x, unsigned, uint16_t);
   unsigned getWidth() const { return width; }
   unsigned getHeigth() const { return height; }
@@ -73,9 +66,8 @@ public:
 };
 
 bool SDLScreen::init() {
-  if (SDL_Init(SDL_INIT_VIDEO) < 0)
+  if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
     return false;
-  SDL_FilterEvents(&filterSDLEvents, nullptr);
 
   screen = SDL_CreateWindow("AXE", SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED, width, height,
@@ -99,22 +91,6 @@ bool SDLScreen::init() {
     frameCount = 0;
   }
   return true;
-}
-
-/// Handle pending SDL events. Returns whether a SDL_QUIT event was received.
-bool SDLScreen::pollForEvents()
-{
-  // Don't poll for events more than 25 times a second.
-  Uint32 time = SDL_GetTicks();
-  if (time - lastPollEvent < 1000/25)
-    return false;
-  lastPollEvent = time;
-  SDL_Event event;
-  while (SDL_PollEvent(&event)) {
-    if (event.type == SDL_QUIT)
-      return true;
-  }
-  return false;
 }
 
 void SDLScreen::flip()
@@ -149,10 +125,6 @@ const ticks_t minUpdateTicks = 20000;
 
 class LCDScreen : public Peripheral, Runnable {
   SDLScreen screen;
-  enum ScheduleReason {
-    SCHEDULE_SAMPLING_EDGE,
-    SCHEDULE_POLL_FOR_EVENTS
-  } scheduleReason;
   RunnableQueue &scheduler;
   Signal CLKSignal;
   uint32_t CLKValue;
@@ -165,22 +137,11 @@ class LCDScreen : public Peripheral, Runnable {
   unsigned y;
   unsigned edgeCounter;
   ticks_t lastDEHighEdge;
-  ticks_t lastPollForEvents;
 
   void seeSamplingEdge(ticks_t time);
   void seeCLKChange(const Signal &value, ticks_t time);
-  void schedule(ScheduleReason reason, ticks_t time) {
-    scheduleReason = reason;
-    scheduler.push(*this, time);
-  }
-  void scheduleSamplingEdge(ticks_t time) {
-    schedule(SCHEDULE_SAMPLING_EDGE, time);
-  }
-  void schedulePollForEvents(ticks_t time) {
-    schedule(SCHEDULE_POLL_FOR_EVENTS, time);
-  }
 public:
-  LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
+  LCDScreen(SystemState &system, PortConnectionWrapper clk,
             PortConnectionWrapper data, PortConnectionWrapper de,
             PortConnectionWrapper hsync, PortConnectionWrapper vsync,
             unsigned width, unsigned height);
@@ -190,30 +151,29 @@ public:
 
 
 LCDScreen::
-LCDScreen(RunnableQueue &s, PortConnectionWrapper clk,
+LCDScreen(SystemState &system, PortConnectionWrapper clk,
           PortConnectionWrapper data, PortConnectionWrapper de,
           PortConnectionWrapper hsync, PortConnectionWrapper vsync,
           unsigned width, unsigned height) :
   screen(width, height, 0x1f, (0x3f << 5), (0x1f << 11)),
-  scheduler(s),
+  scheduler(system.getScheduler()),
   CLKSignal(0),
   CLKProxy(*this, &LCDScreen::seeCLKChange),
   x(0),
   y(0),
   edgeCounter(0),
-  lastDEHighEdge(0),
-  lastPollForEvents(0)
+  lastDEHighEdge(0)
 {
   clk.attach(&CLKProxy);
   data.attach(&DataTracker);
   de.attach(&DETracker);
   hsync.attach(&HSYNCTracker);
   vsync.attach(&VSYNCTracker);
+  system.initSDL();
   if (!screen.init()) {
     std::cerr << "Failed to initialize SDL screen\n";
     std::exit(1);
   }
-  schedulePollForEvents(minUpdateTicks);
 }
 
 #include <iostream>
@@ -259,34 +219,15 @@ void LCDScreen::seeCLKChange(const Signal &newSignal, ticks_t time)
     EdgeIterator nextEdge = CLKSignal.getEdgeIterator(time);
     if (nextEdge->type != Edge::RISING)
       ++nextEdge;
-    scheduleSamplingEdge(nextEdge->time);
-  } else if (scheduleReason != SCHEDULE_POLL_FOR_EVENTS) {
-    schedulePollForEvents(time + minUpdateTicks);
+    scheduler.push(*this, nextEdge->time);
   }
 }
 
 void LCDScreen::run(ticks_t time)
 {
-  switch (scheduleReason) {
-  case SCHEDULE_SAMPLING_EDGE:
-    assert(CLKSignal.isClock());
-    seeSamplingEdge(time);
-    if (time - lastPollForEvents >= minUpdateTicks) {
-      if (screen.pollForEvents()) {
-        throw ExitException(time, 0);
-      }
-      lastPollForEvents = time;
-    }
-    scheduleSamplingEdge(time + CLKSignal.getPeriod());
-    break;
-  case SCHEDULE_POLL_FOR_EVENTS:
-    if (screen.pollForEvents()) {
-      throw ExitException(time, 0);
-    }
-    schedulePollForEvents(time + minUpdateTicks);
-    lastPollForEvents = time;
-    break;
-  }
+  assert(CLKSignal.isClock());
+  seeSamplingEdge(time);
+  scheduler.push(*this, time + CLKSignal.getPeriod());
 }
 
 static Peripheral *
@@ -299,7 +240,7 @@ createLCDScreen(SystemState &system, PortConnectionManager &connectionManager,
   PortConnectionWrapper HSYNC = connectionManager.get(properties, "vsync");
   PortConnectionWrapper VSYNC = connectionManager.get(properties, "hsync");
   LCDScreen *p =
-    new LCDScreen(system.getScheduler(), CLK, DATA, DE, HSYNC, VSYNC, 480, 272);
+    new LCDScreen(system, CLK, DATA, DE, HSYNC, VSYNC, 480, 272);
   return p;
 }
 

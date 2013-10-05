@@ -8,6 +8,11 @@
 #include "Core.h"
 #include "Tracer.h"
 #include "StopReason.h"
+#include <iostream>
+#if AXE_ENABLE_SDL
+#include "SDLEventPoller.h"
+#include <SDL.h>
+#endif
 
 using namespace axe;
 using namespace Register;
@@ -153,3 +158,17 @@ setRom(const uint8_t *data, uint32_t romSize, uint32_t romBase)
     }
   }
 }
+
+#if AXE_ENABLE_SDL
+SDLEventPoller *SystemState::initSDL()
+{
+  if (!SDLPoller.get()) {
+    if (SDL_Init(0) < 0) {
+      std::cerr << "Failed to initialize SDL\n";
+      std::exit(1);
+    }
+    SDLPoller.reset(new SDLEventPoller(scheduler));
+  }
+  return SDLPoller.get();
+}
+#endif
