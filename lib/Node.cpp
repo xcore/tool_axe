@@ -109,10 +109,10 @@ ChanEndpoint *Node::getChanendDest(ResourceID ID)
     if (diff == 0)
       break;
     // Lookup direction
-    unsigned bit = countLeadingZeros(diff) + getNodeNumberBits() - 32;
-    unsigned direction = directions[bit];
+    unsigned bit = 31 - countLeadingZeros(diff);
+    unsigned direction = node->directions[bit];
     // Lookup Xlink.
-    XLink *xLink = getXLinkForDirection(direction);
+    XLink *xLink = node->getXLinkForDirection(direction);
     if (!xLink || !xLink->isConnected())
       return 0;
     node = xLink->destNode;

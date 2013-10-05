@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Network xmlns="http://www.xmos.com"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://www.xmos.com http://www.xmos.com">
+  <Declarations>
+    <Declaration>tileref tile[8]</Declaration>
+  </Declarations>
+
+  <Packages>
+    <Package id="0" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="0" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[0]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="1" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="1" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[1]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="2" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="2" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[2]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="3" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="3" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[3]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="4" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="4" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[4]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="5" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="5" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[5]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="6" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="6" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[6]"/>
+        </Node>
+      </Nodes>
+    </Package>
+    <Package id="7" Type="XS1-L1A-TQ128">
+      <Nodes>
+        <Node Id="7" InPackageId="0" Type="XS1-L1A">
+          <Tile Number="0" Reference="tile[7]"/>
+        </Node>
+      </Nodes>
+    </Package>
+  </Packages>
+  <Links>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="0" Link="XLG"/>
+      <LinkEndpoint NodeId="1" Link="XLF"/>
+    </Link>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="1" Link="XLG"/>
+      <LinkEndpoint NodeId="2" Link="XLF"/>
+    </Link>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="2" Link="XLG"/>
+      <LinkEndpoint NodeId="3" Link="XLF"/>
+    </Link>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="3" Link="XLG"/>
+      <LinkEndpoint NodeId="4" Link="XLF"/>
+    </Link>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="4" Link="XLG"/>
+      <LinkEndpoint NodeId="5" Link="XLF"/>
+    </Link>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="5" Link="XLG"/>
+      <LinkEndpoint NodeId="6" Link="XLF"/>
+    </Link>
+    <Link Encoding="5wire" Delays="0,1">
+      <LinkEndpoint NodeId="6" Link="XLG"/>
+      <LinkEndpoint NodeId="7" Link="XLF"/>
+    </Link>
+  </Links>
+  <JTAGChain>
+     <JTAGDevice NodeId="0"/>
+     <JTAGDevice NodeId="1"/>
+     <JTAGDevice NodeId="2"/>
+     <JTAGDevice NodeId="3"/>
+     <JTAGDevice NodeId="4"/>
+     <JTAGDevice NodeId="5"/>
+     <JTAGDevice NodeId="6"/>
+     <JTAGDevice NodeId="7"/>
+  </JTAGChain>
+</Network>

@@ -39,7 +39,7 @@ public:
   void setNetwork(uint8_t value) { network = value; }
   uint8_t getNetwork() const { return network; }
   void setDirection(uint8_t value) { direction = value; }
-  uint8_t getDirection() const { return network; }
+  uint8_t getDirection() const { return direction; }
   void setInterTokenDelay(uint16_t value) { interTokenDelay = value; }
   uint16_t getInterTokenDelay() const { return interTokenDelay; }
   void setInterSymbolDelay(uint16_t value) { interSymbolDelay = value; }
