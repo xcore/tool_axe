@@ -92,6 +92,16 @@ inline bool isPowerOf2(uint32_t value)
 {
   return value != 0 && (value & (value - 1)) == 0;
 }
+
+inline bool parity(uint32_t value)
+{
+  bool parity = false;
+  while (value) {
+    parity = !parity;
+    value = value & (value - 1);
+  }
+  return parity;
+}
   
 } // End axe namespace
 

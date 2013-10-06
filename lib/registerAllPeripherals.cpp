@@ -8,9 +8,12 @@
 #include "UartRx.h"
 #include "SPIFlash.h"
 #include "EthernetPhy.h"
-#include "LCDScreen.h"
 #include "PeripheralDescriptor.h"
 #include "Config.h"
+#if AXE_ENABLE_SDL
+#include "LCDScreen.h"
+#include "PS2Keyboard.h"
+#endif
 
 using namespace axe;
 
@@ -21,5 +24,6 @@ void axe::registerAllPeripherals()
   PeripheralRegistry::add(getPeripheralDescriptorEthernetPhy());
 #if AXE_ENABLE_SDL
   PeripheralRegistry::add(getPeripheralDescriptorLCDScreen());
+  PeripheralRegistry::add(getPeripheralDescriptorPS2Keyboard());
 #endif
 }

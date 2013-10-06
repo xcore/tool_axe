@@ -11,16 +11,10 @@
 
 using namespace axe;
 
-static int filterSDLEvents(void *userdata, SDL_Event *event)
-{
-  return event->type == SDL_QUIT;
-}
-
 SDLEventPoller::SDLEventPoller(RunnableQueue &scheduler) :
 scheduler(scheduler),
 lastPollEvent(0)
 {
-  SDL_FilterEvents(&filterSDLEvents, nullptr);
   scheduler.push(*this, 0);
 }
 
@@ -33,6 +27,9 @@ void SDLEventPoller::run(ticks_t time)
   lastPollEvent = time;
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
+    for (auto listener : listeners) {
+      listener(&event, time);
+    }
     if (event.type == SDL_QUIT)
       throw ExitException(time, 0);
   }

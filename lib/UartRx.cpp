@@ -15,6 +15,7 @@
 #include "SystemState.h"
 #include "Node.h"
 #include "Core.h"
+#include "BitManip.h"
 #include <iostream>
 
 using namespace axe;
@@ -94,14 +95,9 @@ void UartRx::seePinsChange(const Signal &value, ticks_t time)
 
 bool UartRx::computeParity()
 {
-  bool value = 0;
-  unsigned tmp = byte;
+  bool value = ::parity(byte);
   if (parity == ODD)
     value = !value;
-  while (tmp) {
-    value = !value;
-    tmp = tmp & (tmp - 1);
-  }
   return value;
 }
 

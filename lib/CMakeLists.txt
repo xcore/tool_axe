@@ -30,6 +30,8 @@ list(APPEND
   AXE_OPTIONAL_FILES
   LCDScreen.h
   LCDScreen.cpp
+  PS2Keyboard.h
+  PS2Keyboard.cpp
   SDLEventPoller.h
   SDLEventPoller.cpp)
 endif()
