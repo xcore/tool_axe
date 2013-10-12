@@ -265,6 +265,8 @@ target_link_libraries(
   ${LLVM_LIBRARIES}
   )
 
+link_system_libs(axe)
+
 target_include_directories(
   axe PUBLIC
   ${AXE_SOURCE_DIR}/include
