@@ -18,6 +18,8 @@ LLVMBool LLVMExtraInlineFunction(LLVMValueRef call);
 void LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
                                       const char *triple);
 
+void LLVMDisableSymbolSearching(LLVMExecutionEngineRef EE, LLVMBool Disable);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

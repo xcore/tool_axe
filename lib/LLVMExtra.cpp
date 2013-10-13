@@ -61,3 +61,8 @@ LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
   unwrap(EE)->RegisterJITEventListener(&disassembler);
 #endif
 }
+
+void LLVMDisableSymbolSearching(LLVMExecutionEngineRef EE, LLVMBool Disable)
+{
+  unwrap(EE)->DisableSymbolSearching(Disable);
+}
