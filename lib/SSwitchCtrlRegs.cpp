@@ -161,7 +161,7 @@ writeXLinkDirectionAndNetworkReg(const Node *node, XLink &xLink, uint32_t value)
 static uint32_t readDirectionReg(const Node *node, unsigned offset)
 {
   unsigned value = 0;
-  unsigned end = std::min(offset + 4, node->getNodeNumberBits());
+  unsigned end = std::min(offset + 8, node->getNodeNumberBits());
   for (unsigned i = offset; i < end; ++i) {
     value |= node->getDirection(i) << ((i - offset) * 4);
   }
@@ -170,7 +170,7 @@ static uint32_t readDirectionReg(const Node *node, unsigned offset)
 
 static void writeDirectionReg(Node *node, unsigned offset, uint32_t value)
 {
-  unsigned end = std::min(offset + 4, node->getNodeNumberBits());
+  unsigned end = std::min(offset + 8, node->getNodeNumberBits());
   for (unsigned i = offset; i < end; ++i) {
     unsigned direction = (value >> ((i - offset) * 4)) & 0xf;
     node->setDirection(i, direction);
@@ -195,7 +195,7 @@ bool SSwitchCtrlRegs::read(uint16_t num, uint32_t &result)
   switch (num) {
   case DIMENSION_DIRECTION_0:
   case DIMENSION_DIRECTION_1:
-    result = readDirectionReg(node, (num - DIMENSION_DIRECTION_0) * 4);
+    result = readDirectionReg(node, (num - DIMENSION_DIRECTION_0) * 8);
     return true;
   case NODE_ID:
     result = node->getNodeID();
@@ -227,7 +227,7 @@ bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
   switch (num) {
   case DIMENSION_DIRECTION_0:
   case DIMENSION_DIRECTION_1:
-    writeDirectionReg(node, (num - DIMENSION_DIRECTION_0) * 4, value);
+    writeDirectionReg(node, (num - DIMENSION_DIRECTION_0) * 8, value);
     return true;
   case NODE_ID:
     node->setNodeID(value & makeMask(node->getNodeNumberBits()));
