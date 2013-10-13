@@ -4,6 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "Core.h"
+#include "Array.h"
 #include "SystemState.h"
 #include "ProcessorNode.h"
 #include "JIT.h"
@@ -101,7 +102,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
     {16, NUM_16BIT_PORTS},
     {32, NUM_32BIT_PORTS},
   };
-  for (unsigned i = 0; i < ARRAY_SIZE(portSpec); i++) {
+  for (unsigned i = 0; i < arraySize(portSpec); i++) {
     unsigned width = portSpec[i][0];
     unsigned num = portSpec[i][1];
     port[width] = new Port[num];

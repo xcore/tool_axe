@@ -73,6 +73,7 @@ endif()
 add_subdirectory(utils/instgen)
 add_subdirectory(utils/not)
 add_subdirectory(utils/genHex)
+add_subdirectory(utils/genJitGlobalMap)
 add_subdirectory(lib)
 add_subdirectory(tools/axe)
 

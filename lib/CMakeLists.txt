@@ -39,15 +39,19 @@ endif()
 if(AXE_ENABLE_JIT)
 list(APPEND
   AXE_OPTIONAL_FILES
+  JitGlobalMap.h
+  JitGlobalMap.cpp
   JITOptimize.h
   JITOptimize.cpp
   InstructionBitcode.h
   InstructionBitcode.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc)
+  ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/JitGlobalMap.inc)
 endif()
 
 add_library(axe
   AccessSecondIterator.h
+  Array.h
   ${AXE_SOURCE_DIR}/include/axe-c/axe.h
   axe.cpp
   AXEInitialize.h
@@ -205,6 +209,8 @@ add_library(axe
 # add the executable that will do the generation
 get_target_property(INSTGEN_EXE instgen LOCATION)
 get_target_property(GENHEX_EXE genHex LOCATION)
+get_target_property(GENJITGLOBALMAP_EXE genJitGlobalMap LOCATION)
+
 # add the custom command that will run the generator
 add_custom_command(
  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
@@ -329,5 +335,12 @@ if (AXE_ENABLE_JIT)
     COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
             ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
     DEPENDS genHex ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+    )
+  # add the custom command that builds a list of external functions
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/JitGlobalMap.inc
+    COMMAND ${GENJITGLOBALMAP_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+            > ${CMAKE_CURRENT_BINARY_DIR}/JitGlobalMap.inc
+    DEPENDS genJitGlobalMap ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
     )
 endif()

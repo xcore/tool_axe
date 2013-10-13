@@ -32,8 +32,6 @@ class Port;
 class Timer;
 class Tracer;
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
-
 class ProcessorNode;
 
 enum ProcessorState {

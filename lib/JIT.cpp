@@ -26,7 +26,9 @@
 #include "LLVMExtra.h"
 #include "InstructionProperties.h"
 #include "JITOptimize.h"
+#include "JitGlobalMap.h"
 #include "InstFunction.h"
+#include "Array.h"
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
@@ -164,7 +166,7 @@ void JITImpl::Functions::init(LLVMModuleRef module)
     { "jitInvalidateWordCheck", &jitInvalidateWordCheck },
     { "jitInterpretOne", &jitInterpretOne },
   };
-  for (unsigned i = 0; i < ARRAY_SIZE(initInfo); i++) {
+  for (unsigned i = 0; i < arraySize(initInfo); i++) {
     *initInfo[i].ref = LLVMGetNamedFunction(module, initInfo[i].name);
     assert(*initInfo[i].ref && "function not found in module");
   }
@@ -178,6 +180,16 @@ void JITImpl::initializeGlobalState()
   LLVMLinkInJIT();
   LLVMInitializeNativeTarget();
   initialized = true;
+}
+
+static void addGlobalMappings(LLVMExecutionEngineRef ee, LLVMModuleRef module) {
+  for (unsigned i = 0; i != jitFunctionMapSize; ++i) {
+    const auto &entry = jitFunctionMap[i];
+    LLVMValueRef val = LLVMGetNamedFunction(module, entry.first);
+    if (!val)
+      continue;
+    LLVMAddGlobalMapping(ee, val, reinterpret_cast<void*>(entry.second));
+  }
 }
 
 void JITImpl::init()
@@ -200,6 +212,7 @@ void JITImpl::init()
     std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
     std::abort();
   }
+  addGlobalMappings(executionEngine, module);
   builder = LLVMCreateBuilderInContext(context);
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
