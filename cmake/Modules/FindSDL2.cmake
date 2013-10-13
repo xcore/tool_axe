@@ -42,6 +42,11 @@ if (SDL2_FOUND)
     )
   endif()
 
+  # Workaround SDL bug 2029 (-XCClinker isn't recognised by MinGW gcc).
+  if (MINGW)
+    STRING(REGEX REPLACE "-XCClinker " "" SDL2_LIBRARIES ${SDL2_LIBRARIES})
+  endif()
+
   # Extract include directories / defines
   string(REPLACE " " ";" SDL2_CFLAGS_LIST ${SDL2_CFLAGS})
   foreach(FLAG ${SDL2_CFLAGS_LIST})
