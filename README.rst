@@ -21,6 +21,7 @@ AXE supports emulation of the following peripherals:
 * SPI Flash (Read command only)
 * Ethernet PHY supporting MII interface (see NETWORKING.rst)
 * LCD Screen
+* PS/2 Keyboard
 
 Known Issues
 ============
@@ -49,7 +50,7 @@ Optional Libraries
 
 AXE can be configured to link against the following libraries:
 
-* SDL2_ (for LCD Screen peripheral)
+* SDL2_ (for LCD Screen, PS/2 Keyboard peripherals)
 
 Building
 ========
