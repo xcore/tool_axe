@@ -379,6 +379,10 @@ int BootSequencer::execute() {
   return 0;
 }
 
+SyscallHandler* BootSequencer::getSyscallHandler() {
+  return syscallHandler;
+}
+
 static inline void
 addToCoreMap(std::map<std::pair<unsigned, unsigned>,Core*> &coreMap,
              ProcessorNode &node)

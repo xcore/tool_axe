@@ -40,6 +40,7 @@ public:
   /// Initialize ELF handling global state. Normally this state is initialized
   /// when it is first used but in a multi-threaded applications it may need to
   /// be initialized earier to prevent avoid race conditions.
+   SyscallHandler* getSyscallHandler();
   static void initializeElfHandling();
 };
 

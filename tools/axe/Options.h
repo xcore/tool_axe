@@ -35,6 +35,8 @@ struct Options {
   bool stats;
   bool warnPacketOvertake;
   ticks_t maxCycles;
+  int clientArgc;
+  char **clientArgv;
 
   Options();
   ~Options();
