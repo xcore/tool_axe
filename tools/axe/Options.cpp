@@ -38,7 +38,8 @@ Options::~Options()
 
 static void printUsage(const char *ProgName) {
   std::cout << "Usage: " << ProgName << " [options] filename\n";
-  std::cout << "Usage: " << ProgName << " [options] --args filename [inferior-arguments ...]\n";
+  std::cout << "Usage: " << ProgName << " [options] --args filename"
+                                        " [inferior-arguments ...]\n";
   std::cout <<
   "General Options:\n"
   "  --args                      Arguments after filename are passed to client.\n"

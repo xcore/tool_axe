@@ -230,7 +230,8 @@ void SyscallHandler::setCmdLine(int clientArgc, char **clientArgv) {
   cmdLine.minBufBytes = 4;  // argV[argc] = null
   for(int i = 0; i < clientArgc; ++i) {
     cmdLine.arg.push_back(std::string(clientArgv[i]));
-    cmdLine.minBufBytes += (4 + cmdLine.arg.back().length() + 1);  // ptr + string + null
+    // cmd line bytes = ptr + string + '\0'
+    cmdLine.minBufBytes += (4 + cmdLine.arg.back().length() + 1);
   }
 }
 
@@ -413,14 +414,19 @@ doSyscall(Thread &thread, int &retval)
   case OSCALL_ARGV:
     {
       const int clientBuf = thread.regs[R1];
-      const int bufBytes = thread.regs[R2] * 4;
+      const int bufBytes = thread.regs[R2];
       if (cmdLine.minBufBytes > bufBytes) {
-        std::cerr << "Error: Client buffer is " << bufBytes << " bytes. Client arguments require " << cmdLine.minBufBytes << " bytes.\n"
-                  << "       Try to rebuild " << cmdLine.arg[0] << " using '-Wm,--defsymbol,CmdLineWords=" << (cmdLine.minBufBytes + 3)/4 << "'\n";
+        std::cerr << "Error: Client buffer is " << bufBytes << " bytes."
+                  << " Client arguments require "
+                  << cmdLine.minBufBytes << " bytes.\n"
+                  << "       Try rebuilding " << cmdLine.arg[0]
+                  << " using '-Xmapper,--defsymbol,-Xmapper,CmdLineWords="
+                  << (cmdLine.minBufBytes + 3)/4 << "'\n";
         retval = 1;
         return SyscallHandler::EXIT;
       }
-      uint8_t * const hostBuf = (uint8_t*)getRamBuffer(thread, clientBuf, bufBytes);
+      uint8_t * const hostBuf = (uint8_t*)getRamBuffer(thread, clientBuf,
+                                                       bufBytes);
       if (!hostBuf) {
         // Invalid buffer
         thread.regs[R0] = (uint32_t)-1;
@@ -437,7 +443,8 @@ doSyscall(Thread &thread, int &retval)
         strPos += argLen;
         hostBuf[strPos++] = 0;
       }
-      assert(strPos == cmdLine.minBufBytes && "cmdLine.minBufBytes incorrectly calculated\n");
+      assert(strPos == cmdLine.minBufBytes
+             && "cmdLine.minBufBytes incorrectly calculated\n");
       endianness::write32le(&hostBuf[argvPos], 0);
       thread.regs[R0] = numArgs;
       retval = 0;
