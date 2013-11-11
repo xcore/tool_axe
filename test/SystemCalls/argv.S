@@ -1,4 +1,4 @@
-// RUN: xcc -Xmapper --defsymbol -Xmapper CmdLineWords=100 -target=XK-1A %s -o %t1.xe
+// RUN: xcc -target=XK-1A %s -o %t1.xe
 // RUN: axe --args %t1.xe hello world
 
 .globl main
