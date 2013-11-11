@@ -22,7 +22,9 @@ Options::Options() :
   time(false),
   stats(false),
   warnPacketOvertake(false),
-  maxCycles(0)
+  maxCycles(0),
+  clientArgc(0),
+  clientArgv(0)
 {
 }
 
@@ -36,8 +38,11 @@ Options::~Options()
 
 static void printUsage(const char *ProgName) {
   std::cout << "Usage: " << ProgName << " [options] filename\n";
+  std::cout << "Usage: " << ProgName << " [options] --args filename"
+                                        " [inferior-arguments ...]\n";
   std::cout <<
   "General Options:\n"
+  "  --args                      Arguments after filename are passed to client.\n"
   "  -help                       Display this information.\n"
   "  --version                   Print version information and then exit.\n"
   "  --loopback PORT1 PORT2      Connect PORT1 to PORT2.\n"
@@ -243,6 +248,16 @@ void Options::parse(int argc, char **argv)
       warnPacketOvertake = true;
     } else if (arg == "--boot-spi") {
       bootMode = BOOT_SPI;
+    } else if (arg == "--args") {
+      ++i;
+      if (file || i >= argc) {
+        printUsage(argv[0]);
+        std::exit(1);
+      }
+      file = argv[i];
+      clientArgc = argc - i;
+      clientArgv = &argv[i];
+      break;
     } else if (arg == "--version") {
       printVersion();
       std::exit(0);

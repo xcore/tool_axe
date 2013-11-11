@@ -8,6 +8,8 @@
 
 #include "ScopedArray.h"
 #include <set>
+#include <string>
+#include <vector>
 
 namespace axe {
 
@@ -18,6 +20,10 @@ private:
   const scoped_array<int> fds;
   std::set<Core*> doneSyscallsSeen;
   unsigned doneSyscallsRequired;
+  struct {
+    std::vector<std::string> arg;
+    int minBufBytes;
+  } cmdLine;
   char *getString(Thread &thread, uint32_t address);
   const void *getBuffer(Thread &thread, uint32_t address, uint32_t size);
   void *getRamBuffer(Thread &thread, uint32_t address, uint32_t size);
@@ -35,6 +41,7 @@ public:
   };
   SyscallHandler();
   
+  void setCmdLine(int clientArgc, char **clientArgv);
   void setDoneSyscallsRequired(unsigned count);
   SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);

@@ -218,6 +218,8 @@ loop(const Options &options)
   }
 
   BootSequencer bootSequencer(sys);
+  bootSequencer.getSyscallHandler()->setCmdLine(options.clientArgc,
+                                                options.clientArgv);
   bootSequencer.populateFromXE(xe);
   switch (options.bootMode) {
   default: assert(0 && "Unexpected bootmode");

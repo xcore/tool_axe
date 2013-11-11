@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <cstring>
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,6 +17,7 @@
 #include <stdint.h>
 #include "ScopedArray.h"
 #include "Tracer.h"
+#include "Endianness.h"
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -49,7 +51,7 @@ enum SyscallType {
   OSCALL_TIME = 10,
   OSCALL_REMOVE = 11,
   OSCALL_SYSTEM = 12,
-  OSCALL_EXCEPTION = 13,
+  OSCALL_ARGV = 13,
   OSCALL_IS_SIMULATION = 99
 };
 
@@ -222,6 +224,17 @@ void SyscallHandler::doException(const Thread &thread)
   doException(thread, thread.regs[ET], thread.regs[ED]);
 }
 
+void SyscallHandler::setCmdLine(int clientArgc, char **clientArgv) {
+  cmdLine.arg.clear();
+  cmdLine.arg.reserve(clientArgc);
+  cmdLine.minBufBytes = 4;  // argV[argc] = null
+  for(int i = 0; i < clientArgc; ++i) {
+    cmdLine.arg.push_back(std::string(clientArgv[i]));
+    // cmd line bytes = ptr + string + '\0'
+    cmdLine.minBufBytes += (4 + cmdLine.arg.back().length() + 1);
+  }
+}
+
 void SyscallHandler::setDoneSyscallsRequired(unsigned count) {
   doneSyscallsRequired = count;
 }
@@ -251,10 +264,6 @@ doSyscall(Thread &thread, int &retval)
       return SyscallHandler::EXIT;
     }
     return SyscallHandler::CONTINUE;
-  case OSCALL_EXCEPTION:
-    doException(thread, thread.regs[R1], thread.regs[R2]);
-    retval = 1;
-    return SyscallHandler::EXIT;
   case OSCALL_OPEN:
     {
       uint32_t PathAddr = thread.regs[R1];
@@ -402,11 +411,50 @@ doSyscall(Thread &thread, int &retval)
       thread.regs[R0] = std::system(command);
       return SyscallHandler::CONTINUE;
     }
+  case OSCALL_ARGV:
+    {
+      const int clientBuf = thread.regs[R1];
+      const int bufBytes = thread.regs[R2];
+      if (cmdLine.minBufBytes > bufBytes) {
+        std::cerr << "Error: Client buffer is " << bufBytes << " bytes."
+                  << " Client arguments require "
+                  << cmdLine.minBufBytes << " bytes.\n"
+                  << "       Try rebuilding " << cmdLine.arg[0]
+                  << " using '-Xmapper,--defsymbol,-Xmapper,CmdLineWords="
+                  << (cmdLine.minBufBytes + 3)/4 << "'\n";
+        retval = 1;
+        return SyscallHandler::EXIT;
+      }
+      uint8_t * const hostBuf = (uint8_t*)getRamBuffer(thread, clientBuf,
+                                                       bufBytes);
+      if (!hostBuf) {
+        // Invalid buffer
+        thread.regs[R0] = (uint32_t)-1;
+        return SyscallHandler::CONTINUE;
+      }
+      int numArgs = cmdLine.arg.size();
+      int argvPos = 0;
+      int strPos = (4 * numArgs) + 4;  // address beyond argV[arg1,...,null]
+      for (int i = 0; i < numArgs; ++i) {
+        endianness::write32le(&hostBuf[argvPos], clientBuf+strPos);
+        argvPos += 4;
+        int argLen = cmdLine.arg[i].length();
+        memcpy(&hostBuf[strPos], cmdLine.arg[i].data(), argLen);
+        strPos += argLen;
+        hostBuf[strPos++] = 0;
+      }
+      assert(strPos == cmdLine.minBufBytes
+             && "cmdLine.minBufBytes incorrectly calculated\n");
+      endianness::write32le(&hostBuf[argvPos], 0);
+      thread.regs[R0] = numArgs;
+      retval = 0;
+      return SyscallHandler::CONTINUE;
+    }
   case OSCALL_IS_SIMULATION:
     thread.regs[R0] = 1;
     return SyscallHandler::CONTINUE;
   default:
-    std::cout << "Error: unknown system call number: " << thread.regs[R0] << "\n";
+    std::cerr << "Error: unknown system call number: " << thread.regs[R0] << "\n";
     retval = 1;
     return SyscallHandler::EXIT;
   }
