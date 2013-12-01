@@ -236,6 +236,8 @@ public:
     return true;
   }
 
+  bool invalidateRange(uint32_t begin, uint32_t end);
+
   uint8_t *ramBytePtr(uint32_t address) {
     return &memOffset()[address];
   }

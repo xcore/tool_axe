@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <boost/function.hpp>
 
 namespace axe {
 
@@ -33,6 +34,7 @@ private:
   int convertOpenMode(int mode);
   bool convertLseekType(int whence, int &converted);
   void doException(const Thread &state, uint32_t et, uint32_t ed);
+  boost::function<bool (Core &, void *, uint32_t, uint32_t)> loadImageCallback;
   
 public:
   enum SycallOutcome {
@@ -43,6 +45,10 @@ public:
   
   void setCmdLine(int clientArgc, char **clientArgv);
   void setDoneSyscallsRequired(unsigned count);
+  void setLoadImageCallback(
+    const boost::function<bool (Core &,void *,uint32_t,uint32_t)> &callback) {
+    loadImageCallback = callback;
+  }
   SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);
 };

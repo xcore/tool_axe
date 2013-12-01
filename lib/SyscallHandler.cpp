@@ -52,7 +52,8 @@ enum SyscallType {
   OSCALL_REMOVE = 11,
   OSCALL_SYSTEM = 12,
   OSCALL_ARGV = 13,
-  OSCALL_IS_SIMULATION = 99
+  OSCALL_IS_SIMULATION = 99,
+  OSCALL_LOAD_IMAGE = 101
 };
 
 enum LseekType {
@@ -79,8 +80,14 @@ enum OpenFlags {
 
 const unsigned MAX_FDS = 512;
 
+static bool defaultLoadImageCallback(Core &, void *, uint32_t, uint32_t)
+{
+  return false;
+}
+
 SyscallHandler::SyscallHandler() :
-  fds(new int[MAX_FDS]), doneSyscallsRequired(1)
+  fds(new int[MAX_FDS]), doneSyscallsRequired(1),
+  loadImageCallback(&defaultLoadImageCallback)
 {
   // Duplicate the standard file descriptors.
   fds[0] = dup(STDIN_FILENO);
@@ -453,6 +460,21 @@ doSyscall(Thread &thread, int &retval)
   case OSCALL_IS_SIMULATION:
     thread.regs[R0] = 1;
     return SyscallHandler::CONTINUE;
+  case OSCALL_LOAD_IMAGE:
+    {
+      uint32_t dst = thread.regs[R1];
+      uint32_t src = thread.regs[R2];
+      uint32_t size = thread.regs[R3];
+      void *buf = getRamBuffer(thread, dst, size);
+      if (!buf ||
+          !loadImageCallback(thread.getParent(), buf, src, size)) {
+        thread.regs[R0] = (uint32_t)-1;
+        return SyscallHandler::CONTINUE;
+      }
+      thread.getParent().invalidateRange(dst, dst + size);
+      thread.regs[R0] = 0;
+      return SyscallHandler::CONTINUE;
+    }
   default:
     std::cerr << "Error: unknown system call number: " << thread.regs[R0] << "\n";
     retval = 1;

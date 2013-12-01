@@ -71,13 +71,82 @@ static void readSymbols(Elf *e, unsigned low, unsigned high,
 }
 
 namespace {
+  class LoadedElf {
+    char *buf;
+    Elf *elf;
+  public:
+    LoadedElf(const XEElfSector *elfSector);
+    LoadedElf(const LoadedElf &) = delete;
+    LoadedElf &operator=(const LoadedElf &) = delete;
+    ~LoadedElf();
+    Elf *getElf() const { return elf; }
+    const char *getBuf() const { return buf; }
+  };
+  class ElfManager {
+    std::map<Core*, LoadedElf*> loadedElfMap;
+  public:
+    ~ElfManager();
+    ElfManager() = default;
+    ElfManager(const ElfManager &) = delete;
+    ElfManager &operator=(const ElfManager &) = delete;
+    const LoadedElf &load(Core &core, const XEElfSector *sector);
+    const LoadedElf *getLoadedElf(Core &core);
+  };
   struct ExecutionState {
     SystemState &sys;
     BreakpointManager &breakpointManager;
     SyscallHandler &syscallHandler;
-    ExecutionState(SystemState &s, BreakpointManager &BM, SyscallHandler &SH) :
-      sys(s), breakpointManager(BM), syscallHandler(SH) { }
+    ElfManager &elfManager;
+    ExecutionState(SystemState &s, BreakpointManager &BM, SyscallHandler &SH,
+                   ElfManager &EM) :
+      sys(s),
+      breakpointManager(BM),
+      syscallHandler(SH),
+      elfManager(EM) { }
   };
+}
+
+LoadedElf::LoadedElf(const XEElfSector *elfSector) :
+  buf(new char[elfSector->getElfSize()])
+{
+  if (!elfSector->getElfData(buf)) {
+    std::cerr << "Error reading ELF data from ELF sector" << std::endl;
+    std::exit(1);
+  }
+  if ((elf = elf_memory(buf, elfSector->getElfSize())) == NULL) {
+    std::cerr << "Error reading ELF: " << elf_errmsg(-1) << std::endl;
+    std::exit(1);
+  }
+}
+
+LoadedElf::~LoadedElf()
+{
+  delete[] buf;
+  if (elf)
+    elf_end(elf);
+}
+
+ElfManager::~ElfManager()
+{
+  for (const auto &entry : loadedElfMap) {
+    delete entry.second;
+  }
+}
+
+const LoadedElf &ElfManager::load(Core &core, const XEElfSector *elfSector)
+{
+  LoadedElf *&loadedElf = loadedElfMap[&core];
+  delete loadedElf;
+  loadedElf = new LoadedElf(elfSector);
+  return *loadedElf;
+}
+
+const LoadedElf *ElfManager::getLoadedElf(Core &core)
+{
+  auto match = loadedElfMap.find(&core);
+  if (match == loadedElfMap.end())
+    return nullptr;
+  return match->second;
 }
 
 class axe::BootSequenceStep {
@@ -136,21 +205,19 @@ public:
   int execute(ExecutionState &state) override;
 };
 
+static bool hasValidVirtualAddress(const GElf_Phdr &phdr, const Core &core)
+{
+  return core.isValidRamAddress(phdr.p_vaddr) &&
+         core.isValidRamAddress(phdr.p_vaddr + phdr.p_memsz);
+ }
+
 int BootSequenceStepElf::execute(ExecutionState &state)
 {
   SystemState &sys = state.sys;
   BreakpointManager &BM = state.breakpointManager;
-  uint64_t ElfSize = elfSector->getElfSize();
-  const scoped_array<char> buf(new char[ElfSize]);
-  if (!elfSector->getElfData(buf.get())) {
-    std::cerr << "Error reading ELF data from ELF sector" << std::endl;
-    std::exit(1);
-  }
-  Elf *e;
-  if ((e = elf_memory(buf.get(), ElfSize)) == NULL) {
-    std::cerr << "Error reading ELF: " << elf_errmsg(-1) << std::endl;
-    std::exit(1);
-  }
+  const LoadedElf &loadedElf = state.elfManager.load(*core, elfSector);
+  Elf *e = loadedElf.getElf();
+  const char *buf = loadedElf.getBuf();
   if (elf_kind(e) != ELF_K_ELF) {
     std::cerr << "ELF section is not an ELF object" << std::endl;
     std::exit(1);
@@ -192,17 +259,18 @@ int BootSequenceStepElf::execute(ExecutionState &state)
       if (phdr.p_filesz == 0) {
         continue;
       }
-      if (phdr.p_offset > ElfSize) {
+      if (phdr.p_offset > elfSector->getElfSize()) {
         std::cerr << "Invalid offet in ELF program header" << i << std::endl;
         std::exit(1);
       }
-      if (!core->isValidRamAddress(phdr.p_paddr) ||
-          !core->isValidRamAddress(phdr.p_paddr + phdr.p_memsz)) {
+      if (core->isValidRamAddress(phdr.p_paddr) &&
+          core->isValidRamAddress(phdr.p_paddr + phdr.p_memsz)) {
+        core->writeMemory(phdr.p_paddr, &buf[phdr.p_offset], phdr.p_filesz);
+      } else if (!hasValidVirtualAddress(phdr, *core)) {
         std::cerr << "Error data from ELF program header " << i;
         std::cerr << " does not fit in memory" << std::endl;
         std::exit(1);
       }
-      core->writeMemory(phdr.p_paddr, &buf[phdr.p_offset], phdr.p_filesz);
     }
   }
 
@@ -231,7 +299,6 @@ int BootSequenceStepElf::execute(ExecutionState &state)
     core->getThread(0).setPcFromAddress(entryPoint);
   }
 
-  elf_end(e);
   return 0;
 }
 
@@ -368,9 +435,62 @@ void BootSequencer::setLoadImages(bool value)
   }
 }
 
+static bool rangeOverlaps(uint32_t aBegin, uint32_t aEnd,
+                          uint32_t bBegin, uint32_t bEnd)
+{
+  return aBegin < bEnd && bBegin < aEnd;
+}
+
+static bool
+loadImage(ElfManager &elfManager, Core &core, void *dst, uint32_t src,
+          uint32_t size)
+{
+  const LoadedElf *loadedElf = elfManager.getLoadedElf(core);
+  if (!loadedElf)
+    return false;
+  Elf *e = loadedElf->getElf();
+  const char *buf = loadedElf->getBuf();
+  GElf_Ehdr ehdr;
+  if (gelf_getehdr(e, &ehdr) == NULL)
+    return false;
+  unsigned num_phdrs = ehdr.e_phnum;
+  if (num_phdrs == 0)
+    return false;
+  uint32_t srcBegin = src;
+  uint32_t srcEnd = src + size;
+  bool foundMatching = false;
+  for (unsigned i = 0; i < num_phdrs; i++) {
+    GElf_Phdr phdr;
+    if (gelf_getphdr(e, i, &phdr) == NULL)
+      return false;
+    if (phdr.p_filesz == 0) {
+      continue;
+    }
+    uint32_t segmentBegin = phdr.p_paddr;
+    uint32_t segmentEnd = phdr.p_paddr + phdr.p_memsz;
+    if (!rangeOverlaps(srcBegin, srcEnd, segmentBegin, segmentEnd))
+      continue;
+    foundMatching = true;
+    uint32_t copyBegin = std::max(segmentBegin, srcBegin);
+    uint32_t copyEnd = std::min(segmentEnd, srcEnd);
+    uint32_t copySize = copyEnd - copyBegin;
+    uint32_t offsetBegin = phdr.p_offset + copyBegin - segmentBegin;
+    std::copy(&buf[offsetBegin], &buf[offsetBegin + copySize],
+              reinterpret_cast<char*>(dst));
+  }
+  return foundMatching;
+}
+
 int BootSequencer::execute() {
   initializeElfHandling();
-  ExecutionState executionState(sys, breakpointManager, *syscallHandler);
+  ElfManager elfManager;
+  auto loadImageCallback =
+    [&](Core &core, void *dst, uint32_t src, uint32_t size) {
+    return loadImage(elfManager, core, dst, src, size);
+  };
+  syscallHandler->setLoadImageCallback(loadImageCallback);
+  ExecutionState executionState(sys, breakpointManager, *syscallHandler,
+                                elfManager);
   for (BootSequenceStep *step : steps) {
     int status = step->execute(executionState);
     if (status != 0)

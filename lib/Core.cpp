@@ -220,16 +220,7 @@ bool Core::writeMemory(uint32_t address, const void *src, size_t size)
   if (address < getRamBase() || address + size >= ramEnd)
     return false;
   std::memcpy(&memOffset()[address], src, size);
-  uint32_t endAddress = address + size;
-  for (; address % 4 && address < endAddress; ++address) {
-    invalidateByte(address);
-  }
-  for (; address + 3 < endAddress; address += 4) {
-    invalidateWord(address);
-  }
-  for (; address < endAddress; ++address) {
-    invalidateByte(address);
-  }
+  invalidateRange(address, address + size);
   return true;
 }
 
@@ -426,6 +417,22 @@ void Core::invalidateSlowPath(uint32_t shiftedAddress)
     ramDecodeCache.getState().executionFrequency[pc] = 0;
     invalidationInfoOffset[shiftedAddress--] = DecodeCache::INVALIDATE_NONE;
   } while (info == DecodeCache::INVALIDATE_CURRENT_AND_PREVIOUS);
+}
+
+bool Core::invalidateRange(uint32_t begin, uint32_t end)
+{
+  uint32_t address = begin;
+  bool invalidated = false;
+  for (; address % 4 && address < end; ++address) {
+    invalidated |= invalidateByte(address);
+  }
+  for (; address + 3 < end; address += 4) {
+    invalidated |= invalidateWord(address);
+  }
+  for (; address < end; ++address) {
+    invalidated |= invalidateByte(address);
+  }
+  return invalidated;
 }
 
 void Core::runJIT(uint32_t jitPc)
