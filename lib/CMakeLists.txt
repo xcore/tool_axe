@@ -1,3 +1,8 @@
+# Avoid warnings about mixing keyword and plain versions of
+# target_link_libraries. One of the calls to target_link_libraries is in the
+# file that gets included when we call find_package(LLVM), and we have no
+# control over this.
+cmake_policy(SET CMP0023 OLD)
 
 find_package(Boost REQUIRED)
 find_package(LibXml2 REQUIRED)
@@ -264,7 +269,7 @@ foreach(LLVM_LIBNAME ${LLVM_LIBNAMES})
 endforeach()
 
 target_link_libraries(
-  axe
+  axe PUBLIC
   ${LIBELF_LIBRARIES}
   ${LIBXML2_LIBRARIES}
   ${LIBXSLT_LIBRARIES}
@@ -297,7 +302,7 @@ target_compile_definitions(
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
   # On Linux LibXslt requires librt.
   find_package(LibRt REQUIRED)
-  target_link_libraries(axe ${LIBRT_LIBRARIES})
+  target_link_libraries(axe PUBLIC ${LIBRT_LIBRARIES})
 endif()
 
 if(AXE_ENABLE_SDL)
@@ -309,7 +314,7 @@ if(AXE_ENABLE_SDL)
     axe PUBLIC
     ${SDL2_DEFINITIONS}
     )
-  target_link_libraries(axe ${SDL2_LIBRARIES})
+  target_link_libraries(axe PUBLIC ${SDL2_LIBRARIES})
 endif()
 
 if (AXE_ENABLE_JIT)
