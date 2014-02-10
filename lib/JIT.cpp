@@ -39,17 +39,28 @@
 
 using namespace axe;
 
+// InstFunction with a a fast calling convention.
+// TODO make this a struct wrapper so we can enforce type safety.
+typedef InstFunction_t InstFunctionFast_t;
+
 struct JITFunctionInfo {
   explicit JITFunctionInfo(uint32_t a) :
-    pc(a), value(0), func(0), isStub(false) {}
-  JITFunctionInfo(uint32_t a, LLVMValueRef v, InstFunction_t f,
-                  bool s) :
-    pc(a), value(v), func(f), isStub(s) {}
+    pc(a), ptr(0), fastFunc(0), func(0), fastFuncValue(0), funcValue(0) {}
   uint32_t pc;
-  LLVMValueRef value;
+  /// Global function pointer used to chain calls to this basic block.
+  LLVMValueRef ptr;
+  /// Function that contains the code for this basic block. This function uses
+  /// the fast calling convention so it can be safely called in a tail position
+  /// without growing the stack.
+  InstFunctionFast_t fastFunc;
+  /// Function that contains the code for this basic block. This function uses
+  /// the standard calling convention so it can be called from the interpreter.
+  /// It is implemented as a simple wrapper around fastFunc.
   InstFunction_t func;
-  std::set<JITFunctionInfo*> references;
-  bool isStub;
+  /// LLVMValueRef for fastFunc.
+  LLVMValueRef fastFuncValue;
+  /// LLVMValueRef for func.
+  LLVMValueRef funcValue;
 };
 
 struct JITCoreInfo {
@@ -86,6 +97,8 @@ class axe::JITImpl {
   LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
   LLVMPassManagerRef FPM;
+  // Stub used to return to the interpreter (lazily initialized).
+  InstFunctionFast_t stub;
 
   std::map<const Core*,JITCoreInfo*> jitCoreMap;
   std::vector<LLVMValueRef> earlyReturnIncomingValues;
@@ -108,14 +121,13 @@ class axe::JITImpl {
   void checkReturnValue(LLVMValueRef call, InstructionProperties &properties);
   void emitCondBrToBlock(LLVMValueRef cond, LLVMBasicBlockRef trueBB);
   void ensureEarlyReturnBB(LLVMTypeRef phiType);
+  LLVMValueRef getNextFragmentPointer(JITCoreInfo &coreInfo, uint32_t pc);
   LLVMBasicBlockRef appendBBToCurrentFunction(const char *name);
   LLVMValueRef emitCallToBeInlined(LLVMValueRef fn, LLVMValueRef *args,
                                    unsigned numArgs);
   JITCoreInfo *getJITCoreInfo(const Core &);
   JITCoreInfo *getOrCreateJITCoreInfo(const Core &);
-  JITFunctionInfo *getJITFunctionOrStubImpl(JITCoreInfo &coreInfo, uint32_t pc);
-  LLVMValueRef getJITFunctionOrStub(JITCoreInfo &coreIfno, uint32_t pc,
-                                    JITFunctionInfo *caller);
+  InstFunctionFast_t getOrCreateStub();
   bool compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t pc,
                           bool &endOfBlock, uint32_t &nextPc);
   LLVMBasicBlockRef getOrCreateMemoryCheckBailoutBlock(unsigned index);
@@ -127,7 +139,7 @@ class axe::JITImpl {
   bool emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
                               JITCoreInfo &coreInfo, uint32_t nextPc,
                               JITFunctionInfo *caller);
-  InstFunction_t getFunctionThunk(JITFunctionInfo &info);
+  LLVMValueRef getFunctionThunk(LLVMValueRef f);
 public:
   JITImpl() : initialized(false) {}
   ~JITImpl();
@@ -233,6 +245,7 @@ void JITImpl::init()
   if (DEBUG_JIT) {
     LLVMExtraRegisterJitDisassembler(executionEngine, LLVMGetTarget(module));
   }
+  stub = nullptr;
   initialized = true;
 }
 
@@ -271,12 +284,24 @@ void JITImpl::reclaimUnreachableFunctions(JITCoreInfo &coreInfo)
     auto entry = functionMap.find(addr);
     if (entry == functionMap.end())
       continue;
-    LLVMValueRef value = entry->second->value;
-    LLVMFreeMachineCodeForFunction(executionEngine, value);
-    LLVMReplaceAllUsesWith(value, LLVMGetUndef(LLVMTypeOf(value)));
-    LLVMDeleteFunction(value);
-    delete entry->second;
-    functionMap.erase(entry);
+    JITFunctionInfo *info = entry->second;
+    LLVMValueRef functions[] = {
+      info->funcValue,
+      info->fastFuncValue
+    };
+    for (LLVMValueRef f : functions) {
+      LLVMFreeMachineCodeForFunction(executionEngine, f);
+      LLVMReplaceAllUsesWith(f, LLVMGetUndef(LLVMTypeOf(f)));
+      LLVMDeleteFunction(f);
+    }
+    info->fastFunc = nullptr;
+    info->func = nullptr;
+    info->funcValue = nullptr;
+    info->fastFuncValue = nullptr;
+    if (info->ptr) {
+      *reinterpret_cast<InstFunctionFast_t*>(
+        LLVMGetPointerToGlobal(executionEngine, info->ptr)) = getOrCreateStub();
+    }
   }
   unreachableFunctions.clear();
 }
@@ -407,43 +432,52 @@ JITCoreInfo *JITImpl::getOrCreateJITCoreInfo(const Core &c)
   return info;
 }
 
-JITFunctionInfo *JITImpl::
-getJITFunctionOrStubImpl(JITCoreInfo &coreInfo, uint32_t pc)
+InstFunctionFast_t JITImpl::getOrCreateStub()
 {
-  JITFunctionInfo *&info = coreInfo.functionMap[pc];
-  if (info)
-    return info;
-  LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
-  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
-  LLVMSetFunctionCallConv(f, LLVMFastCallConv);
-  LLVMBasicBlockRef entryBB =
+  if (!stub) {
+    LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
+    LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
+    LLVMSetFunctionCallConv(f, LLVMFastCallConv);
+    LLVMBasicBlockRef entryBB =
     LLVMAppendBasicBlockInContext(context, f, "entry");
-  LLVMPositionBuilderAtEnd(builder, entryBB);
-  LLVMValueRef args[] = {
-    LLVMGetParam(f, 0)
-  };
-  LLVMValueRef call =
+    LLVMPositionBuilderAtEnd(builder, entryBB);
+    LLVMValueRef args[] = {
+      LLVMGetParam(f, 0)
+    };
+    LLVMValueRef call =
     LLVMBuildCall(builder, functions.jitStubImpl, args, 1, "");
-  LLVMBuildRet(builder, call);
-  if (DEBUG_JIT) {
-    LLVMDumpValue(f);
-    LLVMVerifyFunction(f, LLVMAbortProcessAction);
+    LLVMBuildRet(builder, call);
+    if (DEBUG_JIT) {
+      LLVMDumpValue(f);
+      LLVMVerifyFunction(f, LLVMAbortProcessAction);
+    }
+    stub = reinterpret_cast<InstFunctionFast_t>(
+      LLVMGetPointerToGlobal(executionEngine, f));
+    LLVMPositionBuilderAtEnd(builder, savedInsertPoint);
   }
-  InstFunction_t code =
-    reinterpret_cast<InstFunction_t>(
-     LLVMGetPointerToGlobal(executionEngine, f));
-  info = new JITFunctionInfo(pc, f, code, true);
-  LLVMPositionBuilderAtEnd(builder, savedInsertPoint);
-  return info;
+  return stub;
 }
 
-LLVMValueRef JITImpl::
-getJITFunctionOrStub(JITCoreInfo &coreInfo, uint32_t pc,
-                     JITFunctionInfo *caller)
+LLVMValueRef JITImpl::getNextFragmentPointer(JITCoreInfo &coreInfo, uint32_t pc)
 {
-  JITFunctionInfo *info = getJITFunctionOrStubImpl(coreInfo, pc);
-  info->references.insert(caller);
-  return info->value;
+  JITFunctionInfo *&info = coreInfo.functionMap[pc];
+  if (!info) {
+    info = new JITFunctionInfo(pc);
+  }
+  if (!info->ptr) {
+    // Create a global variable...
+    LLVMTypeRef jitFunctionPtrType = LLVMPointerType(jitFunctionType, 0);
+    info->ptr = LLVMAddGlobal(module, jitFunctionPtrType, "");
+    LLVMSetInitializer(info->ptr, LLVMConstNull(jitFunctionPtrType));
+    // Set value...
+    auto &p = *reinterpret_cast<InstFunctionFast_t*>(
+      LLVMGetPointerToGlobal(executionEngine, info->ptr));
+    if (info->fastFunc)
+      p = info->fastFunc;
+    else
+      p = getOrCreateStub();
+  }
+  return info->ptr;
 }
 
 LLVMBasicBlockRef JITImpl::appendBBToCurrentFunction(const char *name)
@@ -457,7 +491,8 @@ void JITImpl::
 emitJumpToNextFragment(JITCoreInfo &coreInfo, uint32_t targetPc,
                        JITFunctionInfo *caller)
 {
-  LLVMValueRef next = getJITFunctionOrStub(coreInfo, targetPc, caller);
+  LLVMValueRef nextPtr = getNextFragmentPointer(coreInfo, targetPc);
+  LLVMValueRef next = LLVMBuildLoad(builder, nextPtr, "");
   LLVMValueRef args[] = {
     threadParam
   };
@@ -499,15 +534,6 @@ emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
   }
   emitJumpToNextFragment(coreInfo, *successors.begin(), caller);
   return true;
-}
-
-static void deleteFunctionBody(LLVMValueRef f)
-{
-  LLVMBasicBlockRef bb = LLVMGetFirstBasicBlock(f);
-  while (bb) {
-    LLVMDeleteBasicBlock(bb);
-    bb = LLVMGetFirstBasicBlock(f);
-  }
 }
 
 static bool
@@ -560,7 +586,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
   auto infoIt = coreInfo.functionMap.find(startPc);
   JITFunctionInfo *info =
     (infoIt == coreInfo.functionMap.end()) ? 0 : infoIt->second;
-  if (info && !info->isStub) {
+  if (info && info->fastFuncValue) {
     endOfBlock = true;
     return false;
   }
@@ -575,19 +601,16 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
   std::queue<std::pair<uint32_t,MemoryCheck*>> checks;
   placeMemoryChecks(opcode, operands, checks);
 
-  LLVMValueRef f;
   if (info) {
-    f = info->value;
     info->func = 0;
-    info->isStub = false;
-    deleteFunctionBody(f);
   } else {
     info = new JITFunctionInfo(startPc);
     coreInfo.functionMap.insert(std::make_pair(startPc, info));
-    // Create function to contain the code we are about to add.
-    info->value = f = LLVMAddFunction(module, "", jitFunctionType);
-    LLVMSetFunctionCallConv(f, LLVMFastCallConv);
   }
+  // Create function to contain the code we are about to add.
+  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
+  LLVMSetFunctionCallConv(f, LLVMFastCallConv);
+  info->fastFuncValue = f;
   threadParam = LLVMGetParam(f, 0);
   LLVMValueRef ramBase =
     LLVMConstInt(LLVMInt32TypeInContext(context), core.getRamBase(), false);
@@ -666,12 +689,19 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     LLVMDumpValue(f);
   }
   // Compile.
-  InstFunction_t compiledFunction =
-    reinterpret_cast<InstFunction_t>(
+  InstFunctionFast_t compiledFunction =
+    reinterpret_cast<InstFunctionFast_t>(
       LLVMRecompileAndRelinkFunction(executionEngine, f));
-  info->isStub = false;
-  info->func = compiledFunction;
-  core.setOpcode(startPc, getFunctionThunk(*info), (pc - startPc) * 2);
+  info->fastFunc = compiledFunction;
+  info->funcValue = getFunctionThunk(f);
+  info->func = reinterpret_cast<InstFunction_t>(
+    LLVMGetPointerToGlobal(executionEngine, info->funcValue));
+  if (info->ptr) {
+    // Set value of the global.
+    *reinterpret_cast<InstFunctionFast_t*>(
+      LLVMGetPointerToGlobal(executionEngine, info->ptr)) = info->fastFunc;
+  }
+  core.setOpcode(startPc, info->func, (pc - startPc) * 2);
   return true;
 }
 
@@ -799,26 +829,25 @@ LLVMValueRef JITImpl::getJitInvalidateFunction(unsigned size)
   }
 }
 
-InstFunction_t JITImpl::getFunctionThunk(JITFunctionInfo &info)
+LLVMValueRef JITImpl::getFunctionThunk(LLVMValueRef f)
 {
-  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
-  LLVMValueRef thread = LLVMGetParam(f, 0);
+  LLVMValueRef thunk = LLVMAddFunction(module, "", jitFunctionType);
+  LLVMValueRef thread = LLVMGetParam(thunk, 0);
   LLVMBasicBlockRef entryBB =
-    LLVMAppendBasicBlockInContext(context, f, "entry");
+    LLVMAppendBasicBlockInContext(context, thunk, "entry");
   LLVMPositionBuilderAtEnd(builder, entryBB);
   LLVMValueRef args[] = {
     thread
   };
-  LLVMValueRef call = LLVMBuildCall(builder, info.value, args, 1, "");
+  LLVMValueRef call = LLVMBuildCall(builder, f, args, 1, "");
   LLVMSetTailCall(call, true);
   LLVMSetInstructionCallConv(call, LLVMFastCallConv);
   LLVMBuildRet(builder, call);
   if (DEBUG_JIT) {
-    LLVMDumpValue(f);
-    LLVMVerifyFunction(f, LLVMAbortProcessAction);
+    LLVMDumpValue(thunk);
+    LLVMVerifyFunction(thunk, LLVMAbortProcessAction);
   }
-  return reinterpret_cast<InstFunction_t>(
-    LLVMGetPointerToGlobal(executionEngine, f));
+  return thunk;
 }
 
 bool JITImpl::invalidate(Core &core, uint32_t pc)
@@ -829,25 +858,13 @@ bool JITImpl::invalidate(Core &core, uint32_t pc)
   auto entry = coreInfo->functionMap.find(pc);
   if (entry == coreInfo->functionMap.end())
     return false;
-
-  std::vector<JITFunctionInfo*> worklist;
-  std::set<JITFunctionInfo*> toInvalidate;
-  worklist.push_back(entry->second);
-  toInvalidate.insert(entry->second);
-  do {
-    JITFunctionInfo *info = worklist.back();
-    worklist.pop_back();
-    for (JITFunctionInfo *ref : info->references) {
-      if (!toInvalidate.insert(ref).second)
-        continue;
-      worklist.push_back(ref);
-    }
-  } while (!worklist.empty());
-  for (JITFunctionInfo *funcInfo : toInvalidate) {
-    uint32_t functionPc = funcInfo->pc;
-    core.clearOpcode(functionPc);
-    coreInfo->unreachableFunctions.push_back(functionPc);
-  }
+  JITFunctionInfo *funcInfo = entry->second;
+  uint32_t functionPc = funcInfo->pc;
+  core.clearOpcode(functionPc);
+  // Don't remove the function yet since we might be invalidating it from inside
+  // the function itself. Instead add the function to a list of functions to
+  // clean up later.
+  coreInfo->unreachableFunctions.push_back(functionPc);
   return true;
 }
 
