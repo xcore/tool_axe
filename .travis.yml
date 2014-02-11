@@ -3,6 +3,9 @@ before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
   - sudo apt-get update -qq
   - sudo apt-get install libboost-dev libelf-dev libxml2-dev libxslt1-dev
+  - wget http://www.cmake.org/files/v2.8/cmake-2.8.12.2-Linux-i386.sh
+  - sudo chmod a+x cmake-2.8.12.2-Linux-i386.sh"
+  - sudo ./cmake-2.8.12.2-Linux-i386.sh --skip-license --prefix=/usr
   - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
 compiler:
   - clang
@@ -10,4 +13,3 @@ compiler:
 before_script:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
 script: cmake . && make
-
