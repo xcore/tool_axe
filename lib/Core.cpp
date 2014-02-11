@@ -328,7 +328,7 @@ ChanEndpoint *Core::getChanendDest(ResourceID ID)
   // Try to lookup locally first.
   if (getLocalChanendDest(ID, result))
     return result;
-  return parent->getChanendDest(ID);
+  return parent->getOutgoingChanendDest(ID);
 }
 
 bool Core::setProcessorState(uint32_t reg, uint32_t value)

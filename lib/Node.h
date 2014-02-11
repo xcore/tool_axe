@@ -31,6 +31,7 @@ class XLink {
   uint16_t interSymbolDelay;
 public:
   XLink();
+  Node *getDestNode() { return destNode; }
   const XLink *getDestXLink() const;
   void setEnabled(bool value) { enabled = value; }
   bool isEnabled() const { return enabled; }
@@ -85,7 +86,12 @@ public:
   XLink &getXLink(unsigned num) { return xLinks[num]; }
   const XLink &getXLink(unsigned num) const { return xLinks[num]; }
   void connectXLink(unsigned num, Node *destNode, unsigned destNum);
-  ChanEndpoint *getChanendDest(ResourceID ID);
+  /// Find the destination of a packet with the specified resource ID that was
+  /// received on a link from another node.
+  ChanEndpoint *getIncomingChanendDest(ResourceID ID);
+  /// Find the destination of a packet sent to the specified resource ID from
+  /// this node.
+  virtual ChanEndpoint *getOutgoingChanendDest(ResourceID ID);
   virtual ChanEndpoint *getLocalChanendDest(ResourceID ID) = 0;
   uint8_t getDirection(unsigned num) const { return directions[num]; }
   void setDirection(unsigned num, uint8_t value) { directions[num] = value; }

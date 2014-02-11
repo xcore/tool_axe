@@ -96,7 +96,7 @@ void Node::finalize()
   sswitch.initRegisters();
 }
 
-ChanEndpoint *Node::getChanendDest(ResourceID ID)
+ChanEndpoint *Node::getIncomingChanendDest(ResourceID ID)
 {
   Node *node = this;
   // Use Brent's algorithm to detect cycles.
@@ -129,6 +129,11 @@ ChanEndpoint *Node::getChanendDest(ResourceID ID)
     return &node->sswitch;
   }
   return node->getLocalChanendDest(ID);
+}
+
+ChanEndpoint *Node::getOutgoingChanendDest(ResourceID ID)
+{
+  return getIncomingChanendDest(ID);
 }
 
 bool Node::hasMatchingNodeID(ResourceID ID)

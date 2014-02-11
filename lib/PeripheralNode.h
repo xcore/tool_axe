@@ -13,6 +13,8 @@ namespace axe {
 class PeripheralNode : public Node {
 public:
   PeripheralNode();
+  void finalize() override;
+  ChanEndpoint *getOutgoingChanendDest(ResourceID ID) override;
   ChanEndpoint *getLocalChanendDest(ResourceID ID) override;
 };
 
