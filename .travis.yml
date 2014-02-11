@@ -5,7 +5,7 @@ before_install:
   - sudo apt-get install libboost-dev libelf-dev libxml2-dev libxslt1-dev
   - wget http://www.cmake.org/files/v2.8/cmake-2.8.12.2-Linux-i386.sh
   - chmod a+x cmake-2.8.12.2-Linux-i386.sh
-  - sudo ./cmake-2.8.12.2-Linux-i386.sh --skip-license --prefix=/usr
+  - sudo ./cmake-2.8.12.2-Linux-i386.sh --skip-license --prefix=/usr/local
 compiler:
   - clang
-script: cmake . && make
+script: /usr/local/bin/cmake . && make
