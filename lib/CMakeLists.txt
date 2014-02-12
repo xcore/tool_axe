@@ -1,14 +1,8 @@
-# Avoid warnings about mixing keyword and plain versions of
-# target_link_libraries. One of the calls to target_link_libraries is in the
-# file that gets included when we call find_package(LLVM), and we have no
-# control over this.
-cmake_policy(SET CMP0023 OLD)
-
 find_package(Boost REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(LibXslt REQUIRED)
 find_package(LibElf REQUIRED)
-find_package(LLVM REQUIRED)
+find_package(LLVM 3.3 REQUIRED)
 if(AXE_ENABLE_SDL)
   find_package(SDL2 REQUIRED)
 endif()
@@ -243,30 +237,10 @@ add_custom_command(
  DEPENDS genHex XNTransform.xslt
  )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CFLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
-
 if (COMPILER_IS_GCC_COMPATIBLE)
   set_source_files_properties(LLVMExtra.cpp PROPERTIES
                               COMPILE_FLAGS "-fno-rtti -std=c++98")
 endif()
-
-llvm_map_components_to_libraries(
-  LLVM_LIBNAMES
-  scalaropts
-  engine
-  bitreader
-  MCDisassembler
-  X86Disassembler)
-
-foreach(LLVM_LIBNAME ${LLVM_LIBNAMES})
-  # Don't cache the library location as we are searching for a different library
-  # each time around the loop.
-  set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
-  find_library(LLVM_LIBRARY ${LLVM_LIBNAME}
-               PATHS ${LLVM_LIBRARY_DIRS})
-  list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
-endforeach()
 
 target_link_libraries(
   axe PUBLIC
@@ -274,9 +248,8 @@ target_link_libraries(
   ${LIBXML2_LIBRARIES}
   ${LIBXSLT_LIBRARIES}
   ${LLVM_LIBRARIES}
+  ${LLVM_LDFLAGS}
   )
-
-link_system_libs(axe)
 
 target_include_directories(
   axe PUBLIC
@@ -296,7 +269,11 @@ target_include_directories(
 target_compile_definitions(
   axe PUBLIC
   ${LIBXSLT_DEFINITIONS}
-  ${LLVM_DEFINITIONS}
+  )
+
+target_compile_options(
+  axe PUBLIC
+  ${LLVM_CFLAGS}
   )
 
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
