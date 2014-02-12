@@ -449,10 +449,11 @@ shouldRealignShiftRegister()
     return false;
   if (holdTransferReg)
     return false;
+  if (!valueMeetsCondition(getEffectiveDataPortInputPinsValue(time)))
+    return false;
   if (timeRegValid)
     return !useReadyOut() && portCounter == timeReg;
-  return condition != COND_FULL &&
-         valueMeetsCondition(getEffectiveDataPortInputPinsValue(time));
+  return condition != COND_FULL;
 }
 
 uint32_t Port::
@@ -545,6 +546,9 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
         if (isBuffered()) {
           condition = COND_FULL;
         }
+      } else if (isBuffered() && timeRegValid && !useReadyOut() &&
+                 portCounter == timeReg) {
+        timeRegValid = false;
       }
       if (validShiftRegEntries == portShiftCount &&
           (!useReadyOut() || !transferRegValid ||
