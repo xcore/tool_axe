@@ -1,6 +1,8 @@
 // RUN: xcc -O2 -target=XK-1A %s -o %t1.xe
 // RUN: axe %t1.xe --loopback XS1_PORT_1A XS1_PORT_1B
 
+#include <xs1.h>
+
 // A timed conditional input on a buffer port waits until the time and then
 // behaves the same as a untimed conditional input.
 
