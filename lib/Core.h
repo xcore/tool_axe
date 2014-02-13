@@ -69,7 +69,7 @@ private:
   unsigned coreNumber;
   ProcessorNode *parent;
   std::string codeReference;
-  uint32_t bootConfig;
+  unsigned bootModePins;
   uint32_t bootStatus;
   const uint8_t *rom;
   uint32_t romBase;
@@ -304,7 +304,7 @@ public:
   void finalize();
   void updateIDs();
 
-  void setBootConfig(uint32_t value) { bootConfig = value; }
+  void setBootModePins(unsigned value) { bootModePins = value; }
 
   void setRom(const uint8_t *data, uint32_t romBase, uint32_t romSize);
 

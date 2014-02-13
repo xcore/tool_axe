@@ -37,7 +37,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   memory(new uint8_t[RamSize]),
   coreNumber(0),
   parent(0),
-  bootConfig(0),
+  bootModePins(0),
   bootStatus(0),
   rom(0),
   romBase(0),
@@ -357,7 +357,7 @@ bool Core::getProcessorState(uint32_t reg, uint32_t &value)
     value = getRamBase();
     return true;
   case PS_BOOT_CONFIG:
-    value = bootConfig;
+    value = bootModePins | coreNumber << 16;
     return true;
   case PS_BOOT_STATUS:
     value = bootStatus;

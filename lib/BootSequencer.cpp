@@ -624,7 +624,7 @@ void BootSequencer::adjustForSPIBoot()
     if (!node->isProcessorNode())
       continue;
     for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
-      core->setBootConfig(1 << 2);
+      core->setBootModePins(1 << 2);
     }
   }
 }
