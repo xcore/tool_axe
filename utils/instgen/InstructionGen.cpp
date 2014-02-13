@@ -2137,6 +2137,8 @@ void add()
          "  default: assert(0 && \"Unexpected setpsc result\");\n"
          "  case Resource::CONTINUE:\n"
          "    break;\n"
+         "  case Resource::DESCHEDULE:\n"
+         "    %pause_on(res);\n"
          "  case Resource::ILLEGAL:\n"
          "    %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "  }\n"

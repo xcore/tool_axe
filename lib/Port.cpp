@@ -781,6 +781,13 @@ setpsc(Thread &thread, uint32_t width, ticks_t threadTime)
   if (portType != DATAPORT) {
     return CONTINUE;
   }
+  if (outputPort) {
+    if (transferRegValid) {
+      pausedOut = &thread;
+      scheduleUpdateIfNeeded();
+      return DESCHEDULE;
+    }
+  }
   portShiftCount = width / getPortWidth();
   scheduleUpdateIfNeeded();
   return CONTINUE;
