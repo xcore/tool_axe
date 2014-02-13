@@ -540,7 +540,7 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
       shiftReg |= currentValue << (getTransferWidth() - getPortWidth());
       validShiftRegEntries++;
       if (shouldRealignShiftRegister()) {
-        validShiftRegEntries = shiftRegEntries;
+        validShiftRegEntries = portShiftCount;
         transferRegValid = false;
         timeRegValid = false;
         if (isBuffered()) {
