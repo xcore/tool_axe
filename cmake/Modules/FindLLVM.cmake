@@ -82,6 +82,8 @@ else()
                    PATHS ${LLVM_LIBRARY_DIRS})
       list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
     endforeach()
+
+    list(APPEND LLVM_CFLAGS ${LLVM_DEFINITIONS})
   endif()
   find_package_handle_standard_args(LLVM CONFIG_MODE)
 endif()
