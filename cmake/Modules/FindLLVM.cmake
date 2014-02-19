@@ -72,7 +72,6 @@ else()
   find_package(LLVM NO_MODULE REQUIRED)
   set(LLVM_FIND_VERSION ${LLVM_FIND_VERSION_SAVED})
   if (LLVM_FOUND)
-    message(LLVM_FOUND)
     llvm_map_components_to_libraries(LLVM_LIBNAMES scalaropts engine bitreader)
 
     foreach(LLVM_LIBNAME ${LLVM_LIBNAMES})
