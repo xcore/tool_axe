@@ -64,7 +64,7 @@ if (LLVM_CONFIG_EXECUTABLE)
     LLVM REQUIRED_VARS LLVM_CONFIG_EXECUTABLE
          VERSION_VAR LLVM_VERSION)
 else()
-  # LLVMConfigVersion.cmake nevers sets PACKAGE_VERSION_COMPATIBLE which means
+  # LLVMConfigVersion.cmake never sets PACKAGE_VERSION_COMPATIBLE which means
   # that searching for a specific version doesn't work. Workaround this by
   # temporarily unsetting LLVM_FIND_VERSION.
   set(LLVM_FIND_VERSION_SAVED ${LLVM_FIND_VERSION})
