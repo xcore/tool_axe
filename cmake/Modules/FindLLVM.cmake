@@ -55,7 +55,7 @@ if (LLVM_CONFIG_EXECUTABLE)
     # Don't cache the library location as we are searching for a different library
     # each time around the loop.
     set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
-    find_library(LLVM_LIBRARY ${LLVM_LIBNAME}
+    find_library(LLVM_LIBRARY ${LLVM_LIBNAME} NO_DEFAULT_PATH
                  PATHS ${LLVM_LIBDIR})
     list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
   endforeach()
@@ -78,7 +78,7 @@ else()
       # Don't cache the library location as we are searching for a different library
       # each time around the loop.
       set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
-      find_library(LLVM_LIBRARY ${LLVM_LIBNAME}
+      find_library(LLVM_LIBRARY ${LLVM_LIBNAME} NO_DEFAULT_PATH
                    PATHS ${LLVM_LIBRARY_DIRS})
       list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
     endforeach()
