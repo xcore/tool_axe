@@ -6,14 +6,21 @@
 #ifndef _PortCombiner_
 #define _PortCombiner_
 
-#include <map>
+#include <vector>
 #include "PortHandleClockMixin.h"
 
 namespace axe {
 
 class PortCombiner final : public PortHandleClockMixin<PortCombiner> {
   uint32_t value;
-  std::map<std::pair<uint32_t,unsigned>,PortInterface*> slices;
+  struct Slice {
+    Slice(uint32_t mask, unsigned shift, PortInterface *interface) :
+      mask(mask), shift(shift), interface(interface) {}
+    uint32_t mask;
+    unsigned shift;
+    PortInterface *interface;
+  };
+  std::vector<Slice> slices;
 public:
   PortCombiner(RunnableQueue &s);
   void seePinsValueChange(uint32_t value, ticks_t time);

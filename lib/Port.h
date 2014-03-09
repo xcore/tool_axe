@@ -204,6 +204,7 @@ public:
   uint32_t getTimestamp(Thread &thread, ticks_t time);
   void clearPortTime(Thread &thread, ticks_t time);
 
+  PortInterface *getLoopback() const { return loopback; }
   void setLoopback(PortInterface *p) { loopback = p; }
   void setTracer(PortInterface *p) { tracer = p; }
   
