@@ -26,6 +26,7 @@ AXE supports emulation of the following peripherals:
 * Ethernet PHY supporting MII interface (see NETWORKING.rst)
 * LCD Screen
 * PS/2 Keyboard
+* SDRAM
 
 Known Issues
 ============
