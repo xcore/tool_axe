@@ -6,6 +6,7 @@
 #include "registerAllPeripherals.h"
 #include "PeripheralRegistry.h"
 #include "UartRx.h"
+#include "SDRAM.h"
 #include "SPIFlash.h"
 #include "EthernetPhy.h"
 #include "PeripheralDescriptor.h"
@@ -20,6 +21,7 @@ using namespace axe;
 void axe::registerAllPeripherals()
 {
   PeripheralRegistry::add(getPeripheralDescriptorUartRx());
+  PeripheralRegistry::add(getPeripheralDescriptorSDRAM());
   PeripheralRegistry::add(getPeripheralDescriptorSPIFlash());
   PeripheralRegistry::add(getPeripheralDescriptorEthernetPhy());
 #if AXE_ENABLE_SDL

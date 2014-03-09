@@ -48,14 +48,18 @@ isEntirePort(Port *p, unsigned beginOffset, unsigned endOffset) const
 void PortConnectionManager::
 attach(PortInterface *to, Port *from, unsigned beginOffset, unsigned endOffset)
 {
-  if (isEntirePort(from, beginOffset, endOffset)) {
+  if (!from->getLoopback() && isEntirePort(from, beginOffset, endOffset)) {
     from->setLoopback(to);
     return;
   }
   PortCombiner *&combiner = combiners[from];
   if (!combiner) {
     combiner = new PortCombiner(system.getScheduler());
+    PortInterface *old = from->getLoopback();
     from->setLoopback(combiner);
+    if (old) {
+      combiner->attach(old, 0, from->getPortWidth());
+    }
   }
   combiner->attach(to, beginOffset, endOffset);
 }
