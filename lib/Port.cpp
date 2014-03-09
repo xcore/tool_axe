@@ -475,15 +475,14 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
   if (edgeType == Edge::FALLING) {
     portCounter++;
     if (outputPort) {
+      uint32_t nextShiftReg = shiftReg;
+      bool nextOutputPort = outputPort;
       if (timeRegValid && timeReg == portCounter) {
-        // TODO support changing direction.
-        assert(transferRegValid);
+        nextOutputPort = transferRegValid;
         timeRegValid = false;
         validShiftRegEntries = 0;
       }
       if (!useReadyIn() || readyIn) {
-        uint32_t nextShiftReg = shiftReg;
-        bool nextOutputPort = outputPort;
         if (validShiftRegEntries > 0) {
           validShiftRegEntries--;
         }
@@ -497,30 +496,32 @@ seeEdge(Edge::Type edgeType, ticks_t newTime)
             pausedSync->schedule();
             pausedSync = 0;
           }
-          if (transferRegValid && !timeRegValid) {
-            validShiftRegEntries = portShiftCount;
-            portShiftCount = shiftRegEntries;
-            nextShiftReg = transferReg;
-            timestampReg = portCounter;
-            transferRegValid = false;
-            if (pausedOut) {
-              pausedOut->time = time;
-              pausedOut->schedule();
-              pausedOut = 0;
+          if (!timeRegValid) {
+            if (transferRegValid) {
+              validShiftRegEntries = portShiftCount;
+              portShiftCount = shiftRegEntries;
+              nextShiftReg = transferReg;
+              timestampReg = portCounter;
+              transferRegValid = false;
+              if (pausedOut) {
+                pausedOut->time = time;
+                pausedOut->schedule();
+                pausedOut = 0;
+              }
+            } else if (pausedIn) {
+              nextOutputPort = false;
+              validShiftRegEntries = 0;
             }
-          } else if (pausedIn) {
-            nextOutputPort = false;
-            validShiftRegEntries = 0;
           }
         }
-        bool pinsChange =
-        (shiftReg ^ (nextOutputPort ? nextShiftReg : 0)) & portWidthMask();
-        shiftReg = nextShiftReg;
-        outputPort = nextOutputPort;
-        if (pinsChange) {
-          uint32_t newValue = getPinsOutputValue(time);
-          outputValue(newValue, time);
-        }
+      }
+      bool pinsChange =
+      (shiftReg ^ (nextOutputPort ? nextShiftReg : 0)) & portWidthMask();
+      shiftReg = nextShiftReg;
+      outputPort = nextOutputPort;
+      if (pinsChange) {
+        uint32_t newValue = getPinsOutputValue(time);
+        outputValue(newValue, time);
       }
     } else {
       if (useReadyOut() && timeRegValid && portCounter == timeReg) {
