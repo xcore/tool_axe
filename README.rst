@@ -9,7 +9,7 @@ AXE (An XCore Emulator)
 
 :Description: AXE is a fast open source simulator of the XMOS XS1 Architecture.
 
-.. image:: https://travis-ci.org/rlsosborne/tool_axe.png?branch=master
+.. image:: https://travis-ci.org/rlsosborne/tool_axe.svg?branch=master
     :target: https://travis-ci.org/rlsosborne/tool_axe
     :alt: Build Status
 
