@@ -485,7 +485,7 @@ syscallBegin(const Thread &t)
 void LoggingTracer::syscall(const Thread &t, const std::string &s) {
   syscallBegin(t);
   out << s << "()";
-  out.changeColor(llvm::raw_ostream::WHITE);
+  reset();
   printLineEnd();
 }
 
@@ -493,7 +493,7 @@ void LoggingTracer::syscall(const Thread &t, const std::string &s,
                      uint32_t op0) {
   syscallBegin(t);
   out << s << '(' << op0 << ')';
-  out.changeColor(llvm::raw_ostream::WHITE);
+  reset();
   printLineEnd();
 }
 
