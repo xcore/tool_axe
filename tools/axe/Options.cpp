@@ -19,6 +19,7 @@ Options::Options() :
   bootMode(BOOT_SIM),
   file(0),
   tracing(false),
+  traceCycles(false),
   time(false),
   stats(false),
   warnPacketOvertake(false),
