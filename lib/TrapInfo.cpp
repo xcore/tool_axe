@@ -70,7 +70,6 @@ getStringPtrFromTrapInfoSection(const uint8_t *begin, const uint8_t *end,
                                 uint32_t spc, uint32_t &strp)
 {
   while (begin != end) {
-    uint32_t strp;
     if (getDescriptionFromCompileUnit(begin, end, spc, strp)) {
       return true;
     }
