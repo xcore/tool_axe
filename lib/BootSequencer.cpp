@@ -298,7 +298,7 @@ int BootSequenceStepRun::executeAux(ExecutionState &state)
     switch (BM.getBreakpointType(core, address)) {
     case BreakpointType::Exception:
       SH.doException(*thread);
-      return 1;
+      return thread->regs[Register::ET];
     case BreakpointType::Syscall:
       switch (SH.doSyscall(*thread, retval)) {
       case SyscallHandler::EXIT:
