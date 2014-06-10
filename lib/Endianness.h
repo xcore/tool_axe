@@ -7,7 +7,7 @@
 #define _Endianness_h_
 
 #include <stdint.h>
-#include <cstdlib>
+#include <cstring>
 #include <boost/detail/endian.hpp>
 #include "BitManip.h"
 

@@ -4,6 +4,7 @@
 // LICENSE.txt and at <http://github.xcore.com/>
 
 #include "BootSequencer.h"
+#include "Exceptions.h"
 #include "Core.h"
 #include "ProcessorNode.h"
 #include "SystemState.h"
@@ -13,6 +14,9 @@
 #include "StopReason.h"
 #include "SymbolInfo.h"
 #include "Tracer.h"
+#include "TrapInfo.h"
+#include "LoadedElf.h"
+#include <libelf.h>
 #include <gelf.h>
 #include <iostream>
 #include <algorithm>
@@ -71,26 +75,15 @@ static void readSymbols(Elf *e, unsigned low, unsigned high,
 }
 
 namespace {
-  class LoadedElf {
-    char *buf;
-    Elf *elf;
-  public:
-    LoadedElf(const XEElfSector *elfSector);
-    LoadedElf(const LoadedElf &) = delete;
-    LoadedElf &operator=(const LoadedElf &) = delete;
-    ~LoadedElf();
-    Elf *getElf() const { return elf; }
-    const char *getBuf() const { return buf; }
-  };
   class ElfManager {
-    std::map<Core*, LoadedElf*> loadedElfMap;
+    std::map<const Core*, LoadedElf*> loadedElfMap;
   public:
     ~ElfManager();
     ElfManager() = default;
     ElfManager(const ElfManager &) = delete;
     ElfManager &operator=(const ElfManager &) = delete;
     const LoadedElf &load(Core &core, const XEElfSector *sector);
-    const LoadedElf *getLoadedElf(Core &core);
+    const LoadedElf *getLoadedElf(const Core &core);
   };
   struct ExecutionState {
     SystemState &sys;
@@ -104,26 +97,6 @@ namespace {
       syscallHandler(SH),
       elfManager(EM) { }
   };
-}
-
-LoadedElf::LoadedElf(const XEElfSector *elfSector) :
-  buf(new char[elfSector->getElfSize()])
-{
-  if (!elfSector->getElfData(buf)) {
-    std::cerr << "Error reading ELF data from ELF sector" << std::endl;
-    std::exit(1);
-  }
-  if ((elf = elf_memory(buf, elfSector->getElfSize())) == NULL) {
-    std::cerr << "Error reading ELF: " << elf_errmsg(-1) << std::endl;
-    std::exit(1);
-  }
-}
-
-LoadedElf::~LoadedElf()
-{
-  delete[] buf;
-  if (elf)
-    elf_end(elf);
 }
 
 ElfManager::~ElfManager()
@@ -141,7 +114,7 @@ const LoadedElf &ElfManager::load(Core &core, const XEElfSector *elfSector)
   return *loadedElf;
 }
 
-const LoadedElf *ElfManager::getLoadedElf(Core &core)
+const LoadedElf *ElfManager::getLoadedElf(const Core &core)
 {
   auto match = loadedElfMap.find(&core);
   if (match == loadedElfMap.end())
@@ -481,6 +454,19 @@ loadImage(ElfManager &elfManager, Core &core, void *dst, uint32_t src,
   return foundMatching;
 }
 
+static bool
+describeException(ElfManager &elfManager, const Thread &thread, uint32_t et,
+                  uint32_t ed, std::string &desc)
+{
+  if (et != ET_ECALL)
+    return false;
+  const LoadedElf *loadedElf = elfManager.getLoadedElf(thread.getParent());
+  if (!loadedElf)
+    return false;
+  auto spc = thread.regs[Register::SPC];
+  return getDescriptionFromTrapInfoSection(loadedElf, spc, desc);
+}
+
 int BootSequencer::execute() {
   initializeElfHandling();
   ElfManager elfManager;
@@ -489,6 +475,11 @@ int BootSequencer::execute() {
     return loadImage(elfManager, core, dst, src, size);
   };
   syscallHandler->setLoadImageCallback(loadImageCallback);
+  auto describeExceptionCallback =
+    [&](const Thread &thread, uint32_t et, uint32_t ed, std::string &desc) {
+    return describeException(elfManager, thread, et, ed, desc);
+  };
+  syscallHandler->setDescribeExceptionCallback(describeExceptionCallback);
   ExecutionState executionState(sys, breakpointManager, *syscallHandler,
                                 elfManager);
   for (BootSequenceStep *step : steps) {

@@ -99,6 +99,8 @@ add_library(axe
   JIT.cpp
   LLVMExtra.h
   LLVMExtra.cpp
+  LoadedElf.h
+  LoadedElf.cpp
   Lock.cpp
   Lock.h
   LoggingTracer.cpp
@@ -186,6 +188,8 @@ add_library(axe
   Token.h
   Tracer.h
   Tracer.cpp
+  TrapInfo.h
+  TrapInfo.cpp
   UartRx.h
   UartRx.cpp
   WaveformTracer.h

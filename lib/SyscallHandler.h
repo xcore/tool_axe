@@ -35,6 +35,8 @@ private:
   bool convertLseekType(int whence, int &converted);
   void doException(const Thread &state, uint32_t et, uint32_t ed);
   boost::function<bool (Core &, void *, uint32_t, uint32_t)> loadImageCallback;
+  boost::function<bool (const Thread &, uint32_t, uint32_t, std::string &)>
+    describeExceptionCallback;
   
 public:
   enum SycallOutcome {
@@ -48,6 +50,11 @@ public:
   void setLoadImageCallback(
     const boost::function<bool (Core &,void *,uint32_t,uint32_t)> &callback) {
     loadImageCallback = callback;
+  }
+  void setDescribeExceptionCallback(
+    const boost::function<bool (const Thread &, uint32_t, uint32_t,
+                                std::string &)> &callback) {
+    describeExceptionCallback = callback;
   }
   SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);

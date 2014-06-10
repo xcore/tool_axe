@@ -85,9 +85,17 @@ static bool defaultLoadImageCallback(Core &, void *, uint32_t, uint32_t)
   return false;
 }
 
+static bool
+defaultDescribeExceptionCallback(const Thread &, uint32_t, uint32_t,
+                                 std::string &)
+{
+  return false;
+}
+
 SyscallHandler::SyscallHandler() :
   fds(new int[MAX_FDS]), doneSyscallsRequired(1),
-  loadImageCallback(&defaultLoadImageCallback)
+  loadImageCallback(&defaultLoadImageCallback),
+  describeExceptionCallback(&defaultDescribeExceptionCallback)
 {
   // Duplicate the standard file descriptors.
   fds[0] = dup(STDIN_FILENO);
@@ -219,11 +227,16 @@ bool SyscallHandler::convertLseekType(int whence, int &converted)
 
 void SyscallHandler::doException(const Thread &thread, uint32_t et, uint32_t ed)
 {
-  std::cout << "Unhandled exception: "
-            << Exceptions::getExceptionName(et)
-            << ", data: 0x" << std::hex << ed << std::dec << "\n";
-  std::cout << "Register state:\n";
-  thread.dump();
+  std::cout << "Unhandled exception: ";
+  std::string description;
+  if (describeExceptionCallback(thread, et, ed, description)) {
+    std::cout << description << '\n';
+  } else {
+    std::cout << Exceptions::getExceptionName(et)
+              << ", data: 0x" << std::hex << ed << std::dec << "\n";
+    std::cout << "Register state:\n";
+    thread.dump();
+  }
 }
 
 void SyscallHandler::doException(const Thread &thread)
