@@ -33,8 +33,6 @@ bool findNamedSection(Elf *elf, const char *name, GElf_Shdr &shdr)
   return false;
 }
 
-#include <iostream>
-
 static bool
 getDescriptionFromCompileUnit(const uint8_t *&begin, const uint8_t *end,
                               uint32_t spc, uint32_t &strp)
