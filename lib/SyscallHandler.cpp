@@ -436,14 +436,8 @@ doSyscall(Thread &thread, int &retval)
       const int clientBuf = thread.regs[R1];
       const int bufBytes = thread.regs[R2];
       if (cmdLine.minBufBytes > bufBytes) {
-        std::cerr << "Error: Client buffer is " << bufBytes << " bytes."
-                  << " Client arguments require "
-                  << cmdLine.minBufBytes << " bytes.\n"
-                  << "       Try rebuilding " << cmdLine.arg[0]
-                  << " using '-Xmapper,--defsymbol,-Xmapper,CmdLineWords="
-                  << (cmdLine.minBufBytes + 3)/4 << "'\n";
-        retval = 1;
-        return SyscallHandler::EXIT;
+        thread.regs[R0] = (uint32_t)-2;
+        return SyscallHandler::CONTINUE;
       }
       uint8_t * const hostBuf = (uint8_t*)getRamBuffer(thread, clientBuf,
                                                        bufBytes);

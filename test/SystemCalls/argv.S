@@ -8,6 +8,17 @@
 .align 2
 main:
   entsp 1
+
+  // System call should return -2 if the buffer is too small.
+  ldc r0, 13
+  ldaw r1, dp[_buffer]
+  ldc r2, 4
+  bl _DoSyscall
+  add r0, r0, 2
+  ecallt r0
+
+  // Otherwise it should return argc and populate the buffer with the command
+  // line args.
   ldc r0, 13
   ldaw r1, dp[_buffer]
   ldc r2, buflen
