@@ -30,6 +30,11 @@ void axeDeleteInstance(AXESystemRef system)
   delete unwrap(system);
 }
 
+int axeGetNumNodes(AXESystemRef system) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  return sys->getNodes().size();
+}
+
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
   SystemState *sys = unwrap(system)->getSystemState();

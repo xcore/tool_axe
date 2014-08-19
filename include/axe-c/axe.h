@@ -53,6 +53,9 @@ AXESystemRef axeCreateInstance(const char *xeFileName);
 void axeDeleteInstance(AXESystemRef system);
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex,
                          unsigned core);
+
+int axeGetNumNodes(AXESystemRef system);
+
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
                    unsigned length);
 int axeReadMemory(AXECoreRef core, unsigned address, void *dst,
