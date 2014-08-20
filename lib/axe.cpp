@@ -10,6 +10,7 @@
 #include "SystemStateWrapper.h"
 #include "ProcessorNode.h"
 #include "Core.h"
+#include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
 #include <cassert>
@@ -33,6 +34,29 @@ void axeDeleteInstance(AXESystemRef system)
 int axeGetNumNodes(AXESystemRef system) {
   SystemState *sys = unwrap(system)->getSystemState();
   return sys->getNodes().size();
+}
+
+int axeGetNodeType(AXESystemRef system, int nodeID) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  const std::vector<Node*> nodes = sys->getNodes();
+
+  Node *n = nodes.at(nodeID);
+  if(!n)
+    return -1;
+
+  return n->getType();
+}
+
+int axeGetNumTiles(AXESystemRef system, int nodeID) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  const std::vector<Node*> nodes = sys->getNodes();
+
+  Node *n = nodes.at(nodeID);
+  if(!n || !n->isProcessorNode())
+    return -1;
+  
+  // Cast the Node to a ProcessorNode subclass, now that we know it is one
+  return static_cast<ProcessorNode*>(n)->getCores().size();
 }
 
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)

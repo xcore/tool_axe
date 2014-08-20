@@ -54,7 +54,9 @@ void axeDeleteInstance(AXESystemRef system);
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex,
                          unsigned core);
 
+int axeGetNodeType(AXESystemRef system, int nodeID);
 int axeGetNumNodes(AXESystemRef system);
+int axeGetNumTiles(AXESystemRef system, int nodeID);
 
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
                    unsigned length);
