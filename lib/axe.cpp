@@ -97,7 +97,7 @@ static bool convertRegNum(AXERegister axeReg, Register::Reg &reg) {
   case AXE_REG_DP:
   case AXE_REG_SP:
   case AXE_REG_LR:
-    reg = static_cast<Register::Reg>(R0 + (AXE_REG_R0 - axeReg));
+    reg = static_cast<Register::Reg>(R0 + (axeReg - AXE_REG_R0));
     return true;
   case AXE_REG_PC:
     return false;
