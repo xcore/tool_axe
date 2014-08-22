@@ -59,6 +59,33 @@ int axeGetNumTiles(AXESystemRef system, int nodeID) {
   return static_cast<ProcessorNode*>(n)->getCores().size();
 }
 
+bool axeGetThreadInUse(AXEThreadRef thread) {
+  return unwrap(thread)->isInUse();
+}
+
+void axeDisableNode(AXESystemRef system, int nodeID) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  const std::vector<Node*> nodes = sys->getNodes();
+
+  Node *n = nodes.at(nodeID);
+  if(!n)
+    return;
+
+  // n->setEnabled(false);
+}
+
+void axeEnableNode(AXESystemRef system, int nodeID) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  const std::vector<Node*> nodes = sys->getNodes();
+
+  Node *n = nodes.at(nodeID);
+  if(!n)
+    return;
+
+  // n->setEnabled(true);
+}
+
+
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
   SystemState *sys = unwrap(system)->getSystemState();

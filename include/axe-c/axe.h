@@ -58,12 +58,18 @@ int axeGetNodeType(AXESystemRef system, int nodeID);
 int axeGetNumNodes(AXESystemRef system);
 int axeGetNumTiles(AXESystemRef system, int nodeID);
 
+bool axeGetThreadInUse(AXEThreadRef thread);
+
+void axeDisableNode(AXESystemRef system, int nodeID);
+void axeEnableNode(AXESystemRef system, int nodeID);
+
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
                    unsigned length);
 int axeReadMemory(AXECoreRef core, unsigned address, void *dst,
                   unsigned length);
 int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
+
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
