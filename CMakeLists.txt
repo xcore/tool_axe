@@ -42,7 +42,6 @@ set(CMAKE_MODULE_PATH
   )
 
 message(${CMAKE_MODULE_PATH})
-
 option(AXE_ENABLE_JIT "Enable LLVM based JIT" ON)
 option(AXE_ENABLE_SDL "Use SDL if available" ON)
 
