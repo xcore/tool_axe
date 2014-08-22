@@ -139,15 +139,8 @@ bool Thread::tryUpdateDecodeCache(uint32_t address)
 
 void Thread::setPcFromAddress(uint32_t address)
 {
-  if(parent == NULL)
-    printf("**AXE** --> parent is not set!");
-  printf("***AXE** --> Resource ID: [0x%08x]\n", getID().id);
-
-  printf("**AXE** --> Setting Program Counter to [0x%08x]\n", address);
-  printf("**AXE** --> Program counter currently at [0x%08x]\n", getRealPc());
   bool updateOk = tryUpdateDecodeCache(address);
   assert(updateOk);
-  printf("**AXE** --> PC Update OK? [%s]\n", updateOk ? "true" : "false");
   (void)updateOk;
   pc = decodeCache.toPc(address);
 }
