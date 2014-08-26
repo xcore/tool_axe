@@ -46,8 +46,8 @@ enum AXEStopReason {
 };
 
 enum AXENodeType {
-  XS1_G,
-  XS1_L,
+  AXE_NODE_TYPE_XS1_L,
+  AXE_NODE_TYPE_XS1_G,
   NODE_TYPE_UNKNOWN = 100
 };
 
