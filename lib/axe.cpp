@@ -36,20 +36,26 @@ int axeGetNumNodes(AXESystemRef system) {
   return sys->getNodes().size();
 }
 
-int axeGetNodeType(AXESystemRef system, int nodeID) {
+AXENodeType axeGetNodeType(AXESystemRef system, int nodeID) {
   SystemState *sys = unwrap(system)->getSystemState();
   const std::vector<Node*> nodes = sys->getNodes();
+  
+  if(nodeID < nodes.size())
+    return NODE_TYPE_UNKNOWN;
 
   Node *n = nodes.at(nodeID);
   if(!n)
-    return -1;
+    return NODE_TYPE_UNKNOWN;
 
-  return n->getType();
+  return (AXENodeType)n->getType();
 }
 
 int axeGetNumTiles(AXESystemRef system, int nodeID) {
   SystemState *sys = unwrap(system)->getSystemState();
   const std::vector<Node*> nodes = sys->getNodes();
+  
+  if(nodeID < nodes.size())
+    return 0;
 
   Node *n = nodes.at(nodeID);
   if(!n || !n->isProcessorNode())
@@ -59,30 +65,20 @@ int axeGetNumTiles(AXESystemRef system, int nodeID) {
   return static_cast<ProcessorNode*>(n)->getCores().size();
 }
 
-bool axeGetThreadInUse(AXEThreadRef thread) {
+int axeGetThreadInUse(AXEThreadRef thread) {
   return unwrap(thread)->isInUse();
 }
 
-void axeDisableNode(AXESystemRef system, int nodeID) {
-  SystemState *sys = unwrap(system)->getSystemState();
-  const std::vector<Node*> nodes = sys->getNodes();
+int axeGetThreadID(AXEThreadRef thread) {
+  Thread * t = unwrap(thread);
+  int retVal = 0;
 
-  Node *n = nodes.at(nodeID);
-  if(!n)
-    return;
-
-  // n->setEnabled(false);
-}
-
-void axeEnableNode(AXESystemRef system, int nodeID) {
-  SystemState *sys = unwrap(system)->getSystemState();
-  const std::vector<Node*> nodes = sys->getNodes();
-
-  Node *n = nodes.at(nodeID);
-  if(!n)
-    return;
-
-  // n->setEnabled(true);
+  for(Thread tc : t->getParent().getThreads())
+    if(&tc != t)
+      retVal++;
+    else
+      return retVal;
+  return retVal;
 }
 
 
