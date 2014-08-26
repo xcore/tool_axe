@@ -41,7 +41,6 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules"
   )
 
-message(${CMAKE_MODULE_PATH})
 option(AXE_ENABLE_JIT "Enable LLVM based JIT" ON)
 option(AXE_ENABLE_SDL "Use SDL if available" ON)
 

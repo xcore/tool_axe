@@ -45,6 +45,12 @@ enum AXEStopReason {
   AXE_STOP_NO_RUNNABLE_THREADS
 };
 
+enum AXENodeType {
+  XS1_G,
+  XS1_L,
+  NODE_TYPE_UNKNOWN = 100
+};
+
 typedef struct AXEOpaqueSystem *AXESystemRef;
 typedef struct AXEOpaqueCore *AXECoreRef;
 typedef struct AXEOpaqueThread *AXEThreadRef;
@@ -54,14 +60,12 @@ void axeDeleteInstance(AXESystemRef system);
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex,
                          unsigned core);
 
-int axeGetNodeType(AXESystemRef system, int nodeID);
+AXENodeType axeGetNodeType(AXESystemRef system, int nodeID);
 int axeGetNumNodes(AXESystemRef system);
 int axeGetNumTiles(AXESystemRef system, int nodeID);
 
-bool axeGetThreadInUse(AXEThreadRef thread);
-
-void axeDisableNode(AXESystemRef system, int nodeID);
-void axeEnableNode(AXESystemRef system, int nodeID);
+int axeGetThreadInUse(AXEThreadRef thread);
+int axeGetThreadID(AXEThreadRef thread);
 
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
                    unsigned length);
