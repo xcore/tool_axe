@@ -46,9 +46,9 @@ enum AXEStopReason {
 };
 
 enum AXENodeType {
-  AXE_NODE_TYPE_XS1_L,
-  AXE_NODE_TYPE_XS1_G,
-  NODE_TYPE_UNKNOWN = 100
+  AXE_NODE_TYPE_XS1_L   = 0,
+  AXE_NODE_TYPE_XS1_G   = 1,
+  AXE_NODE_TYPE_UNKNOWN = 100
 };
 
 typedef struct AXEOpaqueSystem *AXESystemRef;
