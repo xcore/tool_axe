@@ -10,6 +10,12 @@
 extern "C" {
 #endif
 
+enum class AXEBreakpointType {
+  Exception,
+  Syscall,
+  Other
+};
+
 enum AXERegister {
   AXE_REG_R0,
   AXE_REG_R1,
@@ -55,24 +61,29 @@ typedef struct AXEOpaqueSystem *AXESystemRef;
 typedef struct AXEOpaqueCore *AXECoreRef;
 typedef struct AXEOpaqueThread *AXEThreadRef;
 
-AXESystemRef axeCreateInstance(const char *xeFileName);
-void axeDeleteInstance(AXESystemRef system);
-AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex,
-                         unsigned core);
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread);
+void axeAddThreadToRunQueue(AXEThreadRef thread);
 
-AXENodeType axeGetNodeType(AXESystemRef system, int nodeID);
+AXESystemRef axeCreateInstance(const char *xeFileName, int enabledTracing);
+void axeDeleteInstance(AXESystemRef system);
+AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core);
+
+AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex);
 int axeGetNumNodes(AXESystemRef system);
-int axeGetNumTiles(AXESystemRef system, int nodeID);
+int axeGetNumTiles(AXESystemRef system, int jtagIndex);
 
 int axeGetThreadInUse(AXEThreadRef thread);
 int axeGetThreadID(AXEThreadRef thread);
+AXECoreRef axeGetThreadParent(AXEThreadRef thread);
 
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
                    unsigned length);
 int axeReadMemory(AXECoreRef core, unsigned address, void *dst,
                   unsigned length);
+char *axeReadRamBytePtr(AXECoreRef core, unsigned startAddress);
 int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
+void axeUnsetAllBreakpoints(AXESystemRef system);
 
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);

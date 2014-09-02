@@ -13,17 +13,40 @@
 #include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
+
+#include "Tracer.h"
+#include "LoggingTracer.h"
 #include <cassert>
 
 using namespace axe;
 
-AXESystemRef axeCreateInstance(const char *xeFileName)
+AXESystemRef axeCreateInstance(const char *xeFileName, int tracingEnabled)
 {
   XE xe(xeFileName);
   XEReader xeReader(xe);
-  SystemStateWrapper *sysWrapper =
-    new SystemStateWrapper(xeReader.readConfig());
+  SystemStateWrapper *sysWrapper;
+  if(tracingEnabled != 0)
+  {
+    std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>(new LoggingTracer(false));
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig(tracer));
+  }
+  else
+  {
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig());
+  }  
   return wrap(sysWrapper);
+}
+
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->deschedule(*unwrap(thread));
+}
+
+void axeAddThreadToRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->schedule(*unwrap(thread));
 }
 
 void axeDeleteInstance(AXESystemRef system)
@@ -74,13 +97,17 @@ int axeGetThreadID(AXEThreadRef thread) {
   int retVal = 0;
 
   for(Thread tc : t->getParent().getThreads())
-    if(&tc != t)
+    if((Thread *)&tc != t)
       retVal++;
     else
       return retVal;
   return retVal;
 }
 
+AXECoreRef axeGetThreadParent(AXEThreadRef thread)
+{
+  return wrap(&unwrap(thread)->getParent());
+}
 
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
@@ -110,6 +137,21 @@ int axeReadMemory(AXECoreRef core, unsigned address, void *dst, unsigned length)
   return unwrap(core)->readMemory(address, dst, length);
 }
 
+char *axeReadRamBytePtr(AXECoreRef coreRef, unsigned startAddress) {
+  // TODO update for ROM.
+  Core *core = unwrap(coreRef);
+  if (!core->isValidRamAddress(startAddress))
+    return 0;
+  // Check the string is null terminated
+  uint32_t address = startAddress;
+  uint32_t end = core->getRamSize() + core->getRamBase();
+  for (; address < end && core->loadRamByte(address); address++) {}
+  if (address >= end) {
+    return 0;
+  }
+  return reinterpret_cast<char*>(core->ramBytePtr(startAddress));
+}
+
 int axeSetBreakpoint(AXECoreRef core, unsigned address)
 {
   return unwrap(core)->setBreakpoint(address);
@@ -118,6 +160,15 @@ int axeSetBreakpoint(AXECoreRef core, unsigned address)
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address)
 {
   return unwrap(core)->unsetBreakpoint(address);
+}
+
+void axeUnsetAllBreakpoints(AXESystemRef system)
+{
+  SystemState *sys = unwrap(system)->getSystemState();
+  for(Node *n : sys->getNodes())
+    if(n->isProcessorNode())
+      for(Core *c : static_cast<ProcessorNode*>(n)->getCores())
+        c->clearBreakpoints();
 }
 
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum)

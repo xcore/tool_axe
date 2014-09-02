@@ -108,6 +108,11 @@ public:
     thread.pausedOn = 0;
     scheduler.push(thread, thread.time);
   }
+
+  void deschedule(Thread &thread) {
+    if(scheduler.contains(thread))
+      scheduler.remove(thread);
+  }
   
   void scheduleOther(Runnable &runnable, ticks_t time) {
     scheduler.push(runnable, time);
