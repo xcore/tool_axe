@@ -63,6 +63,8 @@ typedef struct AXEOpaqueThread *AXEThreadRef;
 
 void axeRemoveThreadFromRunQueue(AXEThreadRef thread);
 void axeAddThreadToRunQueue(AXEThreadRef thread);
+void axeClearRunQueue(AXESystemRef system);
+int axeIsThreadInRunQueue(AXEThreadRef thread);
 
 AXESystemRef axeCreateInstance(const char *xeFileName, int enabledTracing);
 void axeDeleteInstance(AXESystemRef system);
@@ -76,21 +78,18 @@ int axeGetThreadInUse(AXEThreadRef thread);
 int axeGetThreadID(AXEThreadRef thread);
 AXECoreRef axeGetThreadParent(AXEThreadRef thread);
 
-int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
-                   unsigned length);
-int axeReadMemory(AXECoreRef core, unsigned address, void *dst,
-                  unsigned length);
+int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,unsigned length);
+int axeReadMemory(AXECoreRef core, unsigned address, void *dst, unsigned length);
 char *axeReadRamBytePtr(AXECoreRef core, unsigned startAddress);
 int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetAllBreakpoints(AXESystemRef system);
-
+void axeStepThreadOnce(AXEThreadRef thread);
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
 unsigned axeReadReg(AXEThreadRef thread, AXERegister reg);
 int axeWriteReg(AXEThreadRef thread, AXERegister reg, unsigned value);
-void axeScheduleThread(AXEThreadRef thread);
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles);
 AXEThreadRef axeGetThreadForLastBreakpoint(AXESystemRef system);
