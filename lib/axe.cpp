@@ -138,6 +138,21 @@ void axeUnsetBreakpoint(AXECoreRef core, unsigned address)
   return unwrap(core)->unsetBreakpoint(address);
 }
 
+void axeUnsetAllBreakpoints(AXESystemRef system)
+{
+  SystemState *sys = unwrap(system)->getSystemState();
+  for(Node *n : sys->getNodes())
+    if(n->isProcessorNode())
+      for(Core *c : static_cast<ProcessorNode*>(n)->getCores())
+        c->clearBreakpoints();
+}
+
+void axeStepThreadOnce(AXEThreadRef thread)
+{
+  Thread *t = unwrap(thread);
+  t->singleStep();
+}
+
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum)
 {
   return wrap(&unwrap(core)->getThread(threadNum));
