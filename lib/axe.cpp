@@ -13,6 +13,9 @@
 #include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
+#include "Resource.h"
+#include "Tracer.h"
+#include "LoggingTracer.h"
 #include <cassert>
 
 using namespace axe;
@@ -89,14 +92,8 @@ int axeGetThreadInUse(AXEThreadRef thread) {
 
 int axeGetThreadID(AXEThreadRef thread) {
   Thread * t = unwrap(thread);
-  int retVal = 0;
 
-  for(Thread tc : t->getParent().getThreads())
-    if(&tc != t)
-      retVal++;
-    else
-      return retVal;
-  return retVal;
+  return t->getNum();
 }
 
 
