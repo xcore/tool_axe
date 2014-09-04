@@ -518,6 +518,13 @@ InstReturn Thread::interpretOne()
   return retval;
 }
 
+InstReturn Thread::singleStep()
+{
+  if (pc == parent->getInterpretOneAddr() || pc == parent->getRunJitAddr())
+    pc = pendingPc;
+  return interpretOne();
+}
+
 void Thread::run(ticks_t time)
 {
   while (1) {
