@@ -95,6 +95,7 @@ public:
     return currentRunnable;
   }
 
+  ticks_t getEarliestThreadTime() const;
   ticks_t getLatestThreadTime() const;
 
   void setTimeout(ticks_t time);
