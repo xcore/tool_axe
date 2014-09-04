@@ -152,6 +152,12 @@ void axeUnsetAllBreakpoints(AXESystemRef system)
         c->clearBreakpoints();
 }
 
+void axeStepThreadOnce(AXEThreadRef thread)
+{
+  Thread *t = unwrap(thread);
+  t->singleStep();
+}
+
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum)
 {
   return wrap(&unwrap(core)->getThread(threadNum));

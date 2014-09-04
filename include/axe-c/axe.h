@@ -75,6 +75,7 @@ int axeReadMemory(AXECoreRef core, unsigned address, void *dst, unsigned length)
 int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetAllBreakpoints(AXESystemRef system);
+void axeStepThreadOnce(AXEThreadRef thread);
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
