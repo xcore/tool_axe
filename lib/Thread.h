@@ -125,6 +125,11 @@ public:
     return true;
   }
 
+  void setTime(time_t t)
+  {
+    time = t;
+  }
+
   bool free() override
   {
     setInUse(false);
