@@ -26,6 +26,24 @@ AXESystemRef axeCreateInstance(const char *xeFileName)
   return wrap(sysWrapper);
 }
 
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->deschedule(*unwrap(thread));
+}
+
+void axeAddThreadToRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->schedule(*unwrap(thread));
+}
+
+int axeIsThreadInRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  return sys->schedulerContains(*unwrap(thread));
+}
+
 void axeDeleteInstance(AXESystemRef system)
 {
   delete unwrap(system);
@@ -221,11 +239,6 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
   case StopReason::NO_RUNNABLE_THREADS:
     return AXE_STOP_NO_RUNNABLE_THREADS;
   }
-}
-
-void axeScheduleThread(AXEThreadRef thread)
-{
-  unwrap(thread)->schedule();
 }
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles)
