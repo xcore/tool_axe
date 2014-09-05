@@ -79,6 +79,10 @@ int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetAllBreakpoints(AXESystemRef system);
 void axeStepThreadOnce(AXEThreadRef thread);
+
+void axeSetWatchpoint(unsigned int startAddress, unsigned int endAddress);
+int  axeUnsetWatchpoint(unsigned int startAddress, unsigned int endAddress);
+void axeUnsetAllWatchpoints();
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
