@@ -3,22 +3,21 @@
 
 #include <cassert>
 #include <set>
+#include <stdint.h>
 
-using namespace std;
-
-typedef pair<unsigned int, unsigned int> Watchpoint;
+typedef std::pair<uint8_t, uint8_t> Watchpoint;
 
 class WatchpointManager {
 private:
-	set<Watchpoint> watchpoints;
-	set<Watchpoint>::iterator watchpointsIterator;
+	std::set<Watchpoint> watchpoints;
+	std::set<Watchpoint>::iterator watchpointsIterator;
 	bool contains(Watchpoint w);
 public:
-	void SetWatchpoint(unsigned int lowAddr, unsigned int highAddr);
-	void UnsetWatchpoint(unsigned int lowAddr, unsigned int highAddr);
-	void ClearWatchpoints();
+	void setWatchpoint(uint8_t lowAddr, uint8_t highAddr);
+	void unsetWatchpoint(uint8_t lowAddr, uint8_t highAddr);
+	void clearWatchpoints();
 
-	bool checkWatchpointAt(unsigned int address);
+	bool isWatchpointAddress(uint8_t address);
 };
 
 #endif //_WatchpointManager_h_
