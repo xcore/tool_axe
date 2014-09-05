@@ -192,6 +192,8 @@ add_library(axe
   TrapInfo.cpp
   UartRx.h
   UartRx.cpp
+  WatchpointManager.h
+  WatchpointManager.cpp
   WaveformTracer.h
   WaveformTracer.cpp
   XE.h

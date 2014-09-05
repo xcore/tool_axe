@@ -152,6 +152,22 @@ void axeUnsetAllBreakpoints(AXESystemRef system)
         c->clearBreakpoints();
 }
 
+void axeSetWatchpoint(unsigned int startAddress, unsigned int endAddress)
+{
+  // We need to switch to "slow" tracing mode
+}
+
+int  axeUnsetWatchpoint(unsigned int startAddress, unsigned int endAddress)
+{
+  // If there are no more watch points in the set, we should go back to "fast" non-tracing mode
+}
+
+void axeUnsetAllWatchpoints()
+{
+
+}
+
+
 void axeStepThreadOnce(AXEThreadRef thread)
 {
   Thread *t = unwrap(thread);
