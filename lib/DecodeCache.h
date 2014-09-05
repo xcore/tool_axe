@@ -95,6 +95,7 @@ public:
   ~DecodeCache();
   State &getState() { return state; }
   const State &getState() const { return state; }
+  void setTracing(bool enabled) { state.tracingEnabled = enabled; }
 };
   
 } // End axe namespace

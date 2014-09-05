@@ -289,13 +289,30 @@ bool Core::setWatchpoint(uint32_t lowAddress, uint32_t highAddress)
   if (((lowAddress & 1) || !isValidAddress(lowAddress)) 
     || ((highAddress & 1) || !isValidAddress(highAddress)))
     return false;
+  if(true) {
+    // We need to turn tracing on (switch to "slow" mode, and disable JIT)
+    disableJIT();
+  }
   watchpoints.setWatchpoint(lowAddress, highAddress);
+  hasWatchpoints = true;
   return true;
 }
 
 void Core::unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress)
 {
   watchpoints.unsetWatchpoint(lowAddress, highAddress);
+}
+
+void Core::disableJIT()
+{
+  ramDecodeCache.setTracing(true);
+  resetCaches();
+}
+
+void Core::enableJIT()
+{
+  ramDecodeCache.setTracing(false);
+  resetCaches();
 }
 
 bool Core::isWatchpointAddress(uint8_t address)
