@@ -112,6 +112,7 @@ public:
 
   bool setWatchpoint(uint32_t lowAddress, uint32_t highAddress);
   void unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress);
+  void clearWatchpoints() { watchpoints.clearWatchpoints(); };
   bool isWatchpointAddress(uint8_t address);
 
   // TODO should take address in order to handle ROM.
