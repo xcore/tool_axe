@@ -10,12 +10,6 @@
 extern "C" {
 #endif
 
-enum class AXEBreakpointType {
-  Exception,
-  Syscall,
-  Other
-};
-
 enum AXERegister {
   AXE_REG_R0,
   AXE_REG_R1,
