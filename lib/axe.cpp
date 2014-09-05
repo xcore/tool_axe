@@ -138,21 +138,6 @@ int axeReadMemory(AXECoreRef core, unsigned address, void *dst, unsigned length)
   return unwrap(core)->readMemory(address, dst, length);
 }
 
-char *axeReadRamBytePtr(AXECoreRef coreRef, unsigned startAddress) {
-  // TODO update for ROM.
-  Core *core = unwrap(coreRef);
-  if (!core->isValidRamAddress(startAddress))
-    return 0;
-  // Check the string is null terminated
-  uint32_t address = startAddress;
-  uint32_t end = core->getRamSize() + core->getRamBase();
-  for (; address < end && core->loadRamByte(address); address++) {}
-  if (address >= end) {
-    return 0;
-  }
-  return reinterpret_cast<char*>(core->ramBytePtr(startAddress));
-}
-
 int axeSetBreakpoint(AXECoreRef core, unsigned address)
 {
   return unwrap(core)->setBreakpoint(address);
