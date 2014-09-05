@@ -75,6 +75,8 @@ private:
   const uint8_t *rom;
   uint32_t romBase;
   uint32_t romSize;
+  bool tracingEnabled;
+  bool hasWatchpoints;
 
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
@@ -114,6 +116,9 @@ public:
   void unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress);
   void clearWatchpoints() { watchpoints.clearWatchpoints(); };
   bool isWatchpointAddress(uint8_t address);
+
+  void disableJIT();
+  void enableJIT();
 
   // TODO should take address in order to handle ROM.
   void runJIT(uint32_t jitPc);
