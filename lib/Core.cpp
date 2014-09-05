@@ -284,6 +284,25 @@ void Core::unsetBreakpoint(uint32_t value)
     invalidateShort(value);
 }
 
+bool Core::setWatchpoint(uint32_t lowAddress, uint32_t highAddress)
+{
+  if (((lowAddress & 1) || !isValidAddress(lowAddress)) 
+    || ((highAddress & 1) || !isValidAddress(highAddress)))
+    return false;
+  watchpoints.setWatchpoint(lowAddress, highAddress);
+  return true;
+}
+
+void Core::unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress)
+{
+  watchpoints.unsetWatchpoint(lowAddress, highAddress);
+}
+
+bool Core::isWatchpointAddress(uint8_t address)
+{
+  return watchpoints.isWatchpointAddress(address);
+}
+
 void Core::resetCaches()
 {
   uint32_t ramEnd = getRamBase() + (1 << ramSizeLog2);
