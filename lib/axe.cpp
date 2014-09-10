@@ -161,9 +161,7 @@ void axeStepThreadOnce(AXEThreadRef thread)
 {
   SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
   Thread *t = unwrap(thread);
-  // To prevent this thread yeilding to others while single stepping, we need to
-  //  set it's last run time to the oldest in the Runable Queue.
-  t->setTime(sys->getEarliestThreadTime());
+
   t->singleStep();
 }
 
