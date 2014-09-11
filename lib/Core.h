@@ -117,6 +117,7 @@ public:
   void clearWatchpoints() { watchpoints.clearWatchpoints(); };
   bool isWatchpointAddress(uint8_t address);
 
+  bool jitEnabled;
   void disableJIT();
   void enableJIT();
 

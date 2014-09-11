@@ -22,6 +22,7 @@ using namespace axe;
 
 Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   ramDecodeCache(RamBase >> 1, RamBase, true, tracing),
+  jitEnabled(!tracing),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
@@ -289,7 +290,7 @@ bool Core::setWatchpoint(uint32_t lowAddress, uint32_t highAddress)
   if (((lowAddress & 1) || !isValidAddress(lowAddress)) 
     || ((highAddress & 1) || !isValidAddress(highAddress)))
     return false;
-  if(true) {
+  if(jitEnabled) {
     // We need to turn tracing on (switch to "slow" mode, and disable JIT)
     disableJIT();
   }
@@ -301,16 +302,22 @@ bool Core::setWatchpoint(uint32_t lowAddress, uint32_t highAddress)
 void Core::unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress)
 {
   watchpoints.unsetWatchpoint(lowAddress, highAddress);
+  if(watchpoints.size() == 0)
+  {
+    enableJIT();
+  }
 }
 
 void Core::disableJIT()
 {
+  jitEnabled = false;
   ramDecodeCache.setTracing(true);
   resetCaches();
 }
 
 void Core::enableJIT()
 {
+  jitEnabled = true;
   ramDecodeCache.setTracing(false);
   resetCaches();
 }

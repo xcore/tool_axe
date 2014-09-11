@@ -16,6 +16,7 @@ public:
 	void setWatchpoint(uint8_t lowAddr, uint8_t highAddr);
 	void unsetWatchpoint(uint8_t lowAddr, uint8_t highAddr);
 	void clearWatchpoints() { watchpoints.clear(); }
+	int size() { return watchpoints.size(); }
 
 	bool isWatchpointAddress(uint8_t address);
 };
