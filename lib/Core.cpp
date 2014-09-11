@@ -285,7 +285,7 @@ void Core::unsetBreakpoint(uint32_t value)
     invalidateShort(value);
 }
 
-bool Core::setWatchpoint(uint32_t lowAddress, uint32_t highAddress)
+bool Core::setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress)
 {
   if (((lowAddress & 1) || !isValidAddress(lowAddress)) 
     || ((highAddress & 1) || !isValidAddress(highAddress)))
@@ -294,14 +294,14 @@ bool Core::setWatchpoint(uint32_t lowAddress, uint32_t highAddress)
     // We need to turn tracing on (switch to "slow" mode, and disable JIT)
     disableJIT();
   }
-  watchpoints.setWatchpoint(lowAddress, highAddress);
+  watchpoints.setWatchpoint(type, lowAddress, highAddress);
   hasWatchpoints = true;
   return true;
 }
 
-void Core::unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress)
+void Core::unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress)
 {
-  watchpoints.unsetWatchpoint(lowAddress, highAddress);
+  watchpoints.unsetWatchpoint(type, lowAddress, highAddress);
   if(watchpoints.size() == 0)
   {
     enableJIT();

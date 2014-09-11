@@ -152,18 +152,18 @@ void axeUnsetAllBreakpoints(AXESystemRef system)
         c->clearBreakpoints();
 }
 
-int axeSetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress)
+int axeSetWatchpoint(AXECoreRef core, AXEWatchpointType type, unsigned int startAddress, unsigned int endAddress)
 {
   // We need to switch to "slow" tracing mode
   Core *c = unwrap(core);
-  return c->setWatchpoint(startAddress, endAddress);
+  return c->setWatchpoint((WatchpointType)type, startAddress, endAddress);
 }
 
-void axeUnsetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress)
+void axeUnsetWatchpoint(AXECoreRef core, AXEWatchpointType type, unsigned int startAddress, unsigned int endAddress)
 {
   // If there are no more watch points in the set, we should go back to "fast" non-tracing mode
   Core *c = unwrap(core);
-  c->unsetWatchpoint(startAddress, endAddress);
+  c->unsetWatchpoint((WatchpointType)type, startAddress, endAddress);
 }
 
 void axeUnsetAllWatchpoints(AXECoreRef core)

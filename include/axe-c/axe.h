@@ -45,6 +45,11 @@ enum AXEStopReason {
   AXE_STOP_NO_RUNNABLE_THREADS
 };
 
+enum AXEWatchpointType {
+  AXE_WATCHPOINT_READ,
+  AXE_WATCHPOINT_WRITE
+};
+
 enum AXENodeType {
   AXE_NODE_TYPE_XS1_L   = 0,
   AXE_NODE_TYPE_XS1_G   = 1,
