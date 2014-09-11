@@ -912,6 +912,8 @@ emitStore(const std::string &argString, LoadStoreType type)
     std::cout << "(StoreAddr)) {\n";
     std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
+    std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::READ, StoreAddr))\n";
+    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::WRITE, StoreAddr);";
   }
 
   std::cout << "}\n";

@@ -20,6 +20,7 @@
 #include <set>
 #include "Range.h"
 #include "Endianness.h"
+#include "WatchpointException.h"
 #include "WatchpointManager.h"
 
 namespace axe {

@@ -154,7 +154,7 @@ uint32_t Thread::getRealPc() const
 }
 
 bool Thread::onWatchpoint(WatchpointException::Type t, uint32_t memAddr) {
-  return false;
+  return parent->onWatchpoint(t, memAddr);
 }
 
 enum {

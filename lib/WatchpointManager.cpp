@@ -21,12 +21,14 @@ bool WatchpointManager::contains(Watchpoint w)
 	return !(watchpointsIterator == watchpoints.end());
 }
 
-bool WatchpointManager::isWatchpointAddress(uint8_t address)
+bool WatchpointManager::isWatchpointAddress(WatchpointType t, uint32_t address)
 {
 	watchpointsIterator = watchpoints.begin();
 	while(watchpointsIterator != watchpoints.end())
 	{
-		if((*watchpointsIterator).second.first < address && (*watchpointsIterator).second.second > address)
+		if((*watchpointsIterator).first == t &&					// Check same type
+		 	(*watchpointsIterator).second.first < address &&	// Check addr > lower bound
+		  	(*watchpointsIterator).second.second > address)		// Check addr < upper bound
 			return true;
 		std::advance(watchpointsIterator, 1);
 	}
