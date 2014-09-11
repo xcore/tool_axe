@@ -14,6 +14,8 @@
 #include "Register.h"
 #include "Instruction.h"
 #include "DecodeCache.h"
+#include "WatchpointException.h"
+
 
 namespace axe {
 
@@ -242,6 +244,8 @@ public:
   void setPcFromAddress(uint32_t address);
   
   uint32_t getRealPc() const;
+
+  bool onWatchpoint(WatchpointException::Type t, uint32_t memAddr);
   
   uint32_t fromPc(uint32_t pc) const {
     return decodeCache.fromPc(pc);

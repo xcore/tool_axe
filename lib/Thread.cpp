@@ -153,6 +153,10 @@ uint32_t Thread::getRealPc() const
   return fromPc(pc);
 }
 
+bool Thread::onWatchpoint(WatchpointException::Type t, uint32_t memAddr) {
+  return false;
+}
+
 enum {
   SETC_MODE_INUSE = 0x0,
   SETC_MODE_COND = 0x1,

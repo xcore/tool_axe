@@ -933,6 +933,7 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << ";\n";
 
   if (shouldEmitMemoryChecks()) {
+    // std::cout << "  bool watchpointHit = false;\n";
     std::cout << "  if (CHECK_ADDR_RAM_" << getLoadStoreTypeName(type);
     std::cout << "(LoadAddr)) {\n";
     std::cout << "    LoadResult = LOAD_RAM_" << getLoadStoreTypeName(type);
@@ -950,6 +951,12 @@ emitLoad(const std::string &argString, LoadStoreType type)
   }
   emitNested(dest);
   std::cout << " = LoadResult;";
+
+  if(shouldEmitMemoryChecks()) {
+    std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::READ, LoadAddr))\n";
+    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::READ, LoadAddr);";
+  }
+
 
   std::cout << "}\n";
 }
