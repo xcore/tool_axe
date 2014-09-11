@@ -112,8 +112,8 @@ public:
     return breakpoints.count(value);
   }
 
-  bool setWatchpoint(uint32_t lowAddress, uint32_t highAddress);
-  void unsetWatchpoint(uint32_t lowAddress, uint32_t highAddress);
+  bool setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
+  void unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
   void clearWatchpoints() { watchpoints.clearWatchpoints(); };
   bool isWatchpointAddress(uint8_t address);
 
