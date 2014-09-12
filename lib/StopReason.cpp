@@ -24,6 +24,13 @@ StopReason StopReason::getBreakpoint(ticks_t time, Thread &thread)
   return retval;
 }
 
+StopReason StopReason::getWatchpoint(ticks_t time, Thread &thread)
+{
+	StopReason retval(WATCHPOINT, time);
+	retval.thread = &thread;
+	return retval;
+}
+
 StopReason StopReason::getExit(ticks_t time, int status)
 {
   StopReason retval(EXIT, time);

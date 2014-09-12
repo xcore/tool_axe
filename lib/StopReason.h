@@ -17,6 +17,7 @@ class StopReason {
 public:
   enum Type {
     BREAKPOINT,
+    WATCHPOINT,
     TIMEOUT,
     EXIT,
     NO_RUNNABLE_THREADS
@@ -33,7 +34,7 @@ public:
   Type getType() const { return type; }
   ticks_t getTime() const { return time; }
   Thread *getThread() const {
-    assert(type == BREAKPOINT);
+    assert(type == BREAKPOINT || type == WATCHPOINT);
     return thread;
   }
   int getStatus() const {
@@ -43,6 +44,7 @@ public:
 
   static StopReason getTimeout(ticks_t time);
   static StopReason getBreakpoint(ticks_t time, Thread &thread);
+  static StopReason getWatchpoint(ticks_t time, Thread &thread);
   static StopReason getExit(ticks_t time, int status);
   static StopReason getNoRunnableThreads(ticks_t time);
 };
