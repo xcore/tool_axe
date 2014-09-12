@@ -273,6 +273,8 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
   switch (reason) {
   case StopReason::BREAKPOINT:
     return AXE_STOP_BREAKPOINT;
+  case StopReason::WATCHPOINT:
+    return AXE_STOP_WATCHPOINT;
   case StopReason::TIMEOUT:
     return AXE_STOP_TIMEOUT;
   case StopReason::EXIT:

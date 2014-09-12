@@ -135,6 +135,8 @@ StopReason SystemState::run()
     return StopReason::getTimeout(te.getTime());
   } catch (BreakpointException &be) {
     return StopReason::getBreakpoint(be.getTime(), be.getThread());
+  } catch (WatchpointException &we) {
+    return StopReason::getWatchpoint(we.getTime(), we.getThread());
   }
   if (tracer.get())
     tracer->noRunnableThreads(*this);

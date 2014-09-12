@@ -913,7 +913,7 @@ emitStore(const std::string &argString, LoadStoreType type)
     std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
     std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::WRITE, StoreAddr))\n";
-    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::WRITE, StoreAddr);";
+    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::WRITE, StoreAddr, THREAD, THREAD.time);";
   }
 
   std::cout << "}\n";
@@ -956,7 +956,7 @@ emitLoad(const std::string &argString, LoadStoreType type)
 
   if(shouldEmitMemoryChecks()) {
     std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::READ, LoadAddr))\n";
-    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::READ, LoadAddr);";
+    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::READ, LoadAddr, THREAD, THREAD.time);";
   }
 
 
