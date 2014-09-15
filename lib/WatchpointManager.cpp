@@ -7,7 +7,7 @@ using namespace axe;
 void WatchpointManager::setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr)
 {
 	Watchpoint w = Watchpoint(type, std::pair<uint32_t, uint32_t>(lowAddr, highAddr));
-	watchpoints.insert(w);
+	watchpoints.insert(watchpoints.end(), w);
 }
 
 void WatchpointManager::unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr)
