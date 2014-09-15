@@ -912,8 +912,11 @@ emitStore(const std::string &argString, LoadStoreType type)
     std::cout << "(StoreAddr)) {\n";
     std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
-    std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::WRITE, StoreAddr))\n";
-    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::WRITE, StoreAddr, THREAD, THREAD.time);";
+    std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::WRITE, StoreAddr)) {\n";
+    std::cout << "    watchpointHit = true;";
+    std::cout << "    watchpointType = WatchpointException::Type::WRITE;\n";
+    std::cout << "    watchpointAddr = StoreAddr;\n";
+    std::cout << "  }\n";
   }
 
   std::cout << "}\n";
@@ -935,7 +938,7 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << ";\n";
 
   if (shouldEmitMemoryChecks()) {
-    // std::cout << "  bool watchpointHit = false;\n";
+
     std::cout << "  if (CHECK_ADDR_RAM_" << getLoadStoreTypeName(type);
     std::cout << "(LoadAddr)) {\n";
     std::cout << "    LoadResult = LOAD_RAM_" << getLoadStoreTypeName(type);
@@ -955,8 +958,11 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << " = LoadResult;";
 
   if(shouldEmitMemoryChecks()) {
-    std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::READ, LoadAddr))\n";
-    std::cout << "    throw new axe::WatchpointException(WatchpointException::Type::READ, LoadAddr, THREAD, THREAD.time);";
+    std::cout << "  if(THREAD.onWatchpoint(WatchpointException::Type::READ, LoadAddr)) {\n";
+    std::cout << "    watchpointHit = true;";
+    std::cout << "    watchpointType = WatchpointException::Type::READ;\n";
+    std::cout << "    watchpointAddr = LoadAddr;\n";
+    std::cout << "  }\n";
   }
 
 
@@ -1164,6 +1170,10 @@ static void emitInstFunction(Instruction &inst, bool jit)
       std::cout << "uint32_t nextPc = THREAD.pc + " << inst.getSize()/2;
       std::cout << ";\n";
     }
+    std::cout << "bool watchpointHit = false;\n";
+    std::cout << "WatchpointException::Type watchpointType;\n";
+    std::cout << "uint32_t watchpointAddr = 0;";
+
     FunctionCodeEmitter emitter(jit);
     emitter.setInstruction(inst);
     if (inst.getYieldBefore()) {
@@ -1203,6 +1213,12 @@ static void emitInstFunction(Instruction &inst, bool jit)
     emitter.emitCycles();
     emitter.emitRegWriteBack();
     emitter.emitUpdateExecutionFrequency();
+
+
+    std::cout << "if(watchpointHit) {\n";
+    std::cout << "    throw axe::WatchpointException(watchpointType, watchpointAddr, THREAD, THREAD.time);";
+    std::cout << "}\n";
+
     emitter.emitNormalReturn();
   }
   std::cout << "}\n";
