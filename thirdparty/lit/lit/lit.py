@@ -15,6 +15,10 @@ import Util
 from TestingConfig import TestingConfig
 import LitConfig
 import Test
+import time
+
+current_milli_time = lambda: int(round(time.time() * 1000))
+
 
 # Configuration files to look for when discovering test suites. These can be
 # overridden with --config-prefix.
@@ -67,8 +71,8 @@ class TestingProgressDisplay:
         if self.progressBar:
             self.progressBar.clear()
 
-        print '%s: %s (%d of %d)' % (test.result.name, test.getFullName(),
-                                     self.completed, self.numTests)
+        print '%s: %s (%d of %d) in %d ms' % (test.result.name, test.getFullName(),
+                                     self.completed, self.numTests, test.elapsed)
 
         if test.result.isFailure and self.opts.showOutput:
             print "%s TEST '%s' FAILED %s" % ('*'*20, test.getFullName(),
@@ -116,7 +120,7 @@ class Tester(threading.Thread):
 
     def runTest(self, test):
         result = None
-        startTime = time.time()
+        startTime = current_milli_time()
         try:
             result, output = test.config.test_format.execute(test,
                                                              self.litConfig)
@@ -132,7 +136,7 @@ class Tester(threading.Thread):
             output = 'Exception during script execution:\n'
             output += traceback.format_exc()
             output += '\n'
-        elapsed = time.time() - startTime
+        elapsed = current_milli_time() - startTime
 
         test.setResult(result, output, elapsed)
         self.display.update(test)
