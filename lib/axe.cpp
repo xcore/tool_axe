@@ -40,12 +40,16 @@ AXESystemRef axeCreateInstance(const char *xeFileName, int tracingEnabled)
 
 void axeRemoveThreadFromRunQueue(AXEThreadRef thread)
 {
+  if(unwrap(thread)->waiting())
+    return;
   SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
   sys->deschedule(*unwrap(thread));
 }
 
 void axeAddThreadToRunQueue(AXEThreadRef thread)
 {
+  if(unwrap(thread)->waiting())
+    return;
   SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
   sys->schedule(*unwrap(thread));
 }
