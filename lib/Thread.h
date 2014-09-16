@@ -139,6 +139,7 @@ public:
   }
 
   void setParent(Core &p);
+  void getNextPC();
 
   Core &getParent() { return *parent; }
   const Core &getParent() const { return *parent; }

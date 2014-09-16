@@ -17,7 +17,7 @@ out(Thread &thread, uint32_t value, ticks_t time)
     threads.pop();
     if (time > next->time)
       next->time = time;
-    next->pc++;
+    next->getNextPC();
     next->schedule();
   } else {
     held = false;
