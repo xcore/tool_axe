@@ -541,6 +541,13 @@ InstReturn Thread::singleStep()
   }
 }
 
+void Thread::getNextPC() {
+  if (pc == parent->getInterpretOneAddr() || pc == parent->getRunJitAddr())
+    pc = pendingPc + 1;
+  else
+    pc++;
+}
+
 void Thread::run(ticks_t time)
 {
   while (1) {
