@@ -8,33 +8,80 @@
 
 #include "Runnable.h"
 #include <cassert>
+#include <queue>
 
 namespace axe {
 
+template<class T,
+    class Container = std::vector<T>,
+    class Compare = std::less<typename Container::value_type>> 
+
+class MyQueue : public std::priority_queue<T, Container, Compare>
+{
+public:
+    typedef typename
+        std::priority_queue<
+        T,
+        Container,
+        Compare>::container_type::const_iterator const_iterator;
+
+    bool contains(const T&val) const
+    {
+        auto first = this->c.cbegin();
+        auto last = this->c.cend();
+        while (first!=last) {
+            if (*first==val) return true;
+            ++first;
+        }
+        return false;
+    }
+};
+
+
+class CompareRunnable {
+public:
+  bool operator()(Runnable& r1, Runnable& r2)
+  {
+    if(r1.wakeUpTime < r2.wakeUpTime) return true;
+    return false;
+  }
+
+  bool operator()(Runnable* r1, Runnable* r2)
+  {
+    if(r1->wakeUpTime < r2->wakeUpTime) return true;
+    return false;
+  }
+};
+
 class RunnableQueue {
 private:
+  typedef MyQueue<Runnable*, std::vector<Runnable*>, CompareRunnable> RunQueue;
+  RunQueue pq;
+
   Runnable *head;
 public:
-  RunnableQueue() : head(0) {}
+  RunnableQueue() : head(0), pq(RunQueue()){}
   
   bool contains(Runnable &thread) const
   {
-    return thread.prev != 0 || &thread == head;
+    return pq.contains(&thread);
   }
   
   Runnable &front() const
   {
-    return *head;
+    return *(pq.top());
   }
   
   bool empty() const
   {
-    return !head;
+    return pq.empty();
   }
   
   void remove(Runnable &thread)
   {
     assert(contains(thread));
+    
+    
     if (&thread == head) {
       head = thread.next;
     } else {
@@ -48,13 +95,10 @@ public:
   // Insert a thread into the queue.
   void push(Runnable &thread, ticks_t time);
   
-  void pop()
+  const void pop()
   {
     assert(!empty());
-    if (head->next) {
-      head->next->prev = 0;
-    }
-    head = head->next;
+    return pq.pop();
   }
 };
   
