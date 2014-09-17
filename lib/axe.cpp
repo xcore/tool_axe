@@ -73,13 +73,13 @@ int axeGetNumNodes(AXESystemRef system) {
 AXENodeType axeGetNodeType(AXESystemRef system, int nodeID) {
   SystemState *sys = unwrap(system)->getSystemState();
   const std::vector<Node*> nodes = sys->getNodes();
-  
   if(nodes.size() < nodeID)
     return AXE_NODE_TYPE_UNKNOWN;
 
   Node *n = nodes.at(nodeID);
   if(!n)
     return AXE_NODE_TYPE_UNKNOWN;
+
 
   return (AXENodeType)n->getType();
 }

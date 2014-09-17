@@ -118,7 +118,7 @@ public:
   bool schedulerContains(Thread &thread) {
     return scheduler.contains(thread);
   }
-  
+
   void scheduleOther(Runnable &runnable, ticks_t time) {
     scheduler.push(runnable, time);
   }
