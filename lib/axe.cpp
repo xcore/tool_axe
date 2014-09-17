@@ -14,7 +14,6 @@
 #include "Thread.h"
 #include "StopReason.h"
 #include "Resource.h"
-
 #include "Tracer.h"
 #include "LoggingTracer.h"
 #include <cassert>
