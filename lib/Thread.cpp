@@ -518,6 +518,25 @@ InstReturn Thread::interpretOne()
   return retval;
 }
 
+InstReturn Thread::singleStep()
+{
+  if (pc == parent->getInterpretOneAddr() || pc == parent->getRunJitAddr())
+    pc = pendingPc;
+  InstReturn K = interpretOne();
+  SystemState *sys = getParent().getParent()->getParent();
+  sys->deschedule(*this);
+
+  switch(K)
+  {
+    case InstReturn::END_THREAD_EXECUTION:
+      return K;
+    default:
+      // Add to runable queue
+      sys->schedule(*this);
+      return K;
+  }
+}
+
 void Thread::run(ticks_t time)
 {
   while (1) {

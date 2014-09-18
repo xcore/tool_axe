@@ -95,6 +95,7 @@ public:
     return currentRunnable;
   }
 
+  ticks_t getEarliestThreadTime() const;
   ticks_t getLatestThreadTime() const;
 
   void setTimeout(ticks_t time);
@@ -108,7 +109,15 @@ public:
     thread.pausedOn = 0;
     scheduler.push(thread, thread.time);
   }
-  
+  void deschedule(Thread &thread) {
+    if(scheduler.contains(thread))
+      scheduler.remove(thread);
+  }
+
+  bool schedulerContains(Thread &thread) {
+    return scheduler.contains(thread);
+  }
+
   void scheduleOther(Runnable &runnable, ticks_t time) {
     scheduler.push(runnable, time);
   }
