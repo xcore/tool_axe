@@ -5,6 +5,8 @@
 
 // TODO call LLVMDisposeBuilder(), other cleanup.
 
+#define DEBUG_JIT false
+
 #include "JIT.h"
 #include "Config.h"
 
@@ -35,7 +37,7 @@
 #include <map>
 #include <vector>
 
-#define DEBUG_JIT false
+
 
 using namespace axe;
 

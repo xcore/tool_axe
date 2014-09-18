@@ -10,8 +10,12 @@
 #include "SystemStateWrapper.h"
 #include "ProcessorNode.h"
 #include "Core.h"
+#include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
+#include "Resource.h"
+#include "Tracer.h"
+#include "LoggingTracer.h"
 #include <cassert>
 
 using namespace axe;
@@ -25,10 +29,73 @@ AXESystemRef axeCreateInstance(const char *xeFileName)
   return wrap(sysWrapper);
 }
 
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->deschedule(*unwrap(thread));
+}
+
+void axeAddThreadToRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->schedule(*unwrap(thread));
+}
+
+int axeIsThreadInRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  return sys->schedulerContains(*unwrap(thread));
+}
+
 void axeDeleteInstance(AXESystemRef system)
 {
   delete unwrap(system);
 }
+
+int axeGetNumNodes(AXESystemRef system) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  return sys->getNodes().size();
+}
+
+AXENodeType axeGetNodeType(AXESystemRef system, int nodeID) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  const std::vector<Node*> nodes = sys->getNodes();
+  
+  if(nodeID < nodes.size())
+    return NODE_TYPE_UNKNOWN;
+
+  Node *n = nodes.at(nodeID);
+  if(!n)
+    return NODE_TYPE_UNKNOWN;
+
+  return (AXENodeType)n->getType();
+}
+
+int axeGetNumTiles(AXESystemRef system, int nodeID) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  const std::vector<Node*> nodes = sys->getNodes();
+  
+  if(nodeID < nodes.size())
+    return 0;
+
+  Node *n = nodes.at(nodeID);
+  if(!n || !n->isProcessorNode())
+    return -1;
+  
+  // Cast the Node to a ProcessorNode subclass, now that we know it is one
+  return static_cast<ProcessorNode*>(n)->getCores().size();
+}
+
+int axeGetThreadInUse(AXEThreadRef thread) {
+  return unwrap(thread)->isInUse();
+}
+
+int axeGetThreadID(AXEThreadRef thread) {
+  Thread * t = unwrap(thread);
+
+  return t->getNum();
+}
+
 
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
@@ -169,11 +236,6 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
   case StopReason::NO_RUNNABLE_THREADS:
     return AXE_STOP_NO_RUNNABLE_THREADS;
   }
-}
-
-void axeScheduleThread(AXEThreadRef thread)
-{
-  unwrap(thread)->schedule();
 }
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles)
