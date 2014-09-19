@@ -153,6 +153,10 @@ uint32_t Thread::getRealPc() const
   return fromPc(pc);
 }
 
+bool Thread::onWatchpoint(WatchpointException::Type t, uint32_t memAddr) {
+  return parent->onWatchpoint(t, memAddr);
+}
+
 enum {
   SETC_MODE_INUSE = 0x0,
   SETC_MODE_COND = 0x1,
@@ -516,6 +520,32 @@ InstReturn Thread::interpretOne()
   InstReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
   ops = oldOps;
   return retval;
+}
+
+InstReturn Thread::singleStep()
+{
+  if (pc == parent->getInterpretOneAddr() || pc == parent->getRunJitAddr())
+    pc = pendingPc;
+  InstReturn K = interpretOne();
+  SystemState *sys = getParent().getParent()->getParent();
+  sys->deschedule(*this);
+
+  switch(K)
+  {
+    case InstReturn::END_THREAD_EXECUTION:
+      return K;
+    default:
+      // Add to runable queue
+      sys->schedule(*this);
+      return K;
+  }
+}
+
+void Thread::getNextPC() {
+  if (pc == parent->getInterpretOneAddr() || pc == parent->getRunJitAddr())
+    pc = pendingPc + 1;
+  else
+    pc++;
 }
 
 void Thread::run(ticks_t time)

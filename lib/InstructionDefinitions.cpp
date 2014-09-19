@@ -14,6 +14,7 @@
 #include "Synchroniser.h"
 #include "InstructionMacrosCommon.h"
 #include "Compiler.h"
+#include "WatchpointException.h"
 #include <cstdio>
 
 using namespace axe;

@@ -9,6 +9,7 @@
 #include "Tracer.h"
 #include "StopReason.h"
 #include <iostream>
+#include <math.h>
 #if AXE_ENABLE_SDL
 #include "SDLEventPoller.h"
 #include <SDL.h>
@@ -82,6 +83,21 @@ completeEvent(Thread &t, EventableResource &res, bool interrupt)
   }
 }
 
+ticks_t SystemState::getEarliestThreadTime() const
+{
+  ticks_t time = pow(2, 31); // 32bit signed int max
+  for (Node *node : nodes) {
+    if (!node->isProcessorNode())
+      continue;
+    for (Core *core : static_cast<ProcessorNode*>(node)->getCores()) {
+      for (Thread &thread : core->getThreads()) {
+        time = std::min(time, thread.time);
+      }
+    }
+  }
+  return time;
+}
+
 ticks_t SystemState::getLatestThreadTime() const
 {
   ticks_t time = 0;
@@ -135,6 +151,8 @@ StopReason SystemState::run()
     return StopReason::getTimeout(te.getTime());
   } catch (BreakpointException &be) {
     return StopReason::getBreakpoint(be.getTime(), be.getThread());
+  } catch (WatchpointException &we) {
+    return StopReason::getWatchpoint(we.getTime(), we.getThread());
   }
   if (tracer.get())
     tracer->noRunnableThreads(*this);

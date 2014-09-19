@@ -10,19 +10,53 @@
 #include "SystemStateWrapper.h"
 #include "ProcessorNode.h"
 #include "Core.h"
+#include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
+#include "Resource.h"
+#include "Tracer.h"
+#include "LoggingTracer.h"
 #include <cassert>
 
 using namespace axe;
 
-AXESystemRef axeCreateInstance(const char *xeFileName)
+AXESystemRef axeCreateInstance(const char *xeFileName, int tracingEnabled)
 {
   XE xe(xeFileName);
   XEReader xeReader(xe);
-  SystemStateWrapper *sysWrapper =
-    new SystemStateWrapper(xeReader.readConfig());
+  SystemStateWrapper *sysWrapper;
+  if(tracingEnabled != 0)
+  {
+    std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>(new LoggingTracer(false));
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig(tracer));
+  }
+  else
+  {
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig());
+  }  
   return wrap(sysWrapper);
+}
+
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread)
+{
+  if(unwrap(thread)->waiting())
+    return;
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->deschedule(*unwrap(thread));
+}
+
+void axeAddThreadToRunQueue(AXEThreadRef thread)
+{
+  if(unwrap(thread)->waiting())
+    return;
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  sys->schedule(*unwrap(thread));
+}
+
+int axeIsThreadInRunQueue(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  return sys->schedulerContains(*unwrap(thread));
 }
 
 void axeDeleteInstance(AXESystemRef system)
@@ -30,9 +64,56 @@ void axeDeleteInstance(AXESystemRef system)
   delete unwrap(system);
 }
 
+int axeGetNumNodes(AXESystemRef system) {
+  SystemState *sys = unwrap(system)->getSystemState();
+  return sys->getNodes().size();
+}
+
+AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex) {
+  SystemState *sys = unwrap(system)->getSystemState();
+
+  for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
+    if (node->getJtagIndex() != jtagIndex)
+      continue;
+    return (AXENodeType)node->getType();
+  }
+  return AXE_NODE_TYPE_UNKNOWN;
+}
+
+int axeGetNumTiles(AXESystemRef system, int jtagIndex) {
+  SystemState *sys = unwrap(system)->getSystemState();
+
+  for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
+    if (node->getJtagIndex() != jtagIndex)
+      continue;
+    return static_cast<ProcessorNode*>(node)->getCores().size();
+  }
+  return 0;
+}
+
+int axeGetThreadInUse(AXEThreadRef thread) {
+  return unwrap(thread)->isInUse();
+}
+
+int axeGetThreadID(AXEThreadRef thread) {
+  Thread * t = unwrap(thread);
+
+  return t->getNum();
+}
+
+AXECoreRef axeGetThreadParent(AXEThreadRef thread)
+{
+  return wrap(&unwrap(thread)->getParent());
+}
+
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
   SystemState *sys = unwrap(system)->getSystemState();
+
   for (Node *node : sys->getNodes()) {
     if (!node->isProcessorNode())
       continue;
@@ -45,6 +126,14 @@ AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
     return wrap(cores[core]);
   }
   return 0;
+}
+
+int axeGetCoreIndex(AXECoreRef core) {
+  return unwrap(core)->getCoreNumber();
+}
+
+int axeGetNodeIndex(AXECoreRef core) {
+  return unwrap(core)->getParent()->getJtagIndex();
 }
 
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
@@ -66,6 +155,43 @@ int axeSetBreakpoint(AXECoreRef core, unsigned address)
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address)
 {
   return unwrap(core)->unsetBreakpoint(address);
+}
+
+void axeUnsetAllBreakpoints(AXESystemRef system)
+{
+  SystemState *sys = unwrap(system)->getSystemState();
+  for(Node *n : sys->getNodes())
+    if(n->isProcessorNode())
+      for(Core *c : static_cast<ProcessorNode*>(n)->getCores())
+        c->clearBreakpoints();
+}
+
+int axeSetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type)
+{
+  // We need to switch to "slow" tracing mode
+  Core *c = unwrap(core);
+  return c->setWatchpoint((WatchpointType)type, startAddress, endAddress);
+}
+
+void axeUnsetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type)
+{
+  // If there are no more watch points in the set, we should go back to "fast" non-tracing mode
+  Core *c = unwrap(core);
+  c->unsetWatchpoint((WatchpointType)type, startAddress, endAddress);
+}
+
+void axeUnsetAllWatchpoints(AXECoreRef core)
+{
+  Core *c = unwrap(core);
+  c->clearWatchpoints();
+}
+
+void axeStepThreadOnce(AXEThreadRef thread)
+{
+  SystemState *sys = unwrap(thread)->getParent().getParent()->getParent();
+  Thread *t = unwrap(thread);
+
+  t->singleStep();
 }
 
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum)
@@ -162,6 +288,8 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
   switch (reason) {
   case StopReason::BREAKPOINT:
     return AXE_STOP_BREAKPOINT;
+  case StopReason::WATCHPOINT:
+    return AXE_STOP_WATCHPOINT;
   case StopReason::TIMEOUT:
     return AXE_STOP_TIMEOUT;
   case StopReason::EXIT:
@@ -169,11 +297,6 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
   case StopReason::NO_RUNNABLE_THREADS:
     return AXE_STOP_NO_RUNNABLE_THREADS;
   }
-}
-
-void axeScheduleThread(AXEThreadRef thread)
-{
-  unwrap(thread)->schedule();
 }
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles)

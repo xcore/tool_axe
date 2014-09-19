@@ -22,6 +22,7 @@ using namespace axe;
 
 Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   ramDecodeCache(RamBase >> 1, RamBase, true, tracing),
+  jitEnabled(!tracing),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
@@ -282,6 +283,49 @@ void Core::unsetBreakpoint(uint32_t value)
 {
   if (breakpoints.erase(value))
     invalidateShort(value);
+}
+
+bool Core::setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress)
+{
+  if (((lowAddress & 1) || !isValidAddress(lowAddress)) 
+    || ((highAddress & 1) || !isValidAddress(highAddress)))
+    return false;
+  if(jitEnabled) {
+    // We need to turn tracing on (switch to "slow" mode, and disable JIT)
+    disableJIT();
+  }
+  watchpoints.setWatchpoint(type, lowAddress, highAddress);
+  hasWatchpoints = true;
+  return true;
+}
+
+void Core::unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress)
+{
+  watchpoints.unsetWatchpoint(type, lowAddress, highAddress);
+  if(watchpoints.size() == 0)
+  {
+    enableJIT();
+  }
+}
+
+void Core::disableJIT()
+{
+  jitEnabled = false;
+  ramDecodeCache.setTracing(true);
+  resetCaches();
+}
+
+void Core::enableJIT()
+{
+  jitEnabled = true;
+  ramDecodeCache.setTracing(false);
+  resetCaches();
+}
+
+bool Core::onWatchpoint(WatchpointException::Type t, uint32_t address)
+{
+  WatchpointType wt = (WatchpointType)t;
+  return watchpoints.isWatchpointAddress(wt, address);
 }
 
 void Core::resetCaches()

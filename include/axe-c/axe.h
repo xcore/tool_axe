@@ -40,31 +40,63 @@ enum AXERegister {
 
 enum AXEStopReason {
   AXE_STOP_BREAKPOINT,
+  AXE_STOP_WATCHPOINT,
   AXE_STOP_TIMEOUT,
   AXE_STOP_EXIT,
   AXE_STOP_NO_RUNNABLE_THREADS
+};
+
+enum AXEWatchpointType {
+  AXE_WATCHPOINT_READ,
+  AXE_WATCHPOINT_WRITE
+};
+
+enum AXENodeType {
+  AXE_NODE_TYPE_XS1_L   = 0,
+  AXE_NODE_TYPE_XS1_G   = 1,
+  AXE_NODE_TYPE_UNKNOWN = 100
 };
 
 typedef struct AXEOpaqueSystem *AXESystemRef;
 typedef struct AXEOpaqueCore *AXECoreRef;
 typedef struct AXEOpaqueThread *AXEThreadRef;
 
-AXESystemRef axeCreateInstance(const char *xeFileName);
+int axeGetCoreIndex(AXECoreRef core);
+int axeGetNodeIndex(AXECoreRef core);
+
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread);
+void axeAddThreadToRunQueue(AXEThreadRef thread);
+void axeClearRunQueue(AXESystemRef system);
+int axeIsThreadInRunQueue(AXEThreadRef thread);
+
+AXESystemRef axeCreateInstance(const char *xeFileName, int enabledTracing);
 void axeDeleteInstance(AXESystemRef system);
-AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex,
-                         unsigned core);
-int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,
-                   unsigned length);
-int axeReadMemory(AXECoreRef core, unsigned address, void *dst,
-                  unsigned length);
+AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core);
+
+AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex);
+int axeGetNumNodes(AXESystemRef system);
+int axeGetNumTiles(AXESystemRef system, int jtagIndex);
+
+int axeGetThreadInUse(AXEThreadRef thread);
+int axeGetThreadID(AXEThreadRef thread);
+AXECoreRef axeGetThreadParent(AXEThreadRef thread);
+
+int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,unsigned length);
+int axeReadMemory(AXECoreRef core, unsigned address, void *dst, unsigned length);
+
 int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
+void axeUnsetAllBreakpoints(AXESystemRef system);
+void axeStepThreadOnce(AXEThreadRef thread);
+
+int  axeSetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type);
+void axeUnsetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type);
+void axeUnsetAllWatchpoints(AXECoreRef core);
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
 unsigned axeReadReg(AXEThreadRef thread, AXERegister reg);
 int axeWriteReg(AXEThreadRef thread, AXERegister reg, unsigned value);
-void axeScheduleThread(AXEThreadRef thread);
 
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles);
 AXEThreadRef axeGetThreadForLastBreakpoint(AXESystemRef system);

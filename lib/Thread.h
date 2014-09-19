@@ -14,6 +14,8 @@
 #include "Register.h"
 #include "Instruction.h"
 #include "DecodeCache.h"
+#include "WatchpointException.h"
+
 
 namespace axe {
 
@@ -125,6 +127,11 @@ public:
     return true;
   }
 
+  void setTime(time_t t)
+  {
+    time = t;
+  }
+
   bool free() override
   {
     setInUse(false);
@@ -132,6 +139,7 @@ public:
   }
 
   void setParent(Core &p);
+  void getNextPC();
 
   Core &getParent() { return *parent; }
   const Core &getParent() const { return *parent; }
@@ -237,6 +245,8 @@ public:
   void setPcFromAddress(uint32_t address);
   
   uint32_t getRealPc() const;
+
+  bool onWatchpoint(WatchpointException::Type t, uint32_t memAddr);
   
   uint32_t fromPc(uint32_t pc) const {
     return decodeCache.fromPc(pc);
@@ -256,6 +266,7 @@ public:
 
   void runJIT(uint32_t pc);
   InstReturn interpretOne();
+  InstReturn singleStep();
 
   bool updateExecutionFrequencyFromStub(uint32_t shiftedAddress) {
     const DecodeCache::executionFrequency_t threshold = 128;

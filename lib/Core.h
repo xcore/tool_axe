@@ -20,6 +20,8 @@
 #include <set>
 #include "Range.h"
 #include "Endianness.h"
+#include "WatchpointException.h"
+#include "WatchpointManager.h"
 
 namespace axe {
 
@@ -74,6 +76,8 @@ private:
   const uint8_t *rom;
   uint32_t romBase;
   uint32_t romSize;
+  bool tracingEnabled;
+  bool hasWatchpoints;
 
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
@@ -82,6 +86,7 @@ private:
   uint32_t getRamSizeShorts() const { return 1 << (ramSizeLog2 - 1); }
 
   std::set<uint32_t> breakpoints;
+  WatchpointManager watchpoints;
 public:
   uint32_t vector_base;
 
@@ -103,9 +108,19 @@ public:
 
   bool setBreakpoint(uint32_t value);
   void unsetBreakpoint(uint32_t value);
+  void clearBreakpoints() { breakpoints.clear(); }
   bool isBreakpointAddress(uint32_t value) const {
     return breakpoints.count(value);
   }
+
+  bool setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
+  void unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
+  void clearWatchpoints() { watchpoints.clearWatchpoints(); };
+  bool onWatchpoint(WatchpointException::Type t, uint32_t address);
+
+  bool jitEnabled;
+  void disableJIT();
+  void enableJIT();
 
   // TODO should take address in order to handle ROM.
   void runJIT(uint32_t jitPc);
