@@ -69,33 +69,30 @@ int axeGetNumNodes(AXESystemRef system) {
   return sys->getNodes().size();
 }
 
-AXENodeType axeGetNodeType(AXESystemRef system, int nodeID) {
+AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex) {
   SystemState *sys = unwrap(system)->getSystemState();
-  const std::vector<Node*> nodes = sys->getNodes();
-  if(nodes.size() < nodeID)
-    return AXE_NODE_TYPE_UNKNOWN;
 
-  Node *n = nodes.at(nodeID);
-  if(!n)
-    return AXE_NODE_TYPE_UNKNOWN;
-
-
-  return (AXENodeType)n->getType();
+  for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
+    if (node->getJtagIndex() != jtagIndex)
+      continue;
+    return (AXENodeType)node->getType();
+  }
+  return AXE_NODE_TYPE_UNKNOWN;
 }
 
-int axeGetNumTiles(AXESystemRef system, int nodeID) {
+int axeGetNumTiles(AXESystemRef system, int jtagIndex) {
   SystemState *sys = unwrap(system)->getSystemState();
-  const std::vector<Node*> nodes = sys->getNodes();
-  
-  if(nodes.size() < nodeID)
-    return 0;
 
-  Node *n = nodes.at(nodeID);
-  if(!n || !n->isProcessorNode())
-    return -1;
-  
-  // Cast the Node to a ProcessorNode subclass, now that we know it is one
-  return static_cast<ProcessorNode*>(n)->getCores().size();
+  for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
+    if (node->getJtagIndex() != jtagIndex)
+      continue;
+    return static_cast<ProcessorNode*>(node)->getCores().size();
+  }
+  return 0;
 }
 
 int axeGetThreadInUse(AXEThreadRef thread) {
@@ -116,6 +113,7 @@ AXECoreRef axeGetThreadParent(AXEThreadRef thread)
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
 {
   SystemState *sys = unwrap(system)->getSystemState();
+
   for (Node *node : sys->getNodes()) {
     if (!node->isProcessorNode())
       continue;
@@ -128,6 +126,14 @@ AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
     return wrap(cores[core]);
   }
   return 0;
+}
+
+int axeGetCoreIndex(AXECoreRef core) {
+  return unwrap(core)->getCoreNumber();
+}
+
+int axeGetNodeIndex(AXECoreRef core) {
+  return unwrap(core)->getParent()->getJtagIndex();
 }
 
 int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,

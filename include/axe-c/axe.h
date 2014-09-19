@@ -61,6 +61,9 @@ typedef struct AXEOpaqueSystem *AXESystemRef;
 typedef struct AXEOpaqueCore *AXECoreRef;
 typedef struct AXEOpaqueThread *AXEThreadRef;
 
+int axeGetCoreIndex(AXECoreRef core);
+int axeGetNodeIndex(AXECoreRef core);
+
 void axeRemoveThreadFromRunQueue(AXEThreadRef thread);
 void axeAddThreadToRunQueue(AXEThreadRef thread);
 void axeClearRunQueue(AXESystemRef system);
