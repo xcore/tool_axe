@@ -321,9 +321,10 @@ void Core::enableJIT()
   resetCaches();
 }
 
-bool Core::isWatchpointAddress(uint8_t address)
+bool Core::onWatchpoint(WatchpointException::Type t, uint32_t address)
 {
-  return watchpoints.isWatchpointAddress(address);
+  WatchpointType wt = (WatchpointType)t;
+  return watchpoints.isWatchpointAddress(wt, address);
 }
 
 void Core::resetCaches()

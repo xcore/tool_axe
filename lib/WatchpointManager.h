@@ -10,7 +10,7 @@ enum WatchpointType {
 	AXE_WATCH_TYPE_WRITE,
 };
 
-typedef std::pair<WatchpointType, std::pair<uint8_t, uint8_t>> Watchpoint;
+typedef std::pair<WatchpointType, std::pair<uint32_t, uint32_t>> Watchpoint;
 
 class WatchpointManager {
 private:
@@ -18,12 +18,12 @@ private:
 	std::set<Watchpoint>::iterator watchpointsIterator;
 	bool contains(Watchpoint w);
 public:
-	void setWatchpoint(WatchpointType type, uint8_t lowAddr, uint8_t highAddr);
-	void unsetWatchpoint(WatchpointType type, uint8_t lowAddr, uint8_t highAddr);
+	void setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
+	void unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
 	void clearWatchpoints() { watchpoints.clear(); }
 	int size() { return watchpoints.size(); }
 
-	bool isWatchpointAddress(uint8_t address);
+	bool isWatchpointAddress(WatchpointType t, uint32_t address);
 };
 
 #endif //_WatchpointManager_h_

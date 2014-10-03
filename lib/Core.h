@@ -20,6 +20,7 @@
 #include <set>
 #include "Range.h"
 #include "Endianness.h"
+#include "WatchpointException.h"
 #include "WatchpointManager.h"
 
 namespace axe {
@@ -114,7 +115,7 @@ public:
   bool setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
   void unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
   void clearWatchpoints() { watchpoints.clearWatchpoints(); };
-  bool isWatchpointAddress(uint8_t address);
+  bool onWatchpoint(WatchpointException::Type t, uint32_t address);
 
   bool jitEnabled;
   void disableJIT();
