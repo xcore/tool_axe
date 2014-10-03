@@ -12,16 +12,7 @@ void WatchpointManager::setWatchpoint(WatchpointType type, uint32_t lowAddr, uin
 
 void WatchpointManager::unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr)
 {
-  Watchpoint w = Watchpoint(type, lowAddr, highAddr);
-  watchpointsIterator = watchpoints.begin();
-  while(watchpointsIterator != watchpoints.end())
-  {
-    if((*watchpointsIterator).type == type &&				// Check same type
-            (*watchpointsIterator).begin == lowAddr &&	// Check addr == lower bound
-            (*watchpointsIterator).end == highAddr)	// Check addr == upper bound
-            watchpoints.erase(watchpointsIterator);
-    std::advance(watchpointsIterator, 1);
-  }
+  watchpoints.erase(Watchpoint(type, lowAddr, highAddr));
 }
 
 bool WatchpointManager::contains(Watchpoint w)
