@@ -295,7 +295,6 @@ bool Core::setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t high
     disableJIT();
   }
   watchpoints.setWatchpoint(type, lowAddress, highAddress);
-  hasWatchpoints = true;
   return true;
 }
 

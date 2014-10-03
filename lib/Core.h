@@ -76,7 +76,6 @@ private:
   uint32_t romBase;
   uint32_t romSize;
   bool tracingEnabled;
-  bool hasWatchpoints;
 
   bool hasMatchingNodeID(ResourceID ID);
   void invalidateWordSlowPath(uint32_t address);
