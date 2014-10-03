@@ -5,6 +5,8 @@
 #include <set>
 #include <stdint.h>
 
+namespace axe {
+
 enum class WatchpointType {
 	READ,
 	WRITE
@@ -25,5 +27,7 @@ public:
 
 	bool isWatchpointAddress(WatchpointType t, uint32_t address);
 };
+
+}; // End axe namespace
 
 #endif //_WatchpointManager_h_
