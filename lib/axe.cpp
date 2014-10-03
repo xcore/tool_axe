@@ -13,16 +13,26 @@
 #include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
+#include "Tracer.h"
+#include "LoggingTracer.h"
 #include <cassert>
 
 using namespace axe;
 
-AXESystemRef axeCreateInstance(const char *xeFileName)
+AXESystemRef axeCreateInstance(const char *xeFileName, int tracingEnabled)
 {
   XE xe(xeFileName);
   XEReader xeReader(xe);
-  SystemStateWrapper *sysWrapper =
-    new SystemStateWrapper(xeReader.readConfig());
+  SystemStateWrapper *sysWrapper;
+  if(tracingEnabled != 0)
+  {
+    std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>(new LoggingTracer(false));
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig(tracer));
+  }
+  else
+  {
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig());
+  }  
   return wrap(sysWrapper);
 }
 
