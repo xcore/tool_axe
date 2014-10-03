@@ -24,9 +24,9 @@ bool WatchpointManager::contains(Watchpoint w)
 bool WatchpointManager::isWatchpointAddress(WatchpointType t, uint32_t address)
 {
   for (const Watchpoint &watchpoint : watchpoints) {
-    if (watchpoint.type == t &&
-        watchpoint.begin <= address &&
-        watchpoint.end >= address)
+    if (t == watchpoint.type &&
+        address >= watchpoint.begin &&
+        address < watchpoint.end)
       return true;
   }
   return false;
