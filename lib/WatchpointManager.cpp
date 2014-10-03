@@ -6,40 +6,40 @@ using namespace axe;
 
 void WatchpointManager::setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr)
 {
-        Watchpoint w = Watchpoint(type, lowAddr, highAddr);
-	watchpoints.insert(w);
+  Watchpoint w = Watchpoint(type, lowAddr, highAddr);
+  watchpoints.insert(w);
 }
 
 void WatchpointManager::unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr)
 {
-        Watchpoint w = Watchpoint(type, lowAddr, highAddr);
-	watchpointsIterator = watchpoints.begin();
-	while(watchpointsIterator != watchpoints.end())
-	{
-                if((*watchpointsIterator).type == type &&				// Check same type
-                        (*watchpointsIterator).begin == lowAddr &&	// Check addr == lower bound
-                        (*watchpointsIterator).end == highAddr)	// Check addr == upper bound
-			watchpoints.erase(watchpointsIterator);
-		std::advance(watchpointsIterator, 1);
-	}
+  Watchpoint w = Watchpoint(type, lowAddr, highAddr);
+  watchpointsIterator = watchpoints.begin();
+  while(watchpointsIterator != watchpoints.end())
+  {
+    if((*watchpointsIterator).type == type &&				// Check same type
+            (*watchpointsIterator).begin == lowAddr &&	// Check addr == lower bound
+            (*watchpointsIterator).end == highAddr)	// Check addr == upper bound
+            watchpoints.erase(watchpointsIterator);
+    std::advance(watchpointsIterator, 1);
+  }
 }
 
 bool WatchpointManager::contains(Watchpoint w)
 {
-	watchpointsIterator = watchpoints.find(w);
-	return !(watchpointsIterator == watchpoints.end());
+  watchpointsIterator = watchpoints.find(w);
+  return !(watchpointsIterator == watchpoints.end());
 }
 
 bool WatchpointManager::isWatchpointAddress(WatchpointType t, uint32_t address)
 {
-	watchpointsIterator = watchpoints.begin();
-	while(watchpointsIterator != watchpoints.end())
-	{
-                if((*watchpointsIterator).type == t &&					// Check same type
-                        (*watchpointsIterator).begin <= address &&	// Check addr >= lower bound
-                        (*watchpointsIterator).end >= address)	// Check addr <= upper bound
-			return true;
-		std::advance(watchpointsIterator, 1);
-	}
-	return false;
+  watchpointsIterator = watchpoints.begin();
+  while(watchpointsIterator != watchpoints.end())
+  {
+    if((*watchpointsIterator).type == t &&					// Check same type
+            (*watchpointsIterator).begin <= address &&	// Check addr >= lower bound
+            (*watchpointsIterator).end >= address)	// Check addr <= upper bound
+            return true;
+    std::advance(watchpointsIterator, 1);
+  }
+  return false;
 }

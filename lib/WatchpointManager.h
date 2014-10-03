@@ -8,8 +8,8 @@
 namespace axe {
 
 enum class WatchpointType {
-	READ,
-	WRITE
+  READ,
+  WRITE
 };
 
 struct Watchpoint {
@@ -37,16 +37,16 @@ struct Watchpoint {
 
 class WatchpointManager {
 private:
-	std::set<Watchpoint> watchpoints;
-	std::set<Watchpoint>::iterator watchpointsIterator;
-	bool contains(Watchpoint w);
+  std::set<Watchpoint> watchpoints;
+  std::set<Watchpoint>::iterator watchpointsIterator;
+  bool contains(Watchpoint w);
 public:
-	void setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
-	void unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
-	void clearWatchpoints() { watchpoints.clear(); }
-	int size() { return watchpoints.size(); }
+  void setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
+  void unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
+  void clearWatchpoints() { watchpoints.clear(); }
+  int size() { return watchpoints.size(); }
 
-	bool isWatchpointAddress(WatchpointType t, uint32_t address);
+  bool isWatchpointAddress(WatchpointType t, uint32_t address);
 };
 
 }; // End axe namespace
