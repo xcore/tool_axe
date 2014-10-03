@@ -912,7 +912,7 @@ emitStore(const std::string &argString, LoadStoreType type)
     std::cout << "(StoreAddr)) {\n";
     std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
-    std::cout << "  if (CORE.onWatchpoint(WatchpointType::WRITE, StoreAddr)) {\n";
+    std::cout << "  if (CORE.hitWatchpoint(WatchpointType::WRITE, StoreAddr)) {\n";
     std::cout << "    watchpointHit = true;";
     std::cout << "    watchpointType = WatchpointType::WRITE;\n";
     std::cout << "    watchpointAddr = StoreAddr;\n";
@@ -958,7 +958,7 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << " = LoadResult;";
 
   if(shouldEmitMemoryChecks()) {
-    std::cout << "  if (CORE.onWatchpoint(WatchpointType::READ, LoadAddr)) {\n";
+    std::cout << "  if (CORE.hitWatchpoint(WatchpointType::READ, LoadAddr)) {\n";
     std::cout << "    watchpointHit = true;";
     std::cout << "    watchpointType = WatchpointType::READ;\n";
     std::cout << "    watchpointAddr = LoadAddr;\n";
