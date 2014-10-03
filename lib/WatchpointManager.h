@@ -5,9 +5,9 @@
 #include <set>
 #include <stdint.h>
 
-enum WatchpointType {
-	AXE_WATCH_TYPE_READ,
-	AXE_WATCH_TYPE_WRITE,
+enum class WatchpointType {
+	READ,
+	WRITE
 };
 
 typedef std::pair<WatchpointType, std::pair<uint32_t, uint32_t>> Watchpoint;

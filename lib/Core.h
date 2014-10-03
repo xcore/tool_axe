@@ -115,7 +115,7 @@ public:
   bool setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
   void unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress);
   void clearWatchpoints() { watchpoints.clearWatchpoints(); };
-  bool onWatchpoint(WatchpointException::Type t, uint32_t address);
+  bool onWatchpoint(WatchpointType t, uint32_t address);
 
   bool jitEnabled;
   void disableJIT();

@@ -912,9 +912,9 @@ emitStore(const std::string &argString, LoadStoreType type)
     std::cout << "(StoreAddr)) {\n";
     std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
-    std::cout << "  if (CORE.onWatchpoint(WatchpointException::Type::WRITE, StoreAddr)) {\n";
+    std::cout << "  if (CORE.onWatchpoint(WatchpointType::WRITE, StoreAddr)) {\n";
     std::cout << "    watchpointHit = true;";
-    std::cout << "    watchpointType = WatchpointException::Type::WRITE;\n";
+    std::cout << "    watchpointType = WatchpointType::WRITE;\n";
     std::cout << "    watchpointAddr = StoreAddr;\n";
     std::cout << "  }\n";
   }
@@ -958,9 +958,9 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << " = LoadResult;";
 
   if(shouldEmitMemoryChecks()) {
-    std::cout << "  if (CORE.onWatchpoint(WatchpointException::Type::READ, LoadAddr)) {\n";
+    std::cout << "  if (CORE.onWatchpoint(WatchpointType::READ, LoadAddr)) {\n";
     std::cout << "    watchpointHit = true;";
-    std::cout << "    watchpointType = WatchpointException::Type::READ;\n";
+    std::cout << "    watchpointType = WatchpointType::READ;\n";
     std::cout << "    watchpointAddr = LoadAddr;\n";
     std::cout << "  }\n";
   }
@@ -1171,7 +1171,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
       std::cout << ";\n";
     }
     std::cout << "bool watchpointHit = false;\n";
-    std::cout << "WatchpointException::Type watchpointType;\n";
+    std::cout << "WatchpointType watchpointType;\n";
     std::cout << "uint32_t watchpointAddr = 0;";
 
     FunctionCodeEmitter emitter(jit);
