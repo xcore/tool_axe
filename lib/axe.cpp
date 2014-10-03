@@ -13,6 +13,8 @@
 #include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
+#include "Resource.h"
+
 #include "Tracer.h"
 #include "LoggingTracer.h"
 #include <cassert>
@@ -44,6 +46,47 @@ void axeDeleteInstance(AXESystemRef system)
 int axeGetNumNodes(AXESystemRef system) {
   SystemState *sys = unwrap(system)->getSystemState();
   return sys->getNodes().size();
+}
+
+AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex) {
+  SystemState *sys = unwrap(system)->getSystemState();
+
+  for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
+    if (node->getJtagIndex() != jtagIndex)
+      continue;
+    return (AXENodeType)node->getType();
+  }
+  return AXE_NODE_TYPE_UNKNOWN;
+}
+
+int axeGetNumTiles(AXESystemRef system, int jtagIndex) {
+  SystemState *sys = unwrap(system)->getSystemState();
+
+  for (Node *node : sys->getNodes()) {
+    if (!node->isProcessorNode())
+      continue;
+    if (node->getJtagIndex() != jtagIndex)
+      continue;
+    return static_cast<ProcessorNode*>(node)->getCores().size();
+  }
+  return 0;
+}
+
+int axeGetThreadInUse(AXEThreadRef thread) {
+  return unwrap(thread)->isInUse();
+}
+
+int axeGetThreadID(AXEThreadRef thread) {
+  Thread * t = unwrap(thread);
+
+  return t->getNum();
+}
+
+AXECoreRef axeGetThreadParent(AXEThreadRef thread)
+{
+  return wrap(&unwrap(thread)->getParent());
 }
 
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core)
