@@ -176,11 +176,6 @@ static AXEStopReason convertStopReasonType(StopReason::Type reason)
   }
 }
 
-void axeScheduleThread(AXEThreadRef thread)
-{
-  unwrap(thread)->schedule();
-}
-
 AXEStopReason axeRun(AXESystemRef system, unsigned maxCycles)
 {
   StopReason::Type reason = unwrap(system)->run(maxCycles);
