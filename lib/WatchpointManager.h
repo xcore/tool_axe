@@ -39,7 +39,6 @@ class WatchpointManager {
 private:
   std::set<Watchpoint> watchpoints;
   std::set<Watchpoint>::iterator watchpointsIterator;
-  bool contains(Watchpoint w);
 public:
   void setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
   void unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);

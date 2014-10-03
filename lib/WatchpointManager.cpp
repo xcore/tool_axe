@@ -15,12 +15,6 @@ void WatchpointManager::unsetWatchpoint(WatchpointType type, uint32_t lowAddr, u
   watchpoints.erase(Watchpoint(type, lowAddr, highAddr));
 }
 
-bool WatchpointManager::contains(Watchpoint w)
-{
-  watchpointsIterator = watchpoints.find(w);
-  return !(watchpointsIterator == watchpoints.end());
-}
-
 bool WatchpointManager::isWatchpointAddress(WatchpointType t, uint32_t address)
 {
   for (const Watchpoint &watchpoint : watchpoints) {
