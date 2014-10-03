@@ -55,6 +55,9 @@ typedef struct AXEOpaqueSystem *AXESystemRef;
 typedef struct AXEOpaqueCore *AXECoreRef;
 typedef struct AXEOpaqueThread *AXEThreadRef;
 
+void axeRemoveThreadFromRunQueue(AXEThreadRef thread);
+void axeAddThreadToRunQueue(AXEThreadRef thread);
+
 AXESystemRef axeCreateInstance(const char *xeFileName, int enabledTracing);
 void axeDeleteInstance(AXESystemRef system);
 AXECoreRef axeLookupCore(AXESystemRef system, unsigned jtagIndex, unsigned core);

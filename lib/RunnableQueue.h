@@ -14,13 +14,14 @@ namespace axe {
 class RunnableQueue {
 private:
   Runnable *head;
+public:
+  RunnableQueue() : head(0) {}
+
   bool contains(Runnable &thread) const
   {
     return thread.prev != 0 || &thread == head;
   }
-public:
-  RunnableQueue() : head(0) {}
-  
+
   Runnable &front() const
   {
     return *head;
