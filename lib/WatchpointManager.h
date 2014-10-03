@@ -12,7 +12,28 @@ enum class WatchpointType {
 	WRITE
 };
 
-typedef std::pair<WatchpointType, std::pair<uint32_t, uint32_t>> Watchpoint;
+struct Watchpoint {
+  WatchpointType type;
+  uint32_t begin;
+  uint32_t end;
+
+  Watchpoint(WatchpointType type, uint32_t begin, uint32_t end) :
+    type(type), begin(begin), end(end) {}
+
+  bool operator<(const Watchpoint &other) const {
+    if (type != other.type)
+      return type < other.type;
+    if (begin != other.begin)
+      return begin < other.begin;
+    return end < other.end;
+  }
+
+  bool operator==(const Watchpoint &other) const {
+    return type == other.type &&
+           begin == other.begin &&
+           end == other.end;
+  }
+};
 
 class WatchpointManager {
 private:
