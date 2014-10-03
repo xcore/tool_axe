@@ -301,7 +301,7 @@ bool Core::setWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t high
 void Core::unsetWatchpoint(WatchpointType type, uint32_t lowAddress, uint32_t highAddress)
 {
   watchpoints.unsetWatchpoint(type, lowAddress, highAddress);
-  if(watchpoints.size() == 0)
+  if(watchpoints.size() == 0 && !getTracer())
   {
     enableJIT();
   }
