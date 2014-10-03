@@ -103,6 +103,7 @@ public:
 
   bool setBreakpoint(uint32_t value);
   void unsetBreakpoint(uint32_t value);
+  void clearBreakpoints() { breakpoints.clear(); }
   bool isBreakpointAddress(uint32_t value) const {
     return breakpoints.count(value);
   }

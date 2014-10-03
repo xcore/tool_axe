@@ -10,6 +10,7 @@
 #include "SystemStateWrapper.h"
 #include "ProcessorNode.h"
 #include "Core.h"
+#include "Node.h"
 #include "Thread.h"
 #include "StopReason.h"
 #include <cassert>
@@ -71,6 +72,15 @@ int axeSetBreakpoint(AXECoreRef core, unsigned address)
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address)
 {
   return unwrap(core)->unsetBreakpoint(address);
+}
+
+void axeUnsetAllBreakpoints(AXESystemRef system)
+{
+  SystemState *sys = unwrap(system)->getSystemState();
+  for(Node *n : sys->getNodes())
+    if(n->isProcessorNode())
+      for(Core *c : static_cast<ProcessorNode*>(n)->getCores())
+        c->clearBreakpoints();
 }
 
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum)
