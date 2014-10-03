@@ -143,15 +143,6 @@ void axeUnsetBreakpoint(AXECoreRef core, unsigned address)
   return unwrap(core)->unsetBreakpoint(address);
 }
 
-void axeUnsetAllBreakpoints(AXESystemRef system)
-{
-  SystemState *sys = unwrap(system)->getSystemState();
-  for(Node *n : sys->getNodes())
-    if(n->isProcessorNode())
-      for(Core *c : static_cast<ProcessorNode*>(n)->getCores())
-        c->clearBreakpoints();
-}
-
 int axeSetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type)
 {
   // We need to switch to "slow" tracing mode
@@ -165,13 +156,6 @@ void axeUnsetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int
   Core *c = unwrap(core);
   c->unsetWatchpoint((WatchpointType)type, startAddress, endAddress);
 }
-
-void axeUnsetAllWatchpoints(AXECoreRef core)
-{
-  Core *c = unwrap(core);
-  c->clearWatchpoints();
-}
-
 
 void axeStepThreadOnce(AXEThreadRef thread)
 {

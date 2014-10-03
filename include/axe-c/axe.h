@@ -80,12 +80,10 @@ int axeWriteMemory(AXECoreRef core, unsigned address, const void *src,unsigned l
 int axeReadMemory(AXECoreRef core, unsigned address, void *dst, unsigned length);
 int axeSetBreakpoint(AXECoreRef core, unsigned address);
 void axeUnsetBreakpoint(AXECoreRef core, unsigned address);
-void axeUnsetAllBreakpoints(AXESystemRef system);
 void axeStepThreadOnce(AXEThreadRef thread);
 
 int  axeSetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type);
 void axeUnsetWatchpoint(AXECoreRef core, unsigned int startAddress, unsigned int endAddress, AXEWatchpointType type);
-void axeUnsetAllWatchpoints(AXECoreRef core);
   
 AXEThreadRef axeLookupThread(AXECoreRef core, unsigned threadNum);
 int axeThreadIsInUse(AXEThreadRef thread);
