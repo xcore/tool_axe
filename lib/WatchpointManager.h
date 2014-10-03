@@ -43,7 +43,7 @@ public:
   void setWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
   void unsetWatchpoint(WatchpointType type, uint32_t lowAddr, uint32_t highAddr);
   void clearWatchpoints() { watchpoints.clear(); }
-  int size() { return watchpoints.size(); }
+  bool empty() const { return watchpoints.empty(); }
 
   bool isWatchpointAddress(WatchpointType t, uint32_t address);
 };
