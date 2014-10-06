@@ -449,7 +449,7 @@ loadImage(ElfManager &elfManager, Core &core, void *dst, uint32_t src,
     uint32_t copySize = copyEnd - copyBegin;
     uint32_t offsetBegin = phdr.p_offset + copyBegin - segmentBegin;
     std::copy(&buf[offsetBegin], &buf[offsetBegin + copySize],
-              reinterpret_cast<char*>(dst));
+              reinterpret_cast<char*>(dst) + copyBegin - srcBegin);
   }
   return foundMatching;
 }
