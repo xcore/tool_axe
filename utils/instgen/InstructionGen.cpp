@@ -515,12 +515,12 @@ splitString(const std::string &s, char delim, std::vector<std::string> &result)
 class CodeEmitter {
 public:
   void emit(const std::string &code);
-protected:
   enum LoadStoreType {
     WORD,
     SHORT,
     BYTE
   };
+protected:
   const char *getLoadStoreTypeName(LoadStoreType type);
   void emitNested(const std::string &code);
   virtual void emitBegin() = 0;
@@ -881,6 +881,22 @@ void FunctionCodeEmitter::emitDeschedule()
   std::cout << "return InstReturn::END_THREAD_EXECUTION;\n";
 }
 
+static uint8_t getLoadStoreSize(FunctionCodeEmitter::LoadStoreType type)
+{
+  switch(type)
+  {
+    case FunctionCodeEmitter::LoadStoreType::WORD:
+      return 4;
+    case FunctionCodeEmitter::LoadStoreType::SHORT:
+      return 2;
+    case FunctionCodeEmitter::LoadStoreType::BYTE:
+      return 1;
+    default:
+      assert(1==0);
+      return -1;
+  }
+}
+
 void FunctionCodeEmitter::
 emitStore(const std::string &argString, LoadStoreType type)
 {
@@ -908,11 +924,14 @@ emitStore(const std::string &argString, LoadStoreType type)
   std::cout << ", StoreAddr);\n";
 
   if (shouldEmitMemoryChecks()) {
+    unsigned ldst_size = getLoadStoreSize(type);
+
+
     std::cout << "  if (INVALIDATE_" << getLoadStoreTypeName(type);
     std::cout << "(StoreAddr)) {\n";
     std::cout << "    retval = InstReturn::END_TRACE;\n";
     std::cout << "  }\n";
-    std::cout << "  if (CORE.hitWatchpoint(WatchpointType::WRITE, StoreAddr)) {\n";
+    std::cout << "  if (CORE.hitWatchpoint(WatchpointType::WRITE, StoreAddr, " << ldst_size << ")) {\n";
     std::cout << "    watchpointHit = true;";
     std::cout << "    watchpointType = WatchpointType::WRITE;\n";
     std::cout << "    watchpointAddr = StoreAddr;\n";
@@ -958,7 +977,8 @@ emitLoad(const std::string &argString, LoadStoreType type)
   std::cout << " = LoadResult;";
 
   if(shouldEmitMemoryChecks()) {
-    std::cout << "  if (CORE.hitWatchpoint(WatchpointType::READ, LoadAddr)) {\n";
+    unsigned ldst_size = getLoadStoreSize(type);
+    std::cout << "  if (CORE.hitWatchpoint(WatchpointType::READ, LoadAddr, " << ldst_size << ")) {\n";
     std::cout << "    watchpointHit = true;";
     std::cout << "    watchpointType = WatchpointType::READ;\n";
     std::cout << "    watchpointAddr = LoadAddr;\n";

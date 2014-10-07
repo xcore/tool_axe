@@ -320,9 +320,9 @@ void Core::enableJIT()
   resetCaches();
 }
 
-bool Core::hitWatchpoint(WatchpointType t, uint32_t address)
+bool Core::hitWatchpoint(WatchpointType t, uint32_t address, uint8_t ldst_size)
 {
-  return watchpoints.isWatchpointAddress(t, address);
+  return watchpoints.isWatchpointAddress(t, address, ldst_size);
 }
 
 void Core::resetCaches()
