@@ -15,12 +15,11 @@ void WatchpointManager::unsetWatchpoint(WatchpointType type, uint32_t lowAddr, u
   watchpoints.erase(Watchpoint(type, lowAddr, highAddr));
 }
 
-bool WatchpointManager::isWatchpointAddress(WatchpointType t, uint32_t address)
+bool WatchpointManager::isWatchpointAddress(WatchpointType t, uint32_t address, uint8_t ldst_size)
 {
   for (const Watchpoint &watchpoint : watchpoints) {
     if (t == watchpoint.type &&
-        address >= watchpoint.begin &&
-        address < watchpoint.end)
+        (address + ldst_size > watchpoint.begin && address <= watchpoint.end))
       return true;
   }
   return false;

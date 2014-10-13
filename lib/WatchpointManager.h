@@ -45,7 +45,7 @@ public:
   void clearWatchpoints() { watchpoints.clear(); }
   bool empty() const { return watchpoints.empty(); }
 
-  bool isWatchpointAddress(WatchpointType t, uint32_t address);
+  bool isWatchpointAddress(WatchpointType t, uint32_t address, uint8_t ldst_size);
 };
 
 }; // End axe namespace
