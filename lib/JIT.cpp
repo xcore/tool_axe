@@ -226,7 +226,6 @@ void JITImpl::init()
     std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
     std::abort();
   }
-  LLVMDisableSymbolSearching(executionEngine, 1);
   addGlobalMappings(executionEngine, module);
   builder = LLVMCreateBuilderInContext(context);
   LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
