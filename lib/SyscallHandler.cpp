@@ -370,7 +370,7 @@ doSyscall(Thread &thread, int &retval)
         thread.regs[R0] = (uint32_t)-1;
         return SyscallHandler::CONTINUE;
       }
-      thread.regs[R0] = lseek(fds[thread.regs[R1]], thread.regs[R2], whence);
+      thread.regs[R0] = lseek(fds[thread.regs[R1]], (int32_t)thread.regs[R2], whence);
       return SyscallHandler::CONTINUE;
     }
   case OSCALL_RENAME:
