@@ -121,8 +121,6 @@ SDLScreen::~SDLScreen() {
   delete[] pixels;
 }
 
-const ticks_t minUpdateTicks = 20000;
-
 class LCDScreen : public Peripheral, Runnable {
   SDLScreen screen;
   RunnableQueue &scheduler;
