@@ -54,6 +54,7 @@ private:
   uint8_t * memoryOffset;
   unsigned char *invalidationInfoOffset;
   DecodeCache ramDecodeCache;
+  bool jitEnabled;
   const uint32_t ramSizeLog2;
   uint32_t ramBaseMultiple;
   Thread * const thread;
@@ -117,7 +118,6 @@ public:
   void clearWatchpoints() { watchpoints.clearWatchpoints(); };
   bool hitWatchpoint(WatchpointType t, uint32_t address, uint8_t ldst_size);
 
-  bool jitEnabled;
   void disableJIT();
   void enableJIT();
 
