@@ -923,9 +923,8 @@ emitStore(const std::string &argString, LoadStoreType type)
   emitNested(value);
   std::cout << ", StoreAddr);\n";
 
-  if (shouldEmitMemoryChecks()) {
+  if (!jit) {
     unsigned ldst_size = getLoadStoreSize(type);
-
 
     std::cout << "  if (INVALIDATE_" << getLoadStoreTypeName(type);
     std::cout << "(StoreAddr)) {\n";
@@ -976,7 +975,7 @@ emitLoad(const std::string &argString, LoadStoreType type)
   emitNested(dest);
   std::cout << " = LoadResult;";
 
-  if(shouldEmitMemoryChecks()) {
+  if (!jit) {
     unsigned ldst_size = getLoadStoreSize(type);
     std::cout << "  if (CORE.hitWatchpoint(WatchpointType::READ, LoadAddr, " << ldst_size << ")) {\n";
     std::cout << "    watchpointHit = true;";
@@ -1189,11 +1188,12 @@ static void emitInstFunction(Instruction &inst, bool jit)
     if (!jit) {
       std::cout << "uint32_t nextPc = THREAD.pc + " << inst.getSize()/2;
       std::cout << ";\n";
+      if (inst.getMayAccessMemory()) {
+        std::cout << "bool watchpointHit = false;\n";
+        std::cout << "WatchpointType watchpointType;\n";
+        std::cout << "uint32_t watchpointAddr = 0;";
+      }
     }
-    std::cout << "bool watchpointHit = false;\n";
-    std::cout << "WatchpointType watchpointType;\n";
-    std::cout << "uint32_t watchpointAddr = 0;";
-
     FunctionCodeEmitter emitter(jit);
     emitter.setInstruction(inst);
     if (inst.getYieldBefore()) {
@@ -1233,12 +1233,11 @@ static void emitInstFunction(Instruction &inst, bool jit)
     emitter.emitCycles();
     emitter.emitRegWriteBack();
     emitter.emitUpdateExecutionFrequency();
-
-
-    std::cout << "if(watchpointHit) {\n";
-    std::cout << "    throw axe::WatchpointException(watchpointType, watchpointAddr, THREAD, THREAD.time);";
-    std::cout << "}\n";
-
+    if (!jit && inst.getMayAccessMemory()) {
+      std::cout << "if (watchpointHit) {\n";
+      std::cout << "  throw axe::WatchpointException(watchpointType, watchpointAddr, THREAD, THREAD.time);";
+      std::cout << "}\n";
+    }
     emitter.emitNormalReturn();
   }
   std::cout << "}\n";
