@@ -75,6 +75,7 @@ enum OpenFlags {
   XCORE_O_CREAT = 0x0100,
   XCORE_O_TRUNC = 0x0200,
   XCORE_O_APPEND = 0x0800,
+  XCORE_O_TMPFILE = 0x1000,  /* host to delete when closed */
   XCORE_O_BINARY = 0x8000
 };
 
@@ -293,7 +294,12 @@ doSyscall(Thread &thread, int &retval)
         thread.regs[R0] = (uint32_t)-1;
         return SyscallHandler::CONTINUE;
       }
-      int flags = convertOpenFlags(thread.regs[R2]);
+      int argFlag = thread.regs[R2];
+      int flags = convertOpenFlags(argFlag);
+#ifdef _WIN32
+      if (argFlag & XCORE_O_TMPFILE)
+        flags |= _O_TEMPORARY;
+#endif
       int mode = convertOpenMode(thread.regs[R3]);
       int fd = getNewFd();
       if (fd == -1) {
@@ -307,6 +313,10 @@ doSyscall(Thread &thread, int &retval)
         thread.regs[R0] = (uint32_t)-1;
         return SyscallHandler::CONTINUE;
       }
+#ifndef _WIN32
+      if (argFlag & XCORE_O_TMPFILE)
+       (void) std::remove(path);  // A file is not really removed until it is closed.
+#endif
       fds[fd] = hostfd;
       thread.regs[R0] = fd;
       return SyscallHandler::CONTINUE;
