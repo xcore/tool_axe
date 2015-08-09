@@ -190,10 +190,10 @@ public:
   void setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time);
   bool setPinDelay(Thread &thread, unsigned value, ticks_t time);
 
-  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
+  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value) override;
   ResOpResult inpw(Thread &thread, uint32_t width, ticks_t time,
                    uint32_t &value);
-  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t time) override;
   ResOpResult outpw(Thread &thread, uint32_t value, uint32_t width,
                     ticks_t time);
   ResOpResult setpsc(Thread &thread, uint32_t value, ticks_t time);

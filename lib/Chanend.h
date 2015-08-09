@@ -92,7 +92,7 @@ public:
     return true;
   }
   
-  bool free()
+  bool free() override
   {
     if (!buf.empty() || getSource() || inPacket) {
       return false;

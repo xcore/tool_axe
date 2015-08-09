@@ -55,7 +55,7 @@ public:
     return running && value.isClock();
   }
 
-  bool setData(Thread &thread, uint32_t newDivide, ticks_t time);
+  bool setData(Thread &thread, uint32_t newDivide, ticks_t time) override;
 
   EdgeIterator getEdgeIterator(ticks_t time) const {
     return value.getEdgeIterator(time);
