@@ -1,5 +1,5 @@
 // RUN: xcc -target=XS1-L16A-128-QF124-C10 %s -o %t1.xe
-// RUN: axe %t1.xe --loopback stdcore[0]:XS1_PORT_1A stdcore[1]:XS1_PORT_1A
+// RUN: axe %t1.xe --loopback tile[0]:XS1_PORT_1A tile[1]:XS1_PORT_1A
 
 #include <platform.h>
 #include <xs1.h>
@@ -8,8 +8,8 @@
 #define BIT_RATE 115200
 #define BIT_TIME 100000000 / BIT_RATE
 
-out port TXD = on stdcore[0] : XS1_PORT_1A;
-in port RXD = on stdcore[1] : XS1_PORT_1A;
+out port TXD = on tile[0] : XS1_PORT_1A;
+in port RXD = on tile[1] : XS1_PORT_1A;
 
 unsigned char getByte()
 {
@@ -69,8 +69,8 @@ void receiver(in port RXD) {
 int main()
 {
   par {
-    on stdcore[0] : transmitter(TXD);
-    on stdcore[1] : receiver(RXD);
+    on tile[0] : transmitter(TXD);
+    on tile[1] : receiver(RXD);
   }
   return 0;
 }
