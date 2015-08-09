@@ -249,7 +249,7 @@ add_custom_command(
 
 if (COMPILER_IS_GCC_COMPATIBLE)
   set_source_files_properties(LLVMExtra.cpp PROPERTIES
-                              COMPILE_FLAGS "-fno-rtti -std=c++98")
+                              COMPILE_FLAGS "-fno-rtti")
 endif()
 
 target_link_libraries(

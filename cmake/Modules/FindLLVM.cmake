@@ -25,12 +25,6 @@ if (LLVM_CONFIG_EXECUTABLE)
   )
 
   execute_process(
-    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libdir
-    OUTPUT_VARIABLE LLVM_LIBDIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-
-  execute_process(
     COMMAND ${LLVM_CONFIG_EXECUTABLE} --cppflags
     OUTPUT_VARIABLE LLVM_CFLAGS_RAW
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -38,27 +32,32 @@ if (LLVM_CONFIG_EXECUTABLE)
   string(REPLACE " " ";" LLVM_CFLAGS ${LLVM_CFLAGS_RAW})
 
   execute_process(
-    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs scalaropts engine bitreader
-    OUTPUT_VARIABLE LLVM_LIBNAMES_RAW
+    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libfiles scalaropts engine bitreader
+    OUTPUT_VARIABLE LLVM_LIBRARIES_RAW
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-  string(REPLACE " " ";" LLVM_LIBNAMES_LIST ${LLVM_LIBNAMES_RAW})
+  string(REPLACE " " ";" LLVM_LIBRARIES ${LLVM_LIBRARIES_RAW})
+  execute_process(
+    COMMAND ${LLVM_CONFIG_EXECUTABLE} --system-libs
+    OUTPUT_VARIABLE LLVM_SYSTEM_LIBS_RAW
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  string(REPLACE " " ";" LLVM_SYSTEM_LIBS_LIST ${LLVM_SYSTEM_LIBS_RAW})
+
+  foreach(LLVM_LIBNAME ${LLVM_SYSTEM_LIBS_LIST})
+    string(REGEX REPLACE "^-l" "" LLVM_LIBNAME ${LLVM_LIBNAME})
+    # Don't cache the library location as we are searching for a different library
+    # each time around the loop.
+    set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
+    find_library(LLVM_LIBRARY ${LLVM_LIBNAME})
+    list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
+  endforeach()
 
   execute_process(
     COMMAND ${LLVM_CONFIG_EXECUTABLE} --ldflags
     OUTPUT_VARIABLE LLVM_LDFLAGS
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-
-  foreach(LLVM_LIBNAME ${LLVM_LIBNAMES_LIST})
-    string(REGEX REPLACE "^-l" "" LLVM_LIBNAME ${LLVM_LIBNAME})
-    # Don't cache the library location as we are searching for a different library
-    # each time around the loop.
-    set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
-    find_library(LLVM_LIBRARY ${LLVM_LIBNAME} NO_DEFAULT_PATH
-                 PATHS ${LLVM_LIBDIR})
-    list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
-  endforeach()
 
   find_package_handle_standard_args(
     LLVM REQUIRED_VARS LLVM_CONFIG_EXECUTABLE

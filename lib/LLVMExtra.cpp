@@ -8,11 +8,11 @@
 #include "llvm-c/Target.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/PassManager.h"
 #include <iostream>
 
 using namespace llvm;
