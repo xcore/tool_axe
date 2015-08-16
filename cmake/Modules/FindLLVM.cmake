@@ -32,7 +32,7 @@ if (LLVM_CONFIG_EXECUTABLE)
   string(REPLACE " " ";" LLVM_CFLAGS ${LLVM_CFLAGS_RAW})
 
   execute_process(
-    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libfiles scalaropts engine bitreader
+    COMMAND ${LLVM_CONFIG_EXECUTABLE} --libfiles all
     OUTPUT_VARIABLE LLVM_LIBRARIES_RAW
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )

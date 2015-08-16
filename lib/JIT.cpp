@@ -37,8 +37,6 @@
 #include <map>
 #include <vector>
 
-
-
 using namespace axe;
 
 // InstFunction with a a fast calling convention.
@@ -47,10 +45,10 @@ typedef InstFunction_t InstFunctionFast_t;
 
 struct JITFunctionInfo {
   explicit JITFunctionInfo(uint32_t a) :
-    pc(a), ptr(0), fastFunc(0), func(0), fastFuncValue(0), funcValue(0) {}
+    pc(a), module(0), fastFunc(0), func(0) {}
   uint32_t pc;
-  /// Global function pointer used to chain calls to this basic block.
-  LLVMValueRef ptr;
+  /// Module containing the function.
+  LLVMModuleRef module;
   /// Function that contains the code for this basic block. This function uses
   /// the fast calling convention so it can be safely called in a tail position
   /// without growing the stack.
@@ -59,10 +57,6 @@ struct JITFunctionInfo {
   /// the standard calling convention so it can be called from the interpreter.
   /// It is implemented as a simple wrapper around fastFunc.
   InstFunction_t func;
-  /// LLVMValueRef for fastFunc.
-  LLVMValueRef fastFuncValue;
-  /// LLVMValueRef for func.
-  LLVMValueRef funcValue;
 };
 
 struct JITCoreInfo {
@@ -94,9 +88,10 @@ class axe::JITImpl {
   };
   Functions functions;
   LLVMContextRef context;
-  LLVMModuleRef module;
+  LLVMExecutionEngineRef engine;
+  LLVMModuleRef stubModule;
+  LLVMModuleRef incubatorModule;
   LLVMBuilderRef builder;
-  LLVMExecutionEngineRef executionEngine;
   LLVMTypeRef jitFunctionType;
   LLVMPassManagerRef FPM;
   // Stub used to return to the interpreter (lazily initialized).
@@ -129,7 +124,7 @@ class axe::JITImpl {
                                    unsigned numArgs);
   JITCoreInfo *getJITCoreInfo(const Core &);
   JITCoreInfo *getOrCreateJITCoreInfo(const Core &);
-  InstFunctionFast_t getOrCreateStub();
+  LLVMValueRef createStub();
   bool compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t pc,
                           bool &endOfBlock, uint32_t &nextPc);
   LLVMBasicBlockRef getOrCreateMemoryCheckBailoutBlock(unsigned index);
@@ -141,7 +136,7 @@ class axe::JITImpl {
   bool emitJumpToNextFragment(InstructionOpcode opc, const Operands &operands,
                               JITCoreInfo &coreInfo, uint32_t nextPc,
                               JITFunctionInfo *caller);
-  LLVMValueRef getFunctionThunk(LLVMValueRef f);
+  LLVMValueRef createFunctionThunk(LLVMValueRef f);
 public:
   JITImpl() : initialized(false) {}
   ~JITImpl();
@@ -156,7 +151,7 @@ JITImpl::~JITImpl()
   if (initialized) {
     LLVMDisposePassManager(FPM);
     LLVMDisposeBuilder(builder);
-    LLVMDisposeExecutionEngine(executionEngine);
+    LLVMDisposeExecutionEngine(engine);
     LLVMContextDispose(context);
   }
   for (auto &entry : jitCoreMap) {
@@ -191,8 +186,9 @@ void JITImpl::initializeGlobalState()
   static bool initialized = false;
   if (initialized)
     return;
-  LLVMLinkInJIT();
+  LLVMLinkInMCJIT();
   LLVMInitializeNativeTarget();
+  LLVMInitializeNativeAsmPrinter();
   initialized = true;
 }
 
@@ -206,6 +202,20 @@ static void addGlobalMappings(LLVMExecutionEngineRef ee, LLVMModuleRef module) {
   }
 }
 
+static LLVMExecutionEngineRef
+getExecutionEngineForModule(LLVMModuleRef module) {
+  LLVMMCJITCompilerOptions options;
+  LLVMInitializeMCJITCompilerOptions(&options, sizeof(options));
+  LLVMExecutionEngineRef executionEngine;
+  char *outMessage;
+  if (LLVMCreateMCJITCompilerForModule(&executionEngine, module, &options,
+                                       sizeof(options), &outMessage)) {
+    std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
+    std::abort();
+  }
+  return executionEngine;
+}
+
 void JITImpl::init()
 {
   if (initialized)
@@ -216,24 +226,18 @@ void JITImpl::init()
     reinterpret_cast<const char*>(instructionBitcode), instructionBitcodeSize,
     "", 0);
   char *outMessage;
-  if (LLVMParseBitcodeInContext(context, memBuffer, &module, &outMessage)) {
+  if (LLVMParseBitcodeInContext(context, memBuffer, &incubatorModule,
+                                &outMessage)) {
     std::cerr << "Error loading bitcode: " << outMessage << '\n';
     std::abort();
   }
-  // TODO experiment with opt level.
-  if (LLVMCreateJITCompilerForModule(&executionEngine, module, 1,
-                                      &outMessage)) {
-    std::cerr << "Error creating JIT compiler: " << outMessage << '\n';
-    std::abort();
-  }
-  addGlobalMappings(executionEngine, module);
   builder = LLVMCreateBuilderInContext(context);
-  LLVMValueRef callee = LLVMGetNamedFunction(module, "jitInstructionTemplate");
+  LLVMValueRef callee = LLVMGetNamedFunction(incubatorModule,
+                                             "jitInstructionTemplate");
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
-  functions.init(module);
-  FPM = LLVMCreateFunctionPassManagerForModule(module);
-  LLVMAddTargetData(LLVMGetExecutionEngineTargetData(executionEngine), FPM);
+  functions.init(incubatorModule);
+  FPM = LLVMCreateFunctionPassManagerForModule(incubatorModule);
   LLVMAddTypeBasedAliasAnalysisPass(FPM);
   LLVMAddBasicAliasAnalysisPass(FPM);
   LLVMAddJumpThreadingPass(FPM);
@@ -244,9 +248,16 @@ void JITImpl::init()
   LLVMAddInstructionCombiningPass(FPM);
   LLVMInitializeFunctionPassManager(FPM);
   if (DEBUG_JIT) {
-    LLVMExtraRegisterJitDisassembler(executionEngine, LLVMGetTarget(module));
+    LLVMExtraRegisterJitDisassembler(engine, LLVMGetTarget(incubatorModule));
   }
-  stub = nullptr;
+  LLVMValueRef stubVal = createStub();
+  stubVal = LLVMExtraExtractFunctionIntoNewModule(stubVal);
+  stubModule = LLVMGetGlobalParent(stubVal);
+  engine = getExecutionEngineForModule(stubModule);
+  addGlobalMappings(engine, stubModule);
+  stub =
+    reinterpret_cast<InstFunctionFast_t>(
+      LLVMGetPointerToGlobal(engine, stubVal));
   initialized = true;
 }
 
@@ -286,23 +297,11 @@ void JITImpl::reclaimUnreachableFunctions(JITCoreInfo &coreInfo)
     if (entry == functionMap.end())
       continue;
     JITFunctionInfo *info = entry->second;
-    LLVMValueRef functions[] = {
-      info->funcValue,
-      info->fastFuncValue
-    };
-    for (LLVMValueRef f : functions) {
-      LLVMFreeMachineCodeForFunction(executionEngine, f);
-      LLVMReplaceAllUsesWith(f, LLVMGetUndef(LLVMTypeOf(f)));
-      LLVMDeleteFunction(f);
-    }
-    info->fastFunc = nullptr;
+    LLVMModuleRef outModule;
+    LLVMRemoveModule(engine, info->module, &outModule, nullptr);
+    info->module = nullptr;
+    info->fastFunc = stub;
     info->func = nullptr;
-    info->funcValue = nullptr;
-    info->fastFuncValue = nullptr;
-    if (info->ptr) {
-      *reinterpret_cast<InstFunctionFast_t*>(
-        LLVMGetPointerToGlobal(executionEngine, info->ptr)) = getOrCreateStub();
-    }
   }
   unreachableFunctions.clear();
 }
@@ -433,30 +432,25 @@ JITCoreInfo *JITImpl::getOrCreateJITCoreInfo(const Core &c)
   return info;
 }
 
-InstFunctionFast_t JITImpl::getOrCreateStub()
+LLVMValueRef JITImpl::createStub()
 {
-  if (!stub) {
-    LLVMBasicBlockRef savedInsertPoint = LLVMGetInsertBlock(builder);
-    LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
-    LLVMSetFunctionCallConv(f, LLVMFastCallConv);
-    LLVMBasicBlockRef entryBB =
-    LLVMAppendBasicBlockInContext(context, f, "entry");
-    LLVMPositionBuilderAtEnd(builder, entryBB);
-    LLVMValueRef args[] = {
-      LLVMGetParam(f, 0)
-    };
-    LLVMValueRef call =
-    LLVMBuildCall(builder, functions.jitStubImpl, args, 1, "");
-    LLVMBuildRet(builder, call);
-    if (DEBUG_JIT) {
-      LLVMDumpValue(f);
-      LLVMVerifyFunction(f, LLVMAbortProcessAction);
-    }
-    stub = reinterpret_cast<InstFunctionFast_t>(
-      LLVMGetPointerToGlobal(executionEngine, f));
-    LLVMPositionBuilderAtEnd(builder, savedInsertPoint);
+  LLVMValueRef f = LLVMAddFunction(incubatorModule, "", jitFunctionType);
+  LLVMSetFunctionCallConv(f, LLVMFastCallConv);
+  LLVMBasicBlockRef entryBB =
+  LLVMAppendBasicBlockInContext(context, f, "entry");
+  LLVMPositionBuilderAtEnd(builder, entryBB);
+  LLVMValueRef args[] = {
+    LLVMGetParam(f, 0)
+  };
+  LLVMValueRef call = LLVMBuildCall(builder, functions.jitStubImpl, args, 1,
+                                    "");
+  LLVMBuildRet(builder, call);
+  LLVMExtraInlineFunction(call);
+  if (DEBUG_JIT) {
+    LLVMDumpValue(f);
+    LLVMVerifyFunction(f, LLVMAbortProcessAction);
   }
-  return stub;
+  return f;
 }
 
 LLVMValueRef JITImpl::getNextFragmentPointer(JITCoreInfo &coreInfo, uint32_t pc)
@@ -464,21 +458,14 @@ LLVMValueRef JITImpl::getNextFragmentPointer(JITCoreInfo &coreInfo, uint32_t pc)
   JITFunctionInfo *&info = coreInfo.functionMap[pc];
   if (!info) {
     info = new JITFunctionInfo(pc);
+    info->fastFunc = stub;
   }
-  if (!info->ptr) {
-    // Create a global variable...
-    LLVMTypeRef jitFunctionPtrType = LLVMPointerType(jitFunctionType, 0);
-    info->ptr = LLVMAddGlobal(module, jitFunctionPtrType, "");
-    LLVMSetInitializer(info->ptr, LLVMConstNull(jitFunctionPtrType));
-    // Set value...
-    auto &p = *reinterpret_cast<InstFunctionFast_t*>(
-      LLVMGetPointerToGlobal(executionEngine, info->ptr));
-    if (info->fastFunc)
-      p = info->fastFunc;
-    else
-      p = getOrCreateStub();
-  }
-  return info->ptr;
+  LLVMTypeRef jitFunctionPtrType = LLVMPointerType(jitFunctionType, 0);
+  LLVMTypeRef jitFunctionPtrPtrType = LLVMPointerType(jitFunctionPtrType, 0);
+  return LLVMConstIntToPtr(
+    LLVMConstInt(LLVMInt64Type(), reinterpret_cast<uint64_t>(&info->fastFunc),
+                 false),
+    jitFunctionPtrPtrType);
 }
 
 LLVMBasicBlockRef JITImpl::appendBBToCurrentFunction(const char *name)
@@ -587,7 +574,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
   auto infoIt = coreInfo.functionMap.find(startPc);
   JITFunctionInfo *info =
     (infoIt == coreInfo.functionMap.end()) ? 0 : infoIt->second;
-  if (info && info->fastFuncValue) {
+  if (info && info->module) {
     endOfBlock = true;
     return false;
   }
@@ -609,9 +596,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     coreInfo.functionMap.insert(std::make_pair(startPc, info));
   }
   // Create function to contain the code we are about to add.
-  LLVMValueRef f = LLVMAddFunction(module, "", jitFunctionType);
+  LLVMValueRef f = LLVMAddFunction(incubatorModule, "", jitFunctionType);
   LLVMSetFunctionCallConv(f, LLVMFastCallConv);
-  info->fastFuncValue = f;
   threadParam = LLVMGetParam(f, 0);
   LLVMValueRef ramBase =
     LLVMConstInt(LLVMInt32TypeInContext(context), core.getRamBase(), false);
@@ -630,7 +616,8 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     emitMemoryChecks(i, checks);
 
     // Lookup function to call.
-    LLVMValueRef callee = LLVMGetNamedFunction(module, properties->function);
+    LLVMValueRef callee = LLVMGetNamedFunction(incubatorModule,
+                                               properties->function);
     assert(callee && "Function for instruction not found in module");
     LLVMTypeRef calleeType = LLVMGetElementType(LLVMTypeOf(callee));
     const unsigned fixedArgs = 4;
@@ -690,18 +677,18 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     LLVMDumpValue(f);
   }
   // Compile.
+  LLVMValueRef newF = LLVMExtraExtractFunctionIntoNewModule(f);
+  LLVMValueRef thunk = createFunctionThunk(newF);
+  info->module = LLVMGetGlobalParent(newF);
+  LLVMAddModule(engine, info->module);
+  addGlobalMappings(engine, info->module);
+
   InstFunctionFast_t compiledFunction =
-    reinterpret_cast<InstFunctionFast_t>(
-      LLVMRecompileAndRelinkFunction(executionEngine, f));
+    reinterpret_cast<InstFunctionFast_t>(LLVMGetPointerToGlobal(engine, newF));
   info->fastFunc = compiledFunction;
-  info->funcValue = getFunctionThunk(f);
-  info->func = reinterpret_cast<InstFunction_t>(
-    LLVMGetPointerToGlobal(executionEngine, info->funcValue));
-  if (info->ptr) {
-    // Set value of the global.
-    *reinterpret_cast<InstFunctionFast_t*>(
-      LLVMGetPointerToGlobal(executionEngine, info->ptr)) = info->fastFunc;
-  }
+  info->func =
+    reinterpret_cast<InstFunction_t>(LLVMGetPointerToGlobal(engine, thunk));
+
   core.setOpcode(startPc, info->func, (pc - startPc) * 2);
   return true;
 }
@@ -830,8 +817,9 @@ LLVMValueRef JITImpl::getJitInvalidateFunction(unsigned size)
   }
 }
 
-LLVMValueRef JITImpl::getFunctionThunk(LLVMValueRef f)
+LLVMValueRef JITImpl::createFunctionThunk(LLVMValueRef f)
 {
+  LLVMModuleRef module = LLVMGetGlobalParent(f);
   LLVMValueRef thunk = LLVMAddFunction(module, "", jitFunctionType);
   LLVMValueRef thread = LLVMGetParam(thunk, 0);
   LLVMBasicBlockRef entryBB =

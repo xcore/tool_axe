@@ -8,6 +8,7 @@
 #include "llvm-c/Target.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
+#include "llvm/ExecutionEngine/Orc/IndirectionUtils.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -65,4 +66,41 @@ LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
 void LLVMDisableSymbolSearching(LLVMExecutionEngineRef EE, LLVMBool Disable)
 {
   unwrap(EE)->DisableSymbolSearching(Disable);
+}
+
+class CrossModuleValueMaterializer : public ValueMaterializer {
+  Module &dstModule;
+  ValueToValueMapTy &VMap;
+public:
+  CrossModuleValueMaterializer(Module &dstModule, ValueToValueMapTy &VMap) :
+    dstModule(dstModule), VMap(VMap) {}
+  Value *materializeValueFor(Value *V) override {
+    if (Function *F = dyn_cast<Function>(V))
+      return orc::cloneFunctionDecl(dstModule, *F, &VMap);
+    if (GlobalVariable *GV = dyn_cast<GlobalVariable>(V))
+      return orc::cloneGlobalVariableDecl(dstModule, *GV, &VMap);
+    return nullptr;
+  }
+};
+
+LLVMValueRef
+LLVMExtraCloneGlobalVariableDecl(LLVMModuleRef dstModule, LLVMValueRef value) {
+  return wrap(
+    orc::cloneGlobalVariableDecl(
+      *unwrap(dstModule), *static_cast<GlobalVariable*>(unwrap(value))
+    )
+  );
+}
+
+LLVMValueRef LLVMExtraExtractFunctionIntoNewModule(LLVMValueRef f_) {
+  Function *f = static_cast<Function*>(unwrap(f_));
+  Module *srcModule = f->getParent();
+  Module *dstModule = new Module("", srcModule->getContext());
+  // First copy the function declaration.
+  ValueToValueMapTy VMap;
+  Function *newF = orc::cloneFunctionDecl(*dstModule, *f, &VMap);
+  // Then copy the body.
+  CrossModuleValueMaterializer materializer(*dstModule, VMap);
+  orc::moveFunctionBody(*f, VMap, &materializer, newF);
+  return wrap(newF);
 }
