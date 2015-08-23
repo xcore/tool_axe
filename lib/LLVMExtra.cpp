@@ -8,7 +8,6 @@
 #include "llvm-c/Target.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
-#include "llvm/ExecutionEngine/Orc/IndirectionUtils.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -68,6 +67,47 @@ void LLVMDisableSymbolSearching(LLVMExecutionEngineRef EE, LLVMBool Disable)
   unwrap(EE)->DisableSymbolSearching(Disable);
 }
 
+static Function* cloneFunctionDecl(Module &Dst, const Function &F,
+                                   ValueToValueMapTy &VMap) {
+  assert(F.getParent() != &Dst && "Can't copy decl over existing function.");
+  Function *NewF =
+    Function::Create(cast<FunctionType>(F.getType()->getElementType()),
+                     F.getLinkage(), F.getName(), &Dst);
+  NewF->copyAttributesFrom(&F);
+
+  VMap[&F] = NewF;
+  auto NewArgI = NewF->arg_begin();
+  for (auto ArgI = F.arg_begin(), ArgE = F.arg_end(); ArgI != ArgE;
+       ++ArgI, ++NewArgI)
+    VMap[ArgI] = NewArgI;
+
+  return NewF;
+}
+
+static Function *cloneFunction(Module &Dst, const Function &OrigF,
+                               ValueToValueMapTy &VMap,
+                               ValueMaterializer &Materializer) {
+  Function *NewF = cloneFunctionDecl(Dst, OrigF, VMap);
+  SmallVector<ReturnInst *, 8> Returns; // Ignore returns cloned.
+  CloneFunctionInto(NewF, &OrigF, VMap, /*ModuleLevelChanges=*/true, Returns,
+                    "", nullptr, nullptr, &Materializer);
+  return NewF;
+}
+
+static GlobalVariable*
+cloneGlobalVariableDecl(Module &Dst, const GlobalVariable &GV,
+                        ValueToValueMapTy &VMap) {
+  assert(GV.getParent() != &Dst && "Can't copy decl over existing global var.");
+  GlobalVariable *NewGV =
+    new GlobalVariable(Dst, GV.getType()->getElementType(), GV.isConstant(),
+                       GV.getLinkage(), nullptr, GV.getName(), nullptr,
+                       GV.getThreadLocalMode(),
+                       GV.getType()->getAddressSpace());
+  NewGV->copyAttributesFrom(&GV);
+    VMap[&GV] = NewGV;
+  return NewGV;
+}
+
 class CrossModuleValueMaterializer : public ValueMaterializer {
   Module &dstModule;
   ValueToValueMapTy &VMap;
@@ -75,10 +115,11 @@ public:
   CrossModuleValueMaterializer(Module &dstModule, ValueToValueMapTy &VMap) :
     dstModule(dstModule), VMap(VMap) {}
   Value *materializeValueFor(Value *V) override {
-    if (Function *F = dyn_cast<Function>(V))
-      return orc::cloneFunctionDecl(dstModule, *F, &VMap);
+    if (Function *F = dyn_cast<Function>(V)) {
+      return cloneFunctionDecl(dstModule, *F, VMap);
+    }
     if (GlobalVariable *GV = dyn_cast<GlobalVariable>(V))
-      return orc::cloneGlobalVariableDecl(dstModule, *GV, &VMap);
+      return cloneGlobalVariableDecl(dstModule, *GV, VMap);
     return nullptr;
   }
 };
@@ -87,11 +128,8 @@ LLVMValueRef LLVMExtraExtractFunctionIntoNewModule(LLVMValueRef f_) {
   Function *f = static_cast<Function*>(unwrap(f_));
   Module *srcModule = f->getParent();
   Module *dstModule = new Module("", srcModule->getContext());
-  // First copy the function declaration.
   ValueToValueMapTy VMap;
-  Function *newF = orc::cloneFunctionDecl(*dstModule, *f, &VMap);
-  // Then copy the body.
   CrossModuleValueMaterializer materializer(*dstModule, VMap);
-  orc::moveFunctionBody(*f, VMap, &materializer, newF);
+  Function *newF = cloneFunction(*dstModule, *f, VMap, materializer);
   return wrap(newF);
 }
