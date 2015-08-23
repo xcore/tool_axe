@@ -116,6 +116,8 @@ public:
     dstModule(dstModule), VMap(VMap) {}
   Value *materializeValueFor(Value *V) override {
     if (Function *F = dyn_cast<Function>(V)) {
+      if (F->hasLinkOnceLinkage() || F->hasInternalLinkage())
+        return cloneFunction(dstModule, *F, VMap, *this);
       return cloneFunctionDecl(dstModule, *F, VMap);
     }
     if (GlobalVariable *GV = dyn_cast<GlobalVariable>(V))
