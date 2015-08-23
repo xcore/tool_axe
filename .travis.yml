@@ -1,11 +1,14 @@
 language: cpp
 before_install:
+  - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
+  - sudo add-apt-repository "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-3.6 main"
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
-  - sudo apt-get install -qq libboost-dev libelf-dev libxml2-dev libxslt1-dev llvm-3.4-dev
+  - sudo apt-get install -qq libboost-dev libelf-dev libxml2-dev libxslt1-dev clang-3.6 llvm-3.6-dev
   - if [ `uname -m` = x86_64 ]; then sudo apt-get install -qq --force-yes libgd2-xpm ia32-libs ia32-libs-multiarch; fi
   - wget http://www.cmake.org/files/v2.8/cmake-2.8.12.2-Linux-i386.sh
   - chmod a+x cmake-2.8.12.2-Linux-i386.sh
   - sudo ./cmake-2.8.12.2-Linux-i386.sh --skip-license --prefix=/usr/local
 compiler:
   - clang
-script: /usr/local/bin/cmake . && make
+script: CXX=clang-3.6 /usr/local/bin/cmake . && make
