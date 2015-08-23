@@ -83,15 +83,6 @@ public:
   }
 };
 
-LLVMValueRef
-LLVMExtraCloneGlobalVariableDecl(LLVMModuleRef dstModule, LLVMValueRef value) {
-  return wrap(
-    orc::cloneGlobalVariableDecl(
-      *unwrap(dstModule), *static_cast<GlobalVariable*>(unwrap(value))
-    )
-  );
-}
-
 LLVMValueRef LLVMExtraExtractFunctionIntoNewModule(LLVMValueRef f_) {
   Function *f = static_cast<Function*>(unwrap(f_));
   Module *srcModule = f->getParent();

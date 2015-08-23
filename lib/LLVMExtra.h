@@ -20,9 +20,6 @@ void LLVMExtraRegisterJitDisassembler(LLVMExecutionEngineRef EE,
 
 void LLVMDisableSymbolSearching(LLVMExecutionEngineRef EE, LLVMBool Disable);
 
-LLVMValueRef LLVMExtraCloneGlobalVariableDecl(LLVMModuleRef dstModule,
-                                              LLVMValueRef value);
-
 LLVMValueRef LLVMExtraExtractFunctionIntoNewModule(LLVMValueRef fn);
 
 #ifdef __cplusplus
