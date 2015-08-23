@@ -11,4 +11,4 @@ before_install:
   - sudo ./cmake-2.8.12.2-Linux-i386.sh --skip-license --prefix=/usr/local
 compiler:
   - clang
-script: CXX=clang++-3.6 /usr/local/bin/cmake . && make
+script: CC=clang-3.6 CXX=clang++-3.6 /usr/local/bin/cmake . && make
