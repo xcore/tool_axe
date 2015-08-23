@@ -15,8 +15,8 @@ addons:
 before_install:
   - wget http://www.cmake.org/files/v3.3/cmake-3.3.1-Linux-x86_64.sh
   - chmod a+x cmake-3.3.1-Linux-x86_64.sh
-  - ./cmake-3.3.1-Linux-x86_64.sh --skip-license --prefix=~
+  - ./cmake-3.3.1-Linux-x86_64.sh --skip-license --prefix=$HOME
 compiler:
   - clang
-script: CC=clang-3.5 CXX=clang++-3.5 ~/bin/cmake . && make -j2
+script: CC=clang-3.5 CXX=clang++-3.5 $HOME/bin/cmake . && make -j2
 sudo: false
