@@ -1,4 +1,4 @@
-find_package(LLVM 3.3 REQUIRED)
+find_package(LLVM 3.6 REQUIRED)
 
 add_executable(genJitGlobalMap genJitGlobalMap.cpp)
 
