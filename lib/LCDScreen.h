@@ -12,7 +12,7 @@ namespace axe {
 
 class PeripheralDescriptor;
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorLCDScreen();
+std::unique_ptr<PeripheralDescriptor> getPeripheralDescriptorLCDScreen();
 
 } // End namespace axe
 

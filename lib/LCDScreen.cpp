@@ -242,9 +242,9 @@ createLCDScreen(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorLCDScreen()
+std::unique_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorLCDScreen()
 {
-  std::auto_ptr<PeripheralDescriptor> p(
+  std::unique_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("lcd-screen", &createLCDScreen));
   p->addProperty(PropertyDescriptor::portProperty("clk")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("data")).setRequired(true);

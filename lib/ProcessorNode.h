@@ -26,7 +26,7 @@ public:
   ProcessorNode(const Node &) = delete;
   ~ProcessorNode();
   void finalize() override;
-  void addCore(std::auto_ptr<Core> cores);
+  void addCore(std::unique_ptr<Core> cores);
   const std::vector<Core*> &getCores() const { return cores; }
   uint32_t getCoreID(unsigned coreNum) const;
   void setNodeID(unsigned value) override;

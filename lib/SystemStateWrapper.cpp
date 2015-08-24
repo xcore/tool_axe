@@ -9,8 +9,9 @@
 using namespace axe;
 
 SystemStateWrapper::
-SystemStateWrapper(std::auto_ptr<SystemState> s) :
-  system(s), lastBreakpointThread(0), lastExitStatus(0), lastStopTime(0) {
+SystemStateWrapper(std::unique_ptr<SystemState> s) :
+  system(std::move(s)), lastBreakpointThread(0), lastExitStatus(0),
+  lastStopTime(0) {
   
 }
 

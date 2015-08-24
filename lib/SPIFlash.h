@@ -12,7 +12,7 @@ namespace axe {
 
 class PeripheralDescriptor;
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorSPIFlash();
+std::unique_ptr<PeripheralDescriptor> getPeripheralDescriptorSPIFlash();
   
 } // End axe namespace
 

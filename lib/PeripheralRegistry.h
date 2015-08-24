@@ -17,7 +17,7 @@ class PeripheralDescriptor;
 
 namespace PeripheralRegistry {
   typedef AccessSecondIterator<std::map<std::string,PeripheralDescriptor*>::iterator> iterator;
-  void add(std::auto_ptr<PeripheralDescriptor> p);
+  void add(std::unique_ptr<PeripheralDescriptor> p);
   PeripheralDescriptor *get(const std::string &s);
   iterator begin();
   iterator end();

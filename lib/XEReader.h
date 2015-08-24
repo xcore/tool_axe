@@ -19,8 +19,8 @@ class XEReader {
   XE &xe;
 public:
   XEReader(XE &x) : xe(x) {}
-  std::auto_ptr<SystemState>
-    readConfig(std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>());
+  std::unique_ptr<SystemState>
+    readConfig(std::unique_ptr<Tracer> tracer = std::unique_ptr<Tracer>());
   void readPortAliases(PortAliases &aliases);
 };
 
