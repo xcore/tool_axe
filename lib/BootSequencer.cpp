@@ -10,7 +10,6 @@
 #include "SystemState.h"
 #include "SyscallHandler.h"
 #include "XE.h"
-#include "ScopedArray.h"
 #include "StopReason.h"
 #include "SymbolInfo.h"
 #include "Tracer.h"
@@ -20,6 +19,7 @@
 #include <gelf.h>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 using namespace axe;
 
