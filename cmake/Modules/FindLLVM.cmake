@@ -50,7 +50,6 @@ if (LLVM_CONFIG_EXECUTABLE)
     # each time around the loop.
     set(LLVM_LIBRARY ${LLVM_LIBNAME}-NOTFOUND)
     find_library(LLVM_LIBRARY ${LLVM_LIBNAME})
-    message("Found ${LLVM_LIBNAME} here: ${LLVM_LIBRARY}")
     list(APPEND LLVM_LIBRARIES ${LLVM_LIBRARY})
   endforeach()
 
