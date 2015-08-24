@@ -238,19 +238,6 @@ void JITImpl::init()
   assert(callee && "jitInstructionTemplate() not found in module");
   jitFunctionType = LLVMGetElementType(LLVMTypeOf(callee));
   functions.init(incubatorModule);
-  FPM = LLVMCreateFunctionPassManagerForModule(incubatorModule);
-  LLVMAddTypeBasedAliasAnalysisPass(FPM);
-  LLVMAddBasicAliasAnalysisPass(FPM);
-  LLVMAddJumpThreadingPass(FPM);
-  LLVMAddGVNPass(FPM);
-  LLVMAddJumpThreadingPass(FPM);
-  LLVMAddCFGSimplificationPass(FPM);
-  LLVMAddDeadStoreEliminationPass(FPM);
-  LLVMAddInstructionCombiningPass(FPM);
-  LLVMInitializeFunctionPassManager(FPM);
-  if (DEBUG_JIT) {
-    LLVMExtraRegisterJitDisassembler(engine, LLVMGetTarget(incubatorModule));
-  }
   LLVMValueRef stubVal = createStub();
   stubVal = LLVMExtraExtractFunctionIntoNewModule(stubVal);
   stubModule = LLVMGetGlobalParent(stubVal);
@@ -260,6 +247,20 @@ void JITImpl::init()
     reinterpret_cast<InstFunctionFast_t>(
       LLVMGetPointerToGlobal(engine, stubVal));
   initialized = true;
+  if (DEBUG_JIT) {
+    LLVMExtraRegisterJitDisassembler(engine, LLVMGetTarget(incubatorModule));
+  }
+  FPM = LLVMCreateFunctionPassManagerForModule(incubatorModule);
+  LLVMAddTargetData(LLVMGetExecutionEngineTargetData(engine), FPM);
+  LLVMAddTypeBasedAliasAnalysisPass(FPM);
+  LLVMAddBasicAliasAnalysisPass(FPM);
+  LLVMAddJumpThreadingPass(FPM);
+  LLVMAddGVNPass(FPM);
+  LLVMAddJumpThreadingPass(FPM);
+  LLVMAddCFGSimplificationPass(FPM);
+  LLVMAddDeadStoreEliminationPass(FPM);
+  LLVMAddInstructionCombiningPass(FPM);
+  LLVMInitializeFunctionPassManager(FPM);
 }
 
 LLVMValueRef JITImpl::getCurrentFunction()
