@@ -13,6 +13,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Object/ObjectFile.h"
 #include <iostream>
 
 using namespace llvm;
@@ -34,20 +35,35 @@ public:
   ~JitDisassembler() {
     LLVMDisasmDispose(DC);
   }
-  void NotifyFunctionEmitted(const Function &f, void *code, size_t size,
-                             const EmittedFunctionDetails &) override {
-    uint8_t *bytes = (uint8_t*)code;
-    uint8_t *end = bytes + size;
-    char buf[256];
-    while (bytes < end) {
-      size_t instSize = LLVMDisasmInstruction(DC, bytes, end - bytes,
-                                              (uint64_t)bytes, &buf[0], 256);
-      if (instSize == 0) {
-        std::cerr << "\t???\n";
-        return;
+  void NotifyObjectEmitted(const object::ObjectFile &Obj,
+                           const RuntimeDyld::LoadedObjectInfo &L) {
+    using namespace object;
+    auto &out = std::cerr;
+    for (const SectionRef &Section : Obj.sections()) {
+      if (!Section.isText() || Section.isVirtual())
+        continue;
+
+      uint64_t SectSize = Section.getSize();
+      if (!SectSize)
+        continue;
+
+      StringRef name;
+      Section.getName(name);
+      out << "Disassembly of section " << name.str() << ":\n";
+      uint64_t SectionAddr = L.getSectionLoadAddress(name);
+      uint8_t *bytes = reinterpret_cast<uint8_t*>(SectionAddr);
+      uint8_t *end = bytes + SectSize;
+      char buf[256];
+      while (bytes < end) {
+        size_t instSize = LLVMDisasmInstruction(DC, bytes, end - bytes,
+                                                (uint64_t)bytes, &buf[0], 256);
+        if (instSize == 0) {
+          std::cerr << "\t???\n";
+          return;
+        }
+        bytes += instSize;
+        std::cerr << buf << '\n';
       }
-      bytes += instSize;
-      std::cerr << buf << '\n';
     }
   }
 };
