@@ -206,6 +206,7 @@ static LLVMExecutionEngineRef
 getExecutionEngineForModule(LLVMModuleRef module) {
   LLVMMCJITCompilerOptions options;
   LLVMInitializeMCJITCompilerOptions(&options, sizeof(options));
+  options.OptLevel = 2;
   LLVMExecutionEngineRef executionEngine;
   char *outMessage;
   if (LLVMCreateMCJITCompilerForModule(&executionEngine, module, &options,
