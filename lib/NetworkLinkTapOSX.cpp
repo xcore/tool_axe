@@ -81,7 +81,8 @@ bool NetworkLinkTap::receiveFrame(uint8_t *data, unsigned &size)
   return true;
 }
 
-std::unique_ptr<NetworkLink> axe::createNetworkLinkTap(const std::string &ifname)
+std::unique_ptr<NetworkLink>
+axe::createNetworkLinkTap(const std::string &ifname)
 {
   return std::unique_ptr<NetworkLink>(new NetworkLinkTap(ifname));
 }
