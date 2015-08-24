@@ -214,34 +214,30 @@ add_library(axe
   ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
   )
 
-# add the executable that will do the generation
-get_target_property(INSTGEN_EXE instgen LOCATION)
-get_target_property(GENHEX_EXE genHex LOCATION)
-get_target_property(GENJITGLOBALMAP_EXE genJitGlobalMap LOCATION)
-
 # add the custom command that will run the generator
 add_custom_command(
  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
- COMMAND ${INSTGEN_EXE} > ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
+ COMMAND $<TARGET_FILE:instgen>
+         > ${CMAKE_CURRENT_BINARY_DIR}/InstructionGenOutput.inc
  DEPENDS instgen
  )
 
 # add the custom command that turns the schema into hex
 add_custom_command(
  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
- COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/ConfigSchema.rng
+ COMMAND $<TARGET_FILE:genHex> ${CMAKE_CURRENT_SOURCE_DIR}/ConfigSchema.rng
          ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema.inc
  DEPENDS genHex ConfigSchema.rng
  )
 add_custom_command(
  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
- COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/XNSchema.rng
+ COMMAND $<TARGET_FILE:genHex> ${CMAKE_CURRENT_SOURCE_DIR}/XNSchema.rng
          ${CMAKE_CURRENT_BINARY_DIR}/XNSchema.inc
  DEPENDS genHex XNSchema.rng
  )
 add_custom_command(
  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
- COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/XNTransform.xslt
+ COMMAND $<TARGET_FILE:genHex> ${CMAKE_CURRENT_SOURCE_DIR}/XNTransform.xslt
          ${CMAKE_CURRENT_BINARY_DIR}/XNTransform.inc
  DEPENDS genHex XNTransform.xslt
  )
@@ -324,14 +320,16 @@ if (AXE_ENABLE_JIT)
   # add the custom command that turns the LLVM bitcode into hex
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
-    COMMAND ${GENHEX_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+    COMMAND $<TARGET_FILE:genHex>
+            ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
             ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.inc
     DEPENDS genHex ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
     )
   # add the custom command that builds a list of external functions
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/JitGlobalMap.inc
-    COMMAND ${GENJITGLOBALMAP_EXE} ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
+    COMMAND $<TARGET_FILE:genJitGlobalMap>
+            ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
             > ${CMAKE_CURRENT_BINARY_DIR}/JitGlobalMap.inc
     DEPENDS genJitGlobalMap ${CMAKE_CURRENT_BINARY_DIR}/InstructionBitcode.bc
     )
