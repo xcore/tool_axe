@@ -339,9 +339,9 @@ createSDRAM(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorSDRAM()
+std::unique_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorSDRAM()
 {
-  std::auto_ptr<PeripheralDescriptor> p(
+  std::unique_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("sdram", &createSDRAM));
   p->addProperty(PropertyDescriptor::portProperty("a")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("ba")).setRequired(true);

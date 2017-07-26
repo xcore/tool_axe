@@ -11,7 +11,7 @@
 namespace axe {
 class PeripheralDescriptor;
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorPS2Keyboard();
+std::unique_ptr<PeripheralDescriptor> getPeripheralDescriptorPS2Keyboard();
 } // End namespace axe
 
 #endif // _PS2Keyboard_h_

@@ -11,7 +11,7 @@ using namespace axe;
 
 std::map<std::string,PeripheralDescriptor*> peripherals;
 
-void PeripheralRegistry::add(std::auto_ptr<PeripheralDescriptor> p)
+void PeripheralRegistry::add(std::unique_ptr<PeripheralDescriptor> p)
 {
   // TODO fix memory leak.
   std::string name = p->getName();

@@ -275,9 +275,9 @@ createPS2Keyboard(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorPS2Keyboard()
+std::unique_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorPS2Keyboard()
 {
-  std::auto_ptr<PeripheralDescriptor> p(
+  std::unique_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("ps2-keyboard", &createPS2Keyboard));
   p->addProperty(PropertyDescriptor::portProperty("clk")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("data")).setRequired(true);

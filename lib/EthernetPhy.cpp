@@ -505,7 +505,7 @@ EthernetPhySMI(RunnableQueue &scheduler, PortConnectionWrapper mdc,
 }
 
 class EthernetPhy : public Peripheral {
-  std::auto_ptr<NetworkLink> link;
+  std::unique_ptr<NetworkLink> link;
   EthernetPhyRx rx;
   EthernetPhyTx tx;
   EthernetPhySMI smi;
@@ -560,9 +560,9 @@ createEthernetPhy(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorEthernetPhy()
+std::unique_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorEthernetPhy()
 {
-  std::auto_ptr<PeripheralDescriptor> p(
+  std::unique_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("ethernet-phy", &createEthernetPhy));
   p->addProperty(PropertyDescriptor::portProperty("txd")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("tx_en")).setRequired(true);
