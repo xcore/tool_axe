@@ -46,7 +46,7 @@ private:
   std::vector<ElfSymbol> symbols;
 public:
   void addSymbol(const char *name, uint32_t value, unsigned char info);
-  std::auto_ptr<CoreSymbolInfo> getSymbolInfo();
+  std::unique_ptr<CoreSymbolInfo> getSymbolInfo();
 };
 
 class Core;
@@ -60,7 +60,7 @@ private:
 public:
   SymbolInfo() {}
   ~SymbolInfo();
-  void add(const Core *core, std::auto_ptr<CoreSymbolInfo> info);
+  void add(const Core *core, std::unique_ptr<CoreSymbolInfo> info);
   const ElfSymbol *getGlobalSymbol(const Core *core,
                                    const std::string &name) const;
   const ElfSymbol *getFunctionSymbol(const Core *core,
