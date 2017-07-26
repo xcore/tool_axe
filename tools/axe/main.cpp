@@ -152,7 +152,7 @@ createTracerFromOptions(const Options &options)
     } else {
       std::auto_ptr<DelegatingTracer> delegatingTracer(new DelegatingTracer);
       for (Tracer *subTracer : tracers) {
-        delegatingTracer->addDelegate(std::auto_ptr<Tracer>(subTracer));
+        delegatingTracer->addDelegate(std::unique_ptr<Tracer>(subTracer));
       }
       tracer.reset(delegatingTracer.release());
     }
