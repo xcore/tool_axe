@@ -43,7 +43,7 @@ void ProcessorNode::finalize()
   Node::finalize();
 }
 
-void ProcessorNode::addCore(std::auto_ptr<Core> c)
+void ProcessorNode::addCore(std::unique_ptr<Core> c)
 {
   c->setParent(this);
   cores.push_back(c.get());

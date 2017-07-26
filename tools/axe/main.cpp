@@ -132,7 +132,7 @@ static void readRom(const std::string &filename, std::vector<uint8_t> &rom)
   file.close();
 }
 
-static std::auto_ptr<Tracer>
+static std::unique_ptr<Tracer>
 createTracerFromOptions(const Options &options)
 {
   std::vector<Tracer *> tracers;
@@ -145,12 +145,12 @@ createTracerFromOptions(const Options &options)
   if (options.warnPacketOvertake) {
     tracers.push_back(new CheckPacketOvertakeTracer);
   }
-  std::auto_ptr<Tracer> tracer;
+  std::unique_ptr<Tracer> tracer;
   if (!tracers.empty()) {
     if (tracers.size() == 1) {
       tracer.reset(tracers.front());
     } else {
-      std::auto_ptr<DelegatingTracer> delegatingTracer(new DelegatingTracer);
+      std::unique_ptr<DelegatingTracer> delegatingTracer(new DelegatingTracer);
       for (Tracer *subTracer : tracers) {
         delegatingTracer->addDelegate(std::unique_ptr<Tracer>(subTracer));
       }
@@ -183,10 +183,10 @@ loop(const Options &options)
 {
   XE xe(options.file);
   XEReader xeReader(xe);
-  std::auto_ptr<Tracer> tracer = createTracerFromOptions(options);
-  std::auto_ptr<SystemState> statePtr = xeReader.readConfig(tracer);
+  std::unique_ptr<Tracer> tracer = createTracerFromOptions(options);
+  std::unique_ptr<SystemState> statePtr = xeReader.readConfig(std::move(tracer));
   if (!options.tracing)
-    statePtr->setExitTracer(std::auto_ptr<Tracer>(new LoggingTracer(false)));
+    statePtr->setExitTracer(std::unique_ptr<Tracer>(new LoggingTracer(false)));
   PortAliases portAliases;
   xeReader.readPortAliases(portAliases);
   SystemState &sys = *statePtr;
@@ -205,7 +205,7 @@ loop(const Options &options)
     entry.first->createInstance(sys, connectionManager, *entry.second);
   }
 
-  std::auto_ptr<WaveformTracer> waveformTracer;
+  std::unique_ptr<WaveformTracer> waveformTracer;
   if (!options.vcdFile.empty()) {
     waveformTracer.reset(new WaveformTracer(options.vcdFile));
     connectWaveformTracer(sys, *waveformTracer);

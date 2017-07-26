@@ -17,10 +17,10 @@
 using namespace axe;
 using namespace Register;
 
-SystemState::SystemState(std::auto_ptr<Tracer> t) :
+SystemState::SystemState(std::unique_ptr<Tracer> t) :
   currentRunnable(0),
   rom(0),
-  tracer(t)
+  tracer(std::move(t))
 {
   pendingEvent.set = false;
   if (tracer.get()) {
@@ -36,9 +36,9 @@ SystemState::~SystemState()
   delete[] rom;
 }
 
-void SystemState::setExitTracer(std::auto_ptr<Tracer> t)
+void SystemState::setExitTracer(std::unique_ptr<Tracer> t)
 {
-  exitTracer = t;
+  exitTracer = std::move(t);
   exitTracer->attach(*this);
 }
 
@@ -49,7 +49,7 @@ void SystemState::finalize()
   }
 }
 
-void SystemState::addNode(std::auto_ptr<Node> n)
+void SystemState::addNode(std::unique_ptr<Node> n)
 {
   n->setParent(this);
   nodes.push_back(n.get());

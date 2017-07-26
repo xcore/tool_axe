@@ -64,13 +64,13 @@ class SystemState {
   SymbolInfo symbolInfo;
 
   uint8_t *rom;
-  std::auto_ptr<DecodeCache> romDecodeCache;
+  std::unique_ptr<DecodeCache> romDecodeCache;
 
   JIT jit;
-  std::auto_ptr<Tracer> tracer;
-  std::auto_ptr<Tracer> exitTracer;
+  std::unique_ptr<Tracer> tracer;
+  std::unique_ptr<Tracer> exitTracer;
 #if AXE_ENABLE_SDL
-  std::auto_ptr<SDLEventPoller> SDLPoller;
+  std::unique_ptr<SDLEventPoller> SDLPoller;
 #endif
 
   void completeEvent(Thread &t, EventableResource &res, bool interrupt);
@@ -78,15 +78,15 @@ class SystemState {
 public:
   typedef std::vector<Node*>::iterator node_iterator;
   typedef std::vector<Node*>::const_iterator const_node_iterator;
-  SystemState(std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>());
+  SystemState(std::unique_ptr<Tracer> tracer = std::unique_ptr<Tracer>());
   SystemState(const SystemState &) = delete;
   ~SystemState();
 
-  void setExitTracer(std::auto_ptr<Tracer> exitTracer);
+  void setExitTracer(std::unique_ptr<Tracer> exitTracer);
 
   void finalize();
   RunnableQueue &getScheduler() { return scheduler; }
-  void addNode(std::auto_ptr<Node> n);
+  void addNode(std::unique_ptr<Node> n);
 
   SymbolInfo &getSymbolInfo() { return symbolInfo; }
   const SymbolInfo &getSymbolInfo() const { return symbolInfo; }

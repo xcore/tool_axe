@@ -48,7 +48,7 @@ static long readNumberAttribute(xmlNode *node, const char *name)
   return value;
 }
 
-static std::auto_ptr<Core>
+static std::unique_ptr<Core>
 createCoreFromConfig(xmlNode *config, bool tracing)
 {
   uint32_t ram_size = RAM_SIZE;
@@ -65,7 +65,7 @@ createCoreFromConfig(xmlNode *config, bool tracing)
     std::cerr << "Error: ram base is not a multiple of ram size\n";
     std::exit(1);
   }
-  std::auto_ptr<Core> core(new Core(ram_size, ram_base, tracing));
+  std::unique_ptr<Core> core(new Core(ram_size, ram_base, tracing));
   core->setCoreNumber(readNumberAttribute(config, "number"));
   if (xmlAttr *codeReference = findAttribute(config, "codeReference")) {
     core->setCodeReference((char*)codeReference->children->content);
@@ -73,7 +73,7 @@ createCoreFromConfig(xmlNode *config, bool tracing)
   return core;
 }
 
-static std::auto_ptr<Node>
+static std::unique_ptr<Node>
 createNodeFromConfig(xmlNode *config,
                      std::map<long,Node*> &nodeNumberMap, bool tracing)
 {
@@ -89,7 +89,7 @@ createNodeFromConfig(xmlNode *config,
       numXLinks = readNumberAttribute(switchNode, "sLinks");
     }
   }
-  std::auto_ptr<Node> node(new ProcessorNode(nodeType, numXLinks));
+  std::unique_ptr<Node> node(new ProcessorNode(nodeType, numXLinks));
   ProcessorNode *processorNode = static_cast<ProcessorNode*>(node.get());
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
@@ -102,10 +102,10 @@ createNodeFromConfig(xmlNode *config,
   return node;
 }
 
-static std::auto_ptr<Node>
+static std::unique_ptr<Node>
 createGlxNodeFromConfig(xmlNode *config, std::map<long,Node*> &nodeNumberMap)
 {
-  std::auto_ptr<Node> node(new PeripheralNode);
+  std::unique_ptr<Node> node(new PeripheralNode);
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
   return node;
@@ -136,10 +136,10 @@ lookupNodeChecked(const std::map<long,Node*> &nodeNumberMap, unsigned nodeID)
   return it->second;
 }
 
-static std::auto_ptr<SystemState>
+static std::unique_ptr<SystemState>
 createSystemFromConfig(const std::string &filename,
                        const XESector *configSector,
-                       std::auto_ptr<Tracer> tracer)
+                       std::unique_ptr<Tracer> tracer)
 {
   bool tracing = tracer.get() != nullptr;
   uint64_t length = configSector->getLength();
@@ -163,7 +163,7 @@ createSystemFromConfig(const std::string &filename,
   xmlNode *root = xmlDocGetRootElement(doc);
   xmlNode *system = findChild(root, "System");
   xmlNode *nodes = findChild(system, "Nodes");
-  std::auto_ptr<SystemState> systemState(new SystemState(tracer));
+  std::unique_ptr<SystemState> systemState(new SystemState(std::move(tracer)));
   std::map<long,Node*> nodeNumberMap;
   for (xmlNode *child = nodes->children; child; child = child->next) {
     if (child->type != XML_ELEMENT_NODE)
@@ -215,7 +215,7 @@ createSystemFromConfig(const std::string &filename,
   return systemState;
 }
 
-std::auto_ptr<SystemState> XEReader::readConfig(std::auto_ptr<Tracer> tracer)
+std::unique_ptr<SystemState> XEReader::readConfig(std::unique_ptr<Tracer> tracer)
 {
   // Load the file into memory.
   if (!xe) {
@@ -229,8 +229,8 @@ std::auto_ptr<SystemState> XEReader::readConfig(std::auto_ptr<Tracer> tracer)
     std::cerr << xe.getFileName() << "\"" << std::endl;
     std::exit(1);
   }
-  std::auto_ptr<SystemState> system =
-  createSystemFromConfig(xe.getFileName(), configSector, tracer);
+  std::unique_ptr<SystemState> system =
+  createSystemFromConfig(xe.getFileName(), configSector, std::move(tracer));
   return system;
 }
 
