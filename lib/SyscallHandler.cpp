@@ -15,7 +15,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include "ScopedArray.h"
 #include "Tracer.h"
 #include "Endianness.h"
 

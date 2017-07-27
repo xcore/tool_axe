@@ -155,7 +155,6 @@ add_library(axe
   Runnable.h
   RunnableQueue.h
   RunnableQueue.cpp
-  ScopedArray.h
   SDRAM.cpp
   SDRAM.h
   Signal.h

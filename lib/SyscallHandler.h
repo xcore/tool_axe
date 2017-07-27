@@ -6,10 +6,10 @@
 #ifndef _SyscallHandler_h_
 #define _SyscallHandler_h_
 
-#include "ScopedArray.h"
 #include <set>
 #include <string>
 #include <vector>
+#include <memory>
 #include <boost/function.hpp>
 
 namespace axe {
@@ -18,7 +18,7 @@ class Core;
 
 class SyscallHandler {
 private:
-  const scoped_array<int> fds;
+  const std::unique_ptr<int[]> fds;
   std::set<Core*> doneSyscallsSeen;
   unsigned doneSyscallsRequired;
   struct {

@@ -9,7 +9,6 @@
 #include "PeripheralNode.h"
 #include "ProcessorNode.h"
 #include "PortAliases.h"
-#include "ScopedArray.h"
 #include "SystemState.h"
 #include "XE.h"
 #include "XMLUtils.h"
@@ -17,6 +16,7 @@
 #include <map>
 #include <cstdlib>
 #include <cerrno>
+#include <memory>
 
 using namespace axe;
 
@@ -143,7 +143,7 @@ createSystemFromConfig(const std::string &filename,
 {
   bool tracing = tracer.get() != nullptr;
   uint64_t length = configSector->getLength();
-  const scoped_array<char> buf(new char[length + 1]);
+  const std::unique_ptr<char[]> buf(new char[length + 1]);
   if (!configSector->getData(buf.get())) {
     std::cerr << "Error reading config from \"" << filename << "\"" << std::endl;
     std::exit(1);
@@ -280,7 +280,7 @@ void XEReader::readPortAliases(PortAliases &aliases)
   if (!XNSector)
     return;
   uint64_t length = XNSector->getLength();
-  const scoped_array<char> buf(new char[length + 1]);
+  const std::unique_ptr<char[]> buf(new char[length + 1]);
   if (!XNSector->getData(buf.get())) {
     std::cerr << "Error reading XN from \"" << xe.getFileName() << "\"";
     std::cerr << std::endl;
