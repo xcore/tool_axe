@@ -66,7 +66,7 @@ private:
   SycallOutcome doOsCallClose(Thread &thread, int &retval);
   SycallOutcome doOsCallRead(Thread &thread, int &retval);
   SycallOutcome doOsCallWrite(Thread &thread, int &retval);
-  SycallOutcome doOsCallLSeek(Thread &thread, int &retval);
+  SycallOutcome doOsCallLseek(Thread &thread, int &retval);
   SycallOutcome doOsCallRename(Thread &thread, int &retval);
   SycallOutcome doOsCallTime(Thread &thread, int &retval);
   SycallOutcome doOsCallRemove(Thread &thread, int &retval);

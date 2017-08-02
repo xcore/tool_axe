@@ -373,7 +373,7 @@ SyscallHandler::SycallOutcome SyscallHandler::doOsCallWrite(Thread &thread, int 
 }
 
 
-SyscallHandler::SycallOutcome SyscallHandler::doOsCallLSeek(Thread &thread, int &retval)
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallLseek(Thread &thread, int &retval)
 {
   if (!isValidFd(thread.regs[R1])) {
     // Invalid fd
@@ -533,7 +533,7 @@ doSyscall(Thread &thread, int &retval)
   case OSCALL_WRITE:
     return doOsCallWrite(thread, retval); 
   case OSCALL_LSEEK:
-    return doOsCallLSeek(thread, retval);
+    return doOsCallLseek(thread, retval);
   case OSCALL_RENAME:
     return doOsCallRename(thread, retval);
   case OSCALL_TIME:
