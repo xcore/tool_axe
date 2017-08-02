@@ -37,7 +37,7 @@ private:
   boost::function<bool (Core &, void *, uint32_t, uint32_t)> loadImageCallback;
   boost::function<bool (const Thread &, uint32_t, uint32_t, std::string &)>
     describeExceptionCallback;
-  
+
 public:
   enum SycallOutcome {
     CONTINUE,
@@ -58,6 +58,23 @@ public:
   }
   SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);
+
+private:
+  SycallOutcome doOsCallExit(Thread &thread, int &retval);
+  SycallOutcome doOsCallDone(Thread &thread, int &retval);
+  SycallOutcome doOsCallOpen(Thread &thread, int &retval);
+  SycallOutcome doOsCallClose(Thread &thread, int &retval);
+  SycallOutcome doOsCallRead(Thread &thread, int &retval);
+  SycallOutcome doOsCallWrite(Thread &thread, int &retval);
+  SycallOutcome doOsCallLSeek(Thread &thread, int &retval);
+  SycallOutcome doOsCallRename(Thread &thread, int &retval);
+  SycallOutcome doOsCallTime(Thread &thread, int &retval);
+  SycallOutcome doOsCallRemove(Thread &thread, int &retval);
+  SycallOutcome doOsCallSystem(Thread &thread, int &retval);
+  SycallOutcome doOsCallArgv(Thread &thread, int &retval);
+  SycallOutcome doOsCallIsSimulation(Thread &thread, int &retval);
+  SycallOutcome doOsCallLoadImage(Thread &thread, int &retval);
+  
 };
   
 } // End axe namespace

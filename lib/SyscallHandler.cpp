@@ -267,230 +267,287 @@ do { \
   } \
 } while(0)
 
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallExit(Thread &thread, int &retval)
+{
+  TRACE("exit", thread.regs[R1]);
+  retval = thread.regs[R1];
+  return SyscallHandler::EXIT;
+}
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallDone(Thread &thread, int &retval)
+{
+  TRACE("done");
+  if (doneSyscallsSeen.insert(&thread.getParent()).second &&
+      --doneSyscallsRequired == 0) {
+    doneSyscallsSeen.clear();
+    retval = 0;
+    return SyscallHandler::EXIT;
+  }
+  return SyscallHandler::CONTINUE;
+}
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallOpen(Thread &thread, int &retval)
+{
+  uint32_t PathAddr = thread.regs[R1];
+  const char *path = getString(thread, PathAddr);
+  if (!path) {
+    // Invalid argument
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  int argFlag = thread.regs[R2];
+  int flags = convertOpenFlags(argFlag);
+#ifdef _WIN32
+  if (argFlag & XCORE_O_TMPFILE)
+    flags |= _O_TEMPORARY;
+#endif
+  int mode = convertOpenMode(thread.regs[R3]);
+  int fd = getNewFd();
+  if (fd == -1) {
+    // No free file descriptors
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  int hostfd = open(path, flags, mode);
+  if (hostfd == -1) {
+    // Call to open failed.
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+#ifndef _WIN32
+  if (argFlag & XCORE_O_TMPFILE)
+   (void) std::remove(path);  // A file is not really removed until it is closed.
+#endif
+  fds[fd] = hostfd;
+  thread.regs[R0] = fd;
+  return SyscallHandler::CONTINUE;
+}
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallClose(Thread &thread, int &retval)
+{
+  if (!isValidFd(thread.regs[R1])) {
+    // Invalid fd
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  int close_retval = close(fds[thread.regs[R1]]);
+  if (close_retval == 0) {
+    fds[thread.regs[R1]] = (uint32_t)-1;
+  }
+  thread.regs[R0] = close_retval;
+  return SyscallHandler::CONTINUE;
+}
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallRead(Thread &thread, int &retval)
+{
+  if (!isValidFd(thread.regs[R1])) {
+    // Invalid fd
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  void *buf = getRamBuffer(thread, thread.regs[R2], thread.regs[R3]);
+  if (!buf) {
+    // Invalid buffer
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  thread.regs[R0] = read(fds[thread.regs[R1]], buf, thread.regs[R3]);
+  return SyscallHandler::CONTINUE;
+}
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallWrite(Thread &thread, int &retval)
+{
+  if (!isValidFd(thread.regs[R1])) {
+    // Invalid fd
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  const void *buf = getBuffer(thread, thread.regs[R2], thread.regs[R3]);
+  if (!buf) {
+    // Invalid buffer
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  thread.regs[R0] = write(fds[thread.regs[R1]], buf, thread.regs[R3]);
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallLSeek(Thread &thread, int &retval)
+{
+  if (!isValidFd(thread.regs[R1])) {
+    // Invalid fd
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  int whence;
+  if (! convertLseekType(thread.regs[R3], whence)) {
+    // Invalid seek type
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  thread.regs[R0] = lseek(fds[thread.regs[R1]], (int32_t)thread.regs[R2], whence);
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallRename(Thread &thread, int &retval)
+{
+  uint32_t OldPathAddr = thread.regs[R1];
+  uint32_t NewPathAddr = thread.regs[R2];
+  const char *oldpath = getString(thread, OldPathAddr);
+  const char *newpath = getString(thread, NewPathAddr);
+  if (!oldpath || !newpath) {
+    // Invalid argument
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  thread.regs[R0] = std::rename(oldpath, newpath);
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallTime(Thread &thread, int &retval)
+{
+  uint32_t TimeAddr = thread.regs[R1];
+  uint32_t Time = (uint32_t)std::time(0);
+  Core &core = thread.getParent();
+  if (TimeAddr != 0) {
+    if (!core.isValidRamAddress(TimeAddr) || (TimeAddr & 3)) {
+      // Invalid address
+      thread.regs[R0] = (uint32_t)-1;
+      return SyscallHandler::CONTINUE;
+    }
+    core.storeWord(Time, TimeAddr);
+    core.invalidateWord(TimeAddr);
+  }
+  thread.regs[R0] = Time;
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallRemove(Thread &thread, int &retval)
+{
+  uint32_t FileAddr = thread.regs[R1];
+  const char *file = getString(thread, FileAddr);
+  if (file == 0) {
+    // Invalid argument
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  thread.regs[R0] = std::remove(file);
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallSystem(Thread &thread, int &retval)
+{
+  uint32_t CmdAddr = thread.regs[R1];
+  const char *command = 0;
+  if (CmdAddr != 0) {
+    command = getString(thread, CmdAddr);
+    if (command == 0) {
+      // Invalid argument
+      thread.regs[R0] = (uint32_t)-1;
+      return SyscallHandler::CONTINUE;
+    }
+  }
+  thread.regs[R0] = std::system(command);
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallArgv(Thread &thread, int &retval)
+{
+  const int clientBuf = thread.regs[R1];
+  const int bufBytes = thread.regs[R2];
+  if (cmdLine.minBufBytes > bufBytes) {
+    thread.regs[R0] = (uint32_t)-2;
+    return SyscallHandler::CONTINUE;
+  }
+  uint8_t * const hostBuf = (uint8_t*)getRamBuffer(thread, clientBuf,
+                                                   bufBytes);
+  if (!hostBuf) {
+    // Invalid buffer
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  int numArgs = cmdLine.arg.size();
+  int argvPos = 0;
+  int strPos = (4 * numArgs) + 4;  // address beyond argV[arg1,...,null]
+  for (int i = 0; i < numArgs; ++i) {
+    endianness::write32le(&hostBuf[argvPos], clientBuf+strPos);
+    argvPos += 4;
+    int argLen = cmdLine.arg[i].length();
+    memcpy(&hostBuf[strPos], cmdLine.arg[i].data(), argLen);
+    strPos += argLen;
+    hostBuf[strPos++] = 0;
+  }
+  assert(strPos == cmdLine.minBufBytes
+         && "cmdLine.minBufBytes incorrectly calculated\n");
+  endianness::write32le(&hostBuf[argvPos], 0);
+  thread.regs[R0] = numArgs;
+  retval = 0;
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallIsSimulation(Thread &thread, int &retval)
+{
+  thread.regs[R0] = 1;
+  return SyscallHandler::CONTINUE;
+}
+
+
+SyscallHandler::SycallOutcome SyscallHandler::doOsCallLoadImage(Thread &thread, int &retval)
+{
+  uint32_t dst = thread.regs[R1];
+  uint32_t src = thread.regs[R2];
+  uint32_t size = thread.regs[R3];
+  void *buf = getRamBuffer(thread, dst, size);
+  if (!buf ||
+      !loadImageCallback(thread.getParent(), buf, src, size)) {
+    thread.regs[R0] = (uint32_t)-1;
+    return SyscallHandler::CONTINUE;
+  }
+  thread.getParent().invalidateRange(dst, dst + size);
+  thread.regs[R0] = 0;
+  return SyscallHandler::CONTINUE;
+}
+
+
 SyscallHandler::SycallOutcome SyscallHandler::
 doSyscall(Thread &thread, int &retval)
 {
   switch (thread.regs[R0]) {
   case OSCALL_EXIT:
-    TRACE("exit", thread.regs[R1]);
-    retval = thread.regs[R1];
-    return SyscallHandler::EXIT;
+    return doOsCallExit(thread, retval);
   case OSCALL_DONE:
-    TRACE("done");
-    if (doneSyscallsSeen.insert(&thread.getParent()).second &&
-        --doneSyscallsRequired == 0) {
-      doneSyscallsSeen.clear();
-      retval = 0;
-      return SyscallHandler::EXIT;
-    }
-    return SyscallHandler::CONTINUE;
+    return doOsCallDone(thread, retval);
   case OSCALL_OPEN:
-    {
-      uint32_t PathAddr = thread.regs[R1];
-      const char *path = getString(thread, PathAddr);
-      if (!path) {
-        // Invalid argument
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      int argFlag = thread.regs[R2];
-      int flags = convertOpenFlags(argFlag);
-#ifdef _WIN32
-      if (argFlag & XCORE_O_TMPFILE)
-        flags |= _O_TEMPORARY;
-#endif
-      int mode = convertOpenMode(thread.regs[R3]);
-      int fd = getNewFd();
-      if (fd == -1) {
-        // No free file descriptors
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      int hostfd = open(path, flags, mode);
-      if (hostfd == -1) {
-        // Call to open failed.
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-#ifndef _WIN32
-      if (argFlag & XCORE_O_TMPFILE)
-       (void) std::remove(path);  // A file is not really removed until it is closed.
-#endif
-      fds[fd] = hostfd;
-      thread.regs[R0] = fd;
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallOpen(thread, retval); 
   case OSCALL_CLOSE:
-    {
-      if (!isValidFd(thread.regs[R1])) {
-        // Invalid fd
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      int retval = close(fds[thread.regs[R1]]);
-      if (retval == 0) {
-        fds[thread.regs[R1]] = (uint32_t)-1;
-      }
-      thread.regs[R0] = retval;
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallClose(thread, retval);
   case OSCALL_READ:
-    {
-      if (!isValidFd(thread.regs[R1])) {
-        // Invalid fd
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      void *buf = getRamBuffer(thread, thread.regs[R2], thread.regs[R3]);
-      if (!buf) {
-        // Invalid buffer
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      thread.regs[R0] = read(fds[thread.regs[R1]], buf, thread.regs[R3]);
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallRead(thread, retval);
   case OSCALL_WRITE:
-    {
-      if (!isValidFd(thread.regs[R1])) {
-        // Invalid fd
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      const void *buf = getBuffer(thread, thread.regs[R2], thread.regs[R3]);
-      if (!buf) {
-        // Invalid buffer
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      thread.regs[R0] = write(fds[thread.regs[R1]], buf, thread.regs[R3]);
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallWrite(thread, retval); 
   case OSCALL_LSEEK:
-    {
-      if (!isValidFd(thread.regs[R1])) {
-        // Invalid fd
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      int whence;
-      if (! convertLseekType(thread.regs[R3], whence)) {
-        // Invalid seek type
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      thread.regs[R0] = lseek(fds[thread.regs[R1]], (int32_t)thread.regs[R2], whence);
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallLSeek(thread, retval);
   case OSCALL_RENAME:
-    {
-      uint32_t OldPathAddr = thread.regs[R1];
-      uint32_t NewPathAddr = thread.regs[R2];
-      const char *oldpath = getString(thread, OldPathAddr);
-      const char *newpath = getString(thread, NewPathAddr);
-      if (!oldpath || !newpath) {
-        // Invalid argument
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      thread.regs[R0] = std::rename(oldpath, newpath);
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallRename(thread, retval);
   case OSCALL_TIME:
-    {
-      uint32_t TimeAddr = thread.regs[R1];
-      uint32_t Time = (uint32_t)std::time(0);
-      Core &core = thread.getParent();
-      if (TimeAddr != 0) {
-        if (!core.isValidRamAddress(TimeAddr) || (TimeAddr & 3)) {
-          // Invalid address
-          thread.regs[R0] = (uint32_t)-1;
-          return SyscallHandler::CONTINUE;
-        }
-        core.storeWord(Time, TimeAddr);
-        core.invalidateWord(TimeAddr);
-      }
-      thread.regs[R0] = Time;
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallTime(thread, retval);
   case OSCALL_REMOVE:
-    {
-      uint32_t FileAddr = thread.regs[R1];
-      const char *file = getString(thread, FileAddr);
-      if (file == 0) {
-        // Invalid argument
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      thread.regs[R0] = std::remove(file);
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallRemove(thread, retval);
   case OSCALL_SYSTEM:
-    {
-      uint32_t CmdAddr = thread.regs[R1];
-      const char *command = 0;
-      if (CmdAddr != 0) {
-        command = getString(thread, CmdAddr);
-        if (command == 0) {
-          // Invalid argument
-          thread.regs[R0] = (uint32_t)-1;
-          return SyscallHandler::CONTINUE;
-        }
-      }
-      thread.regs[R0] = std::system(command);
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallSystem(thread, retval);
   case OSCALL_ARGV:
-    {
-      const int clientBuf = thread.regs[R1];
-      const int bufBytes = thread.regs[R2];
-      if (cmdLine.minBufBytes > bufBytes) {
-        thread.regs[R0] = (uint32_t)-2;
-        return SyscallHandler::CONTINUE;
-      }
-      uint8_t * const hostBuf = (uint8_t*)getRamBuffer(thread, clientBuf,
-                                                       bufBytes);
-      if (!hostBuf) {
-        // Invalid buffer
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      int numArgs = cmdLine.arg.size();
-      int argvPos = 0;
-      int strPos = (4 * numArgs) + 4;  // address beyond argV[arg1,...,null]
-      for (int i = 0; i < numArgs; ++i) {
-        endianness::write32le(&hostBuf[argvPos], clientBuf+strPos);
-        argvPos += 4;
-        int argLen = cmdLine.arg[i].length();
-        memcpy(&hostBuf[strPos], cmdLine.arg[i].data(), argLen);
-        strPos += argLen;
-        hostBuf[strPos++] = 0;
-      }
-      assert(strPos == cmdLine.minBufBytes
-             && "cmdLine.minBufBytes incorrectly calculated\n");
-      endianness::write32le(&hostBuf[argvPos], 0);
-      thread.regs[R0] = numArgs;
-      retval = 0;
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallArgv(thread, retval);
   case OSCALL_IS_SIMULATION:
-    thread.regs[R0] = 1;
-    return SyscallHandler::CONTINUE;
+    return doOsCallIsSimulation(thread, retval);
   case OSCALL_LOAD_IMAGE:
-    {
-      uint32_t dst = thread.regs[R1];
-      uint32_t src = thread.regs[R2];
-      uint32_t size = thread.regs[R3];
-      void *buf = getRamBuffer(thread, dst, size);
-      if (!buf ||
-          !loadImageCallback(thread.getParent(), buf, src, size)) {
-        thread.regs[R0] = (uint32_t)-1;
-        return SyscallHandler::CONTINUE;
-      }
-      thread.getParent().invalidateRange(dst, dst + size);
-      thread.regs[R0] = 0;
-      return SyscallHandler::CONTINUE;
-    }
+    return doOsCallLoadImage(thread, retval);
   default:
     std::cerr << "Error: unknown system call number: " << thread.regs[R0] << "\n";
     retval = 1;
