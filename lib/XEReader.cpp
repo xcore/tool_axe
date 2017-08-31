@@ -136,45 +136,30 @@ lookupNodeChecked(const std::map<long,Node*> &nodeNumberMap, unsigned nodeID)
   return it->second;
 }
 
-static std::unique_ptr<SystemState>
-createSystemFromConfig(const std::string &filename,
-                       const XESector *configSector,
-                       std::unique_ptr<Tracer> tracer)
+static void
+createNodes (xmlNode *nodes,
+             SystemState *systemState,
+             std::map<long,Node*> &nodeNumberMap,
+             bool tracing)
 {
-  bool tracing = tracer.get() != nullptr;
-  uint64_t length = configSector->getLength();
-  const std::unique_ptr<char[]> buf(new char[length + 1]);
-  if (!configSector->getData(buf.get())) {
-    std::cerr << "Error reading config from \"" << filename << "\"" << std::endl;
-    std::exit(1);
-  }
-  if (length < 8) {
-    std::cerr << "Error unexpected config config sector length" << std::endl;
-    std::exit(1);
-  }
-  length -= 8;
-  buf[length] = '\0';
-  
-  xmlDoc *doc = xmlReadDoc(BAD_CAST buf.get(), "config.xml", NULL, 0);
-  
-  if (!checkDocAgainstSchema(doc, configSchema, sizeof(configSchema)))
-    std::exit(1);
-  
-  xmlNode *root = xmlDocGetRootElement(doc);
-  xmlNode *system = findChild(root, "System");
-  xmlNode *nodes = findChild(system, "Nodes");
-  std::unique_ptr<SystemState> systemState(new SystemState(std::move(tracer)));
-  std::map<long,Node*> nodeNumberMap;
   for (xmlNode *child = nodes->children; child; child = child->next) {
-    if (child->type != XML_ELEMENT_NODE)
+    if (child->type != XML_ELEMENT_NODE) {
       continue;
+    }
     if (std::strcmp("Node", (char*)child->name) == 0) {
       systemState->addNode(createNodeFromConfig(child, nodeNumberMap, tracing));
     } else if (std::strcmp("GlxNode", (char*)child->name) == 0) {
       systemState->addNode(createGlxNodeFromConfig(child, nodeNumberMap));
     }
   }
+}
+
+static void 
+makeConnections (xmlNode *system, 
+                 std::map<long,Node*> &nodeNumberMap)
+{
   xmlNode *connections = findChild(system, "Connections");
+
   for (xmlNode *child = connections->children; child; child = child->next) {
     if (child->type != XML_ELEMENT_NODE ||
         strcmp("SLink", (char*)child->name) != 0)
@@ -201,6 +186,41 @@ createSystemFromConfig(const std::string &filename,
     node1->connectXLink(link1, node2, link2);
     node2->connectXLink(link2, node1, link1);
   }
+}
+
+static std::unique_ptr<SystemState>
+createSystemFromConfig(const std::string &filename,
+                       const XESector *configSector,
+                       std::unique_ptr<Tracer> tracer)
+{
+  bool tracing = tracer.get() != nullptr;
+  uint64_t length = configSector->getLength();
+  const std::unique_ptr<char[]> buf(new char[length + 1]);
+  if (!configSector->getData(buf.get())) {
+    std::cerr << "Error reading config from \"" << filename << "\"" << std::endl;
+    std::exit(1);
+  }
+  if (length < 8) {
+    std::cerr << "Error unexpected config config sector length" << std::endl;
+    std::exit(1);
+  }
+  length -= 8;
+  buf[length] = '\0';
+  
+  xmlDoc *doc = xmlReadDoc(BAD_CAST buf.get(), "config.xml", NULL, 0);
+  
+  if (!checkDocAgainstSchema(doc, configSchema, sizeof(configSchema))) {
+    std::exit(1);
+  }
+  
+  xmlNode *root = xmlDocGetRootElement(doc);
+  xmlNode *system = findChild(root, "System");
+  xmlNode *nodes = findChild(system, "Nodes");
+  std::unique_ptr<SystemState> systemState(new SystemState(std::move(tracer)));
+  std::map<long,Node*> nodeNumberMap;
+  createNodes(nodes, systemState.get(), nodeNumberMap, tracing);
+  makeConnections(system, nodeNumberMap);
+
   xmlNode *jtag = findChild(system, "JtagChain");
   unsigned jtagIndex = 0;
   for (xmlNode *child = jtag->children; child; child = child->next) {
