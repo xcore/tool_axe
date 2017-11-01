@@ -546,9 +546,16 @@ void Thread::getNextPC() {
 
 void Thread::run(ticks_t time)
 {
+  auto i = 0;
   while (1) {
-    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION)
+    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION) {
       return;
+    }
+    i++;
+
+    if (i > 1000) {
+      return;
+    }
   }
 }
 

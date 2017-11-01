@@ -6,6 +6,7 @@
 #ifndef _Node_h_
 #define _Node_h_
 
+#include <iostream>
 #include <stdint.h>
 #include <vector>
 #include <memory>
@@ -33,13 +34,19 @@ public:
   XLink();
   Node *getDestNode() { return destNode; }
   const XLink *getDestXLink() const;
-  void setEnabled(bool value) { enabled = value; }
+  void setEnabled(bool value) {
+    // std::cout << "Link enabled set to " << value << std::endl;
+    enabled = value;
+  }
   bool isEnabled() const { return enabled; }
   void setFiveWire(bool value) { fiveWire = value; }
   bool isFiveWire() const { return fiveWire; }
   void setNetwork(uint8_t value) { network = value; }
   uint8_t getNetwork() const { return network; }
-  void setDirection(uint8_t value) { direction = value; }
+  void setDirection(uint8_t value) {
+    // std::cout << "Link end direction set to 0x" << std::hex << value << std::endl;
+    direction = value;
+  }
   uint8_t getDirection() const { return direction; }
   void setInterTokenDelay(uint16_t value) { interTokenDelay = value; }
   uint16_t getInterTokenDelay() const { return interTokenDelay; }
@@ -52,7 +59,8 @@ class Node {
 public:
   enum Type {
     XS1_L,
-    XS1_G
+    XS1_G,
+    XS2_A
   };
   Type type;
   std::vector<XLink> xLinks;

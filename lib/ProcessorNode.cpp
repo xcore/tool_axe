@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
+#include <iostream>
 #include "ProcessorNode.h"
 #include "Core.h"
 
@@ -11,6 +12,7 @@ using namespace axe;
 ProcessorNode::ProcessorNode(Type t, unsigned numXLinks) :
   Node(t, numXLinks)
 {
+  // std::cout << "Creating ProcessorNode\n";
 }
 
 ProcessorNode::~ProcessorNode()
@@ -69,9 +71,12 @@ void ProcessorNode::computeCoreNumberBits()
 
 uint32_t ProcessorNode::getCoreID(unsigned coreNum) const
 {
-  unsigned coreBits = getNonNodeNumberBits();
+  //unsigned coreBits = getNonNodeNumberBits();
   assert(coreNum <= makeMask(getNonNodeNumberBits()));
-  return (getNodeID() << coreBits) | coreNum;
+  //auto id = (getNodeID() << coreBits) | coreNum;
+  auto id = getNodeID() | coreNum;
+  std::cout << "Returning processor node 0x" << std::hex << id << std::endl;
+  return id;
 }
 
 bool ProcessorNode::getTypeFromJtagID(unsigned jtagID, Type &type)
@@ -85,12 +90,15 @@ bool ProcessorNode::getTypeFromJtagID(unsigned jtagID, Type &type)
   case 0x2633:
     type = XS1_L;
     return true;
+  case 0x5633:
+    type = XS2_A;
+    return true;
   }
 }
 
 ChanEndpoint *ProcessorNode::getLocalChanendDest(ResourceID ID)
 {
-  assert(hasMatchingNodeID(ID));
+  //assert(hasMatchingNodeID(ID));
   unsigned destCore = ID.node() & makeMask(getNonNodeNumberBits());
   if (destCore >= cores.size())
     return 0;

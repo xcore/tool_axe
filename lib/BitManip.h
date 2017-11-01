@@ -69,6 +69,7 @@ inline uint32_t makeMask(uint32_t x)
   if (x > 31) {
     return 0xFFFFFFFFU;
   }
+  //return 0xffff ^ ((1 << (16 - x)) - 1);
   return (1 << x) - 1;
 }
 

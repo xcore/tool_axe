@@ -3,12 +3,14 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
+#include <iostream>
 #include "PeripheralNode.h"
 
 using namespace axe;
 
 PeripheralNode::PeripheralNode() : Node(Node::XS1_L, 1)
 {
+  // std::cout << "Creating PeripheralNode\n";
   // Set the number of node bits to 0 so the switch accepts all messages.
   setNodeNumberBits(0);
 }

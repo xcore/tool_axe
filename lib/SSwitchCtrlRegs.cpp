@@ -208,6 +208,18 @@ bool SSwitchCtrlRegs::read(uint16_t num, uint32_t &result)
   return false;
 }
 
+void writeNodeId(Node *node, uint32_t value)
+{
+  //node->setNodeID(value & makeMask(node->getNodeNumberBits()));
+  std::cout << "Writing node id from " << std::hex << value << std::endl;
+  auto n = node->getNonNodeNumberBits();
+  std::cout << "Shifing value by " << n << " bits" << std::endl;
+  value = value >> n;
+  value = value << n;
+  std::cout << "Now setting nodeId to " << std::hex << value << std::endl;
+  node->setNodeID(value);
+}
+
 bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
 {
   using namespace SSwitchReg;
@@ -230,7 +242,7 @@ bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
     writeDirectionReg(node, (num - DIMENSION_DIRECTION_0) * 8, value);
     return true;
   case NODE_ID:
-    node->setNodeID(value & makeMask(node->getNodeNumberBits()));
+    writeNodeId(node, value);
     return true;
   case DEVICE_ID3:
     scratchReg = value;

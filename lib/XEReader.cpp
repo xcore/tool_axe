@@ -108,6 +108,7 @@ createGlxNodeFromConfig(xmlNode *config, std::map<long,Node*> &nodeNumberMap)
   std::unique_ptr<Node> node(new PeripheralNode);
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));
+  node->setNodeID(nodeID);
   return node;
 }
 
@@ -183,6 +184,8 @@ makeConnections (xmlNode *system,
       std::cerr << "Invalid sLink number " << link2 << std::endl;
       std::exit(1);
     }
+    // std::cout << "Connecting node " << node1->nodeID << " and " 
+    //           << node2->nodeID << std::endl;
     node1->connectXLink(link1, node2, link2);
     node2->connectXLink(link2, node1, link1);
   }

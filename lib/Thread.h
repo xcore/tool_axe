@@ -266,7 +266,7 @@ public:
     DecodeCache::executionFrequency_t *executionFrequency =
     decodeCache.executionFrequency;
     if (++executionFrequency[shiftedAddress] > threshold) {
-      return true;
+      return false;
     }
     return false;
   }

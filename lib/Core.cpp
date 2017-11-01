@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
+#include <iostream>
 #include "Core.h"
 #include "Array.h"
 #include "SystemState.h"
@@ -44,6 +45,7 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   romBase(0),
   romSize(0)
 {
+  // std::cout << "Creating core\n";
   memoryOffset = memory - RamBase;
   invalidationInfoOffset =
     ramDecodeCache.getState().getInvalidationInfo() - (RamBase / 2);
@@ -417,6 +419,7 @@ void Core::finalize()
 void Core::updateIDs()
 {
   unsigned coreID = getCoreID();
+  std::cout << "Updated core id is 0x" << std::hex << coreID << std::endl;
   for (unsigned i = 0; i < NUM_CHANENDS; i++) {
     resource[RES_TYPE_CHANEND][i]->setNode(coreID);
   }    
@@ -424,7 +427,9 @@ void Core::updateIDs()
 
 uint32_t Core::getCoreID() const
 {
-  return getParent()->getCoreID(coreNumber);
+  auto coreId = getParent()->getCoreID(coreNumber); 
+  std::cout << "Returning core id 0x" << std::hex << coreId << std::endl;
+  return coreId;
 }
 
 std::string Core::getCoreName() const
