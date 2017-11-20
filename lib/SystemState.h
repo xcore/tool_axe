@@ -163,7 +163,7 @@ public:
   }
 
   void setRom(const uint8_t *data, uint32_t romSize,
-              uint32_t romBase = 0xffffc000);
+              uint32_t romBase = 0xfff00000);
   const DecodeCache::State &getRomDecodeCache() const {
     return romDecodeCache->getState();
   }

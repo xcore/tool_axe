@@ -543,6 +543,7 @@ protected:
   virtual void emitLoadByte(const std::string &args) { emitLoad(args, BYTE); }
   virtual void emitWritePc(const std::string &args) = 0;
   virtual void emitWritePcUnchecked(const std::string &args) = 0;
+  virtual void emitIncrementPcUnchecked(const std::string &args) = 0;
 };
 
 const char *CodeEmitter::getLoadStoreTypeName(LoadStoreType type)
@@ -657,6 +658,12 @@ void CodeEmitter::emitNested(const std::string &code)
         std::string content(&s[i], close);
         emitWritePcUnchecked(content);
         i = (close - s);
+      } else if (std::strncmp(&s[i], "increment_pc_unchecked(", 23) == 0) {
+        i += 23;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitIncrementPcUnchecked(content);
+        i = (close - s);
       } else {
         std::cerr << "error: stray % in code string\n";
         std::exit(1);
@@ -695,6 +702,7 @@ protected:
   virtual void emitLoad(const std::string &args, LoadStoreType type);
   virtual void emitWritePc(const std::string &args);
   virtual void emitWritePcUnchecked(const std::string &args);
+  virtual void emitIncrementPcUnchecked(const std::string &args);
 private:
   bool shouldEmitMemoryChecks() {
     return !jit || !inst->getEnableMemCheckOpt();
@@ -730,9 +738,12 @@ void FunctionCodeEmitter::emitRegWriteBack()
           std::cout << "TRACE_REG_WRITE((Register::Reg)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
-        std::cout << "THREAD.regs[" << getOperandName(*inst, i);
-        std::cout << "] = ";
-        std::cout << "op" << i << ";\n";
+        // std::cout << "THREAD.regs[" << getOperandName(*inst, i);
+        // std::cout << "] = ";
+        // std::cout << "op" << i << ";\n";
+        std::cout << "THREAD.writeRegister(" << getOperandName(*inst, i);
+        std::cout << ", ";
+        std::cout << "op" << i << ");\n";
       }
       break;
     }
@@ -1022,6 +1033,13 @@ void FunctionCodeEmitter::emitWritePcUnchecked(const std::string &args)
   std::cout << ";\n";
 }
 
+void FunctionCodeEmitter::emitIncrementPcUnchecked(const std::string &args)
+{
+  std::cout << "nextPc += (";
+  emitNested(args);
+  std::cout << ") * (THREAD.dualIssue ? 2 : 1);\n";
+}
+
 class CodePropertyExtractor : public CodeEmitter {
   Instruction *inst;
 protected:
@@ -1058,6 +1076,10 @@ protected:
     emitNested(args);
   }
   virtual void emitWritePcUnchecked(const std::string &args) {
+    inst->setWritesPc();
+    emitNested(args);
+  }
+  virtual void emitIncrementPcUnchecked(const std::string &args) {
     inst->setWritesPc();
     emitNested(args);
   }
@@ -1956,44 +1978,44 @@ void add()
     .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDC", "ldc %0, %1", "%0 = %1;");
-  fru6_in("BRFT", "bt %0, %1",
+  fru6_in("BRFT", "brft %0, %1",
           "if (%0) {\n"
-          "  %write_pc_unchecked(%1);\n"
+          "  %increment_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRFT_illegal", "bt %0, %1",
+  fru6_in("BRFT_illegal", "brft %0, %1",
           "if (%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRBT", "bt %0, -%1",
+  fru6_in("BRBT", "brbt %0, -%1",
           "if (%0) {\n"
+          "  %increment_pc_unchecked(%1);\n"
+          "  %yield"
+          "}")
+    .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
+  fru6_in("BRBT_illegal", "brbt %0, -%1",
+          "if (%0) {\n"
+          "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
+          "}")
+    .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
+  fru6_in("BRFF", "brff %0, %1",
+          "if (!%0) {\n"
+          "  %write_pc_unchecked(%1);\n"
+          "}")
+    .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
+  fru6_in("BRFF_illegal", "brff %0, %1",
+          "if (!%0) {\n"
+          "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
+          "}")
+    .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
+  fru6_in("BRBF", "brbf %0, -%1",
+          "if (!%0) {\n"
           "  %write_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRBT_illegal", "bt %0, -%1",
-          "if (%0) {\n"
-          "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
-          "}")
-    .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRFF", "bt %0, %1",
-          "if (!%0) {\n"
-          "  %write_pc_unchecked(%1);\n"
-          "}")
-    .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRFF_illegal", "bt %0, %1",
-          "if (!%0) {\n"
-          "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
-          "}")
-    .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRBF", "bt %0, -%1",
-          "if (!%0) {\n"
-          "  %write_pc_unchecked(%1);\n"
-          "  %yield"
-          "}")
-    .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRBF_illegal", "bt %0, -%1",
+  fru6_in("BRBF_illegal", "brbf %0, -%1",
           "if (!%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
@@ -2014,7 +2036,19 @@ void add()
       "  uint32_t Addr = %1;\n"
       "  %store_word(%2, Addr)"
       "  %1 = %1 - %0;\n"
-      "}\n")
+      "}\n"
+      "THREAD.dualIssue = false;\n")
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(LR, in)
+    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
+    .setEnableMemCheckOpt();
+  fu6("DUALENTSP", "dualentsp %0",
+      "if (%0 > 0) {\n"
+      "  uint32_t Addr = %1;\n"
+      "  %store_word(%2, Addr)"
+      "  %1 = %1 - %0;\n"
+      "}\n"
+      "THREAD.dualIssue = true;\n")
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
@@ -2192,7 +2226,7 @@ void add()
          "}\n")
     .setYieldBefore();
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
-  fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
+  f2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r_in("TINITLR", "init t[%1]:lr, %0",
           "ResourceID resID(%1);\n"
@@ -2270,7 +2304,7 @@ void add()
          "}\n")
     .setYieldBefore()
     .setCanEvent();
-  f2r_in("TINITPC", "init t[%1]:pc, %0",
+  fl2r_in("TINITPC", "init t[%1]:pc, %0",
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
@@ -2672,6 +2706,7 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setYieldBefore();
+  f0r("NOP", "nop", "");
   f0r("GETID", "get %0, id", "%0 = THREAD.getNum();")
     .addImplicitOp(R11, out);
   f0r("GETET", "get %0, %1", "%0 = %1;")

@@ -21,6 +21,8 @@
 #include <iostream>
 #include <cstdlib>
 #include "Compiler.h"
+#include "LoggingTracer.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace axe;
 using namespace Register;
@@ -28,7 +30,8 @@ using namespace Register;
 Thread::Thread() :
   Resource(RES_TYPE_THREAD),
   parent(0),
-  scheduler(0)
+  scheduler(0),
+  dualIssue(false)
 {
   time = 0;
   pc = 0;
@@ -41,6 +44,16 @@ Thread::Thread() :
   eeble() = false;
   ieble() = false;
   setInUse(false);
+}
+
+void Thread::writeRegister (int index, uint32_t value)
+{
+  if (!dualIssue) {
+    regs[index] = value;
+  } else {
+    auto evt = std::make_pair(index, value);
+    pendingRegWrites.push_back(evt);
+  }
 }
 
 void Thread::setParent(Core &p)
@@ -70,12 +83,12 @@ void Thread::runJIT(uint32_t pc)
 
 void Thread::dump() const
 {
-  std::cout << std::hex;
+  //std::cout << std::hex;
   for (unsigned i = 0; i < NUM_REGISTERS; i++) {
-    std::cout << getRegisterName(i) << ": 0x" << regs[i] << "\n";
+    //std::cout << getRegisterName(i) << ": 0x" << regs[i] << "\n";
   }
-  std::cout << "pc: 0x" << getRealPc() << "\n";
-  std::cout << std::dec;
+  //std::cout << "pc: 0x" << getRealPc() << "\n";
+  //std::cout << std::dec;
 }
 
 void Thread::schedule()
@@ -212,8 +225,8 @@ enum {
 };
 
 static void internalError(const Thread &thread, const char *file, int line) {
-  std::cout << "Internal error in " << file << ":" << line << "\n"
-  << "Register state:\n";
+  //std::cout << "Internal error in " << file << ":" << line << "\n"
+  //<< "Register state:\n";
   thread.dump();
   std::abort();
 }
@@ -548,10 +561,20 @@ void Thread::run(ticks_t time)
 {
   auto i = 0;
   while (1) {
+    auto cpc = pc;
+
+
     if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION) {
       return;
     }
     i++;
+
+    if (dualIssue && pc % 2 == 0) {
+      for (auto e : pendingRegWrites) {
+        regs[e.first] = e.second;
+      }
+      pendingRegWrites.clear();
+    }
 
     if (i > 1000) {
       return;

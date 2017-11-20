@@ -9,6 +9,7 @@
 
 #include "Resource.h"
 #include <cassert>
+#include <iostream>
 
 namespace axe {
 
@@ -46,6 +47,7 @@ public:
   
   void addChild(Thread &thread)
   {
+    std::cout << "Adding child to Syncroniser\n";
     assert(NumThreads + 1 <= NUM_THREADS && "Too many threads");
     threads[NumThreads++] = &thread;
     NumPaused++;

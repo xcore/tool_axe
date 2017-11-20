@@ -6,6 +6,10 @@
 #include "SSwitchCtrlRegs.h"
 #include "ProcessorNode.h"
 #include "BitManip.h"
+#include "SystemState.h"
+#include "LoggingTracer.h"
+#include "llvm/Support/raw_ostream.h"
+#include <iostream>
 #include <algorithm>
 
 using namespace axe;
@@ -36,6 +40,9 @@ SSwitchCtrlRegs::SSwitchCtrlRegs(Node *n) :
   node(n),
   scratchReg(0)
 {
+  std::cout << "Creating new SSwitchCtrlRegs\n";
+  // auto *tracer = (LoggingTracer*)node->getParent()->getTracer();
+  // tracer->out << "Creating new SSwitchCtrlRegs" << "\n";
 }
 
 void SSwitchCtrlRegs::initReg(unsigned num, uint8_t flags)
@@ -51,6 +58,8 @@ void SSwitchCtrlRegs::initRegisters()
                                 (unsigned)PLINK_0 - SLINK_0);
   unsigned numRegs = XSTATIC_0 + node->getNumXLinks();
   regFlags.resize(numRegs);
+  // auto *tracer = (LoggingTracer*)node->getParent()->getTracer();
+  // tracer->out << "Initialising regFlags to size " << regFlags.size() << "\n";
   
   initReg(NODE_ID, REG_RW);
   if (node->getType() == Node::XS1_G) {
@@ -67,6 +76,8 @@ void SSwitchCtrlRegs::initRegisters()
     initReg(XLINK_0 + i, REG_RW);
     //initReg(XSTATIC_0 + i, REG_RW);
   }
+
+  initReg(CLK_DIVIDER, REG_RW);
 }
 
 static inline void
@@ -211,20 +222,23 @@ bool SSwitchCtrlRegs::read(uint16_t num, uint32_t &result)
 void writeNodeId(Node *node, uint32_t value)
 {
   //node->setNodeID(value & makeMask(node->getNodeNumberBits()));
-  std::cout << "Writing node id from " << std::hex << value << std::endl;
+  //std::cout << "Writing node id from " << std::hex << value << std::endl;
   auto n = node->getNonNodeNumberBits();
-  std::cout << "Shifing value by " << n << " bits" << std::endl;
+  //std::cout << "Shifing value by " << n << " bits" << std::endl;
   value = value >> n;
   value = value << n;
-  std::cout << "Now setting nodeId to " << std::hex << value << std::endl;
+  //std::cout << "Now setting nodeId to " << std::hex << value << std::endl;
   node->setNodeID(value);
 }
 
 bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
 {
   using namespace SSwitchReg;
-  if (num > regFlags.size())
+  if (num > regFlags.size()) {
+    // auto *tracer = (LoggingTracer*)node->getParent()->getTracer();
+    // tracer->out << "regFlags.size() is " << regFlags.size() << "\n";
     return false;
+  }
   if ((regFlags[num] & REG_WRITE) == 0)
     return false;
   if (num >= SLINK_0 && num < PLINK_0) {
@@ -246,6 +260,9 @@ bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
     return true;
   case DEVICE_ID3:
     scratchReg = value;
+    return true;
+  case CLK_DIVIDER:
+    clkDividerReg = value;
     return true;
   }
   assert(0 && "Unexpected register");

@@ -13,6 +13,8 @@
 
 namespace axe {
 
+class LoggingTracer;
+
 class Chanend : public EventableResource, public ChanEndpoint {
 private:
   // The destination resource ID.
@@ -78,6 +80,8 @@ private:
 
 public:
   Chanend() : EventableResource(RES_TYPE_CHANEND) {}
+
+  LoggingTracer* getTracer();
 
   bool alloc(Thread &t) override
   {

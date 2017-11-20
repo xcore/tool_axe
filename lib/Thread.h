@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <bitset>
+#include <list>
 #include "Runnable.h"
 #include "RunnableQueue.h"
 #include "Resource.h"
@@ -86,7 +87,10 @@ class Thread : public Runnable, public Resource {
   RunnableQueue *scheduler;
   /// Cached decode information.
   DecodeCache::State decodeCache;
+
+  std::list<std::pair<int, uint32_t>> pendingRegWrites;
 public:
+  bool dualIssue;
   enum SRBit {
     EEBLE = 0,
     IEBLE = 1,
@@ -96,9 +100,12 @@ public:
     // TODO When is this set?
     SINK = 5,
     WAITING = 6,
-    FAST = 7
+    FAST = 7,
+    DI = 8,
+    KEDI = 9,
+    HIPRI = 10,
   };
-  typedef std::bitset<8> sr_t;
+  typedef std::bitset<11> sr_t;
   uint32_t regs[Register::NUM_REGISTERS];
   /// The program counter. Note that the pc will not be valid if the thread is
   /// executing since it is cached in the dispatch loop.
@@ -114,6 +121,8 @@ public:
   Resource *pausedOn;
 
   Thread();
+
+  void writeRegister (int index, uint32_t value);
 
   bool hasTimeSliceExpired() const {
     if (scheduler->empty())
@@ -302,6 +311,11 @@ public:
     if (!enabled[EEBLE] && !enabled[IEBLE])
       return false;
     return setSRSlowPath(enabled);
+  }
+
+  void setStatusDualIssue(bool value)
+  {
+    sr[DI] = value;
   }
 
   void clre()

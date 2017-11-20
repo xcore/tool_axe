@@ -48,7 +48,7 @@ Node::Node(Type t, unsigned numXLinks) :
   sswitch(this),
   nodeNumberBits(16)
 {
-  // std::cout << "Creating node\n";
+  std::cout << "Creating node\n";
   xLinks.resize(numXLinks);
 }
 
@@ -102,6 +102,7 @@ void Node::setNodeID(unsigned value)
 
 void Node::finalize()
 {
+  std::cout << "Finalising Node\n";
   sswitch.initRegisters();
 }
 
@@ -116,10 +117,10 @@ ChanEndpoint *Node::getIncomingChanendDest(ResourceID ID)
     //unsigned destNode = ID.node() >> node->getNonNodeNumberBits();
     unsigned destNode = ID.node();
     if (destNode == node->getNodeID()) {
-      std::cout << "Dest node == this node, breaking\n";
+      //std::cout << "Dest node == this node, breaking\n";
       break;
     }
-    std::cout << "Dest node != this node\n";
+    //std::cout << "Dest node != this node\n";
     unsigned diff = destNode ^ node->getNodeID();
     // Lookup direction
     unsigned bit = 31 - countLeadingZeros(diff);
