@@ -3,7 +3,6 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include <iostream>
 #include "ProcessorNode.h"
 #include "Core.h"
 
@@ -12,7 +11,6 @@ using namespace axe;
 ProcessorNode::ProcessorNode(Type t, unsigned numXLinks) :
   Node(t, numXLinks)
 {
-  // std::cout << "Creating ProcessorNode\n";
 }
 
 ProcessorNode::~ProcessorNode()
@@ -32,7 +30,6 @@ void ProcessorNode::setNodeID(unsigned value)
 
 void ProcessorNode::finalize()
 {
-  std::cout << "Finalizing ProcessorNode\n";
   computeCoreNumberBits();
   if (type == XS1_G) {
     for (unsigned i = 0, e = getNodeNumberBits(); i != e; ++i) {
@@ -76,7 +73,6 @@ uint32_t ProcessorNode::getCoreID(unsigned coreNum) const
   assert(coreNum <= makeMask(getNonNodeNumberBits()));
   //auto id = (getNodeID() << coreBits) | coreNum;
   auto id = getNodeID() | coreNum;
-  //std::cout << "Returning processor node 0x" << std::hex << id << std::endl;
   return id;
 }
 

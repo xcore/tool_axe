@@ -21,8 +21,6 @@
 #include <iostream>
 #include <cstdlib>
 #include "Compiler.h"
-#include "LoggingTracer.h"
-#include "llvm/Support/raw_ostream.h"
 
 using namespace axe;
 using namespace Register;
@@ -83,12 +81,12 @@ void Thread::runJIT(uint32_t pc)
 
 void Thread::dump() const
 {
-  //std::cout << std::hex;
+  std::cout << std::hex;
   for (unsigned i = 0; i < NUM_REGISTERS; i++) {
-    //std::cout << getRegisterName(i) << ": 0x" << regs[i] << "\n";
+    std::cout << getRegisterName(i) << ": 0x" << regs[i] << "\n";
   }
-  //std::cout << "pc: 0x" << getRealPc() << "\n";
-  //std::cout << std::dec;
+  std::cout << "pc: 0x" << getRealPc() << "\n";
+  std::cout << std::dec;
 }
 
 void Thread::schedule()
@@ -225,8 +223,8 @@ enum {
 };
 
 static void internalError(const Thread &thread, const char *file, int line) {
-  //std::cout << "Internal error in " << file << ":" << line << "\n"
-  //<< "Register state:\n";
+  std::cout << "Internal error in " << file << ":" << line << "\n"
+  << "Register state:\n";
   thread.dump();
   std::abort();
 }

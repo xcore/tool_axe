@@ -184,8 +184,6 @@ makeConnections (xmlNode *system,
       std::cerr << "Invalid sLink number " << link2 << std::endl;
       std::exit(1);
     }
-    // std::cout << "Connecting node " << node1->nodeID << " and " 
-    //           << node2->nodeID << std::endl;
     node1->connectXLink(link1, node2, link2);
     node2->connectXLink(link2, node1, link1);
   }

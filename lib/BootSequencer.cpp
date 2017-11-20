@@ -209,8 +209,8 @@ int BootSequenceStepElf::execute(ExecutionState &state)
     if (core->isValidRamAddress(ehdr.e_entry)) {
       entryPoint = ehdr.e_entry;
     } else {
-      //std::cout << "Warning: invalid ELF entry point 0x";
-      //std::cout << std::hex << ehdr.e_entry << std::dec << "\n";
+      std::cout << "Warning: invalid ELF entry point 0x";
+      std::cout << std::hex << ehdr.e_entry << std::dec << "\n";
     }
   }
   uint32_t ram_base = core->getRamBase();
@@ -254,16 +254,16 @@ int BootSequenceStepElf::execute(ExecutionState &state)
   // Patch in syscall instruction at the syscall address.
   if (const ElfSymbol *syscallSym = SI.getGlobalSymbol(core, "_DoSyscall")) {
     if (!BM.setBreakpoint(*core, syscallSym->value, BreakpointType::Syscall)) {
-      //std::cout << "Warning: invalid _DoSyscall address "
-      //<< std::hex << syscallSym->value << std::dec << "\n";
+      std::cout << "Warning: invalid _DoSyscall address "
+      << std::hex << syscallSym->value << std::dec << "\n";
     }
   }
   // Patch in exception instruction at the exception address
   if (const ElfSymbol *doExceptionSym = SI.getGlobalSymbol(core, "_DoException")) {
     if (!BM.setBreakpoint(*core, doExceptionSym->value,
                           BreakpointType::Exception)) {
-      //std::cout << "Warning: invalid _DoException address "
-      //<< std::hex << doExceptionSym->value << std::dec << "\n";
+      std::cout << "Warning: invalid _DoException address "
+      << std::hex << doExceptionSym->value << std::dec << "\n";
     }
   }
   if (useElfEntryPoint) {

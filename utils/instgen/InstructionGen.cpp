@@ -738,9 +738,6 @@ void FunctionCodeEmitter::emitRegWriteBack()
           std::cout << "TRACE_REG_WRITE((Register::Reg)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
-        // std::cout << "THREAD.regs[" << getOperandName(*inst, i);
-        // std::cout << "] = ";
-        // std::cout << "op" << i << ";\n";
         std::cout << "THREAD.writeRegister(" << getOperandName(*inst, i);
         std::cout << ", ";
         std::cout << "op" << i << ");\n";

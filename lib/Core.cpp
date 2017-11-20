@@ -3,7 +3,6 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include <iostream>
 #include "Core.h"
 #include "Array.h"
 #include "SystemState.h"
@@ -15,11 +14,9 @@
 #include "Chanend.h"
 #include "ClockBlock.h"
 #include "Tracer.h"
-#include "LoggingTracer.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include "llvm/Support/raw_ostream.h"
 
 using namespace axe;
 
@@ -47,7 +44,6 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   romBase(0),
   romSize(0)
 {
-  // std::cout << "Creating core\n";
   memoryOffset = memory - RamBase;
   invalidationInfoOffset =
     ramDecodeCache.getState().getInvalidationInfo() - (RamBase / 2);
@@ -172,23 +168,22 @@ void Core::dumpPaused() const
     Thread *t = static_cast<Thread*>(resource[RES_TYPE_THREAD][i]);
     if (!t->isInUse())
       continue;
-    //std::cout << "Thread " << std::dec << i;
+    std::cout << "Thread " << std::dec << i;
     Thread &ts = *t;
     if (Resource *res = ts.pausedOn) {
-      //std::cout << " paused on ";
-      //std::cout << Resource::getResourceName(res->getType());
-      //std::cout << " 0x" << std::hex << res->getID();
+      std::cout << " paused on ";
+      std::cout << Resource::getResourceName(res->getType());
+      std::cout << " 0x" << std::hex << res->getID();
     } else if (ts.eeble()) {
-      //std::cout << " waiting for events";
-      if (ts.ieble()) {
-        //std::cout << " or interrupts";
-      }
+      std::cout << " waiting for events";
+      if (ts.ieble())
+        std::cout << " or interrupts";
     } else if (ts.ieble()) {
-      //std::cout << " waiting for interrupts";
+      std::cout << " waiting for interrupts";
     } else {
-      //std::cout << " paused on unknown";
+      std::cout << " paused on unknown";
     }
-    //std::cout << "\n";
+    std::cout << "\n";
   }
 }
 
@@ -423,7 +418,6 @@ void Core::finalize()
 void Core::updateIDs()
 {
   unsigned coreID = getCoreID();
-  //std::cout << "Updated core id is 0x" << std::hex << coreID << std::endl;
   for (unsigned i = 0; i < NUM_CHANENDS; i++) {
     resource[RES_TYPE_CHANEND][i]->setNode(coreID);
   }    
@@ -431,9 +425,7 @@ void Core::updateIDs()
 
 uint32_t Core::getCoreID() const
 {
-  auto coreId = getParent()->getCoreID(coreNumber); 
-  //std::cout << "Returning core id 0x" << std::hex << coreId << std::endl;
-  return coreId;
+  return getParent()->getCoreID(coreNumber);
 }
 
 std::string Core::getCoreName() const
@@ -511,8 +503,6 @@ void Core::setOpcode(uint32_t pc, OPCODE_TYPE opc, Operands &ops, unsigned size)
 
 void Core::setRom(const uint8_t *data, uint32_t base, uint32_t size)
 {
-  std::cout << "Setting rom to size " << std::dec << size << "\n";
-  std::cout << "Setting rom base to " << std::dec << base << "\n";
   rom = data;
   romBase = base;
   romSize = size;

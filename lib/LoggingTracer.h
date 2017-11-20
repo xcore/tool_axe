@@ -24,11 +24,10 @@ namespace axe {
   class Thread;
   
   class LoggingTracer : public Tracer {
-  public:
-    llvm::raw_ostream &out;
   private:
     bool traceCycles;
     bool useColors;
+    llvm::raw_ostream &out;
     uint64_t pos;
     const Thread *thread;
     uint32_t pc;

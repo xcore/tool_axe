@@ -3,11 +3,9 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include "LoggingTracer.h"
 #include "Chanend.h"
 #include "Core.h"
 #include <algorithm>
-#include "llvm/Support/raw_ostream.h"
 
 using namespace axe;
 
@@ -149,8 +147,6 @@ out(Thread &thread, uint32_t value, ticks_t time)
 Resource::ResOpResult Chanend::
 outct(Thread &thread, uint8_t value, ticks_t time)
 {
-  auto *tracer = getTracer();
-
   if (!openRoute()) {
     pausedOut = &thread;
     return DESCHEDULE;
@@ -235,8 +231,6 @@ intoken(Thread &thread, ticks_t time, uint32_t &val)
   return CONTINUE;
 }
 
-LoggingTracer* Chanend::getTracer() { return (LoggingTracer*)getOwner().getParent().getTracer(); }
-
 Resource::ResOpResult Chanend::
 inct(Thread &thread, ticks_t time, uint32_t &val)
 {
@@ -246,9 +240,6 @@ inct(Thread &thread, ticks_t time, uint32_t &val)
   }
   if (!isCt)
     return ILLEGAL;
-
-  auto *tracer = getTracer();
-
   val = poptoken(time);
   return CONTINUE;
 }

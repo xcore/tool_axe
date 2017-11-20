@@ -22,7 +22,6 @@ SystemState::SystemState(std::unique_ptr<Tracer> t) :
   rom(0),
   tracer(std::move(t))
 {
-  std::cout << "Creating SystemState\n";
   pendingEvent.set = false;
   if (tracer.get()) {
     tracer->attach(*this);
@@ -52,7 +51,6 @@ void SystemState::finalize()
 
 void SystemState::addNode(std::unique_ptr<Node> n)
 {
-  std::cout << "Adding node to system state\n";
   n->setParent(this);
   nodes.push_back(n.get());
   n.release();

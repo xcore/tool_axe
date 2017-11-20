@@ -227,14 +227,14 @@ bool SyscallHandler::convertLseekType(int whence, int &converted)
 
 void SyscallHandler::doException(const Thread &thread, uint32_t et, uint32_t ed)
 {
-  //std::cout << "Unhandled exception: ";
+  std::cout << "Unhandled exception: ";
   std::string description;
   if (describeExceptionCallback(thread, et, ed, description)) {
-    //std::cout << description << '\n';
+    std::cout << description << '\n';
   } else {
-    //std::cout << Exceptions::getExceptionName(et)
-              //<< ", data: 0x" << std::hex << ed << std::dec << "\n";
-    //std::cout << "Register state:\n";
+    std::cout << Exceptions::getExceptionName(et)
+              << ", data: 0x" << std::hex << ed << std::dec << "\n";
+    std::cout << "Register state:\n";
     thread.dump();
   }
 }

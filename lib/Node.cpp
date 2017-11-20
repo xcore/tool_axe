@@ -3,7 +3,6 @@
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
 
-#include <iostream>
 #include "Node.h"
 #include "BitManip.h"
 
@@ -48,7 +47,6 @@ Node::Node(Type t, unsigned numXLinks) :
   sswitch(this),
   nodeNumberBits(16)
 {
-  std::cout << "Creating node\n";
   xLinks.resize(numXLinks);
 }
 
@@ -65,16 +63,10 @@ void Node::connectXLink(unsigned num, Node *destNode, unsigned destNum)
 
 XLink *Node::getXLinkForDirection(unsigned direction)
 {
-  //std::cout << "Attempting to find xLink for direction 0x" << std::hex << direction << std::endl;
   for (XLink &xLink : xLinks) {
-    if (xLink.isEnabled()) {
-      if (xLink.getDirection() == direction) {
-        //std::cout << "Returning xLink\n";
-        return &xLink;
-      }
-    }
+    if (xLink.isEnabled() && xLink.getDirection() == direction)
+      return &xLink;
   }
-  //std::cout << "Could not find xLink\n";
   return 0;
 }
 
@@ -96,13 +88,11 @@ unsigned Node::getNonNodeNumberBits() const
 
 void Node::setNodeID(unsigned value)
 {
-  //std::cout << "Node id changed from 0x" << std::hex << nodeID << " to 0x" << value << std::endl;
   nodeID = value;
 }
 
 void Node::finalize()
 {
-  std::cout << "Finalising Node\n";
   sswitch.initRegisters();
 }
 
@@ -117,10 +107,8 @@ ChanEndpoint *Node::getIncomingChanendDest(ResourceID ID)
     //unsigned destNode = ID.node() >> node->getNonNodeNumberBits();
     unsigned destNode = ID.node();
     if (destNode == node->getNodeID()) {
-      //std::cout << "Dest node == this node, breaking\n";
       break;
     }
-    //std::cout << "Dest node != this node\n";
     unsigned diff = destNode ^ node->getNodeID();
     // Lookup direction
     unsigned bit = 31 - countLeadingZeros(diff);

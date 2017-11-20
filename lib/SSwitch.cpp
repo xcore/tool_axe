@@ -8,10 +8,7 @@
 #include "ProcessorNode.h"
 #include "SystemState.h"
 #include "Tracer.h"
-#include "LoggingTracer.h"
 #include <cassert>
-#include <iostream>
-#include "llvm/Support/raw_ostream.h"
 
 using namespace axe;
 
@@ -24,7 +21,6 @@ SSwitch::SSwitch(Node *p) :
   sentTokens(0),
   responseLength(0)
 {
-  std::cout << "Creating SSwitch\n";
   setJunkIncoming(false);
 }
 
@@ -98,8 +94,6 @@ void SSwitch::handleRequest(ticks_t time, const Request &request)
                                             request.returnNode);
   Tracer *tracer = parent->getParent()->getTracer();
   if (parent->nodeID != request.returnNode) {
-    // auto *lt = (LoggingTracer*)tracer;
-    // lt->out << "Bailing on off Node write\n";
     ack = true;
   } else if (request.write) {
     ack = regs.write(request.regNum, request.data);

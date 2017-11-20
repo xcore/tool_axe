@@ -8,7 +8,6 @@
 #include "Core.h"
 #include "Compiler.h"
 #include <cassert>
-#include <iostream>
 
 using namespace axe;
 

@@ -43,7 +43,7 @@ uint32_t axe::exception(Thread &t, uint32_t pc, int et, uint32_t ed)
   // TODO handle exception in ROM.
   if ((newPc & 1) || !t.getParent().isValidRamAddress(newPc)) {
     std::cout << "Error: unable to handle exception (invalid kep)\n";
-    //std::abort();
+    std::abort();
   }
   return t.toPc(newPc);
 }
@@ -51,17 +51,9 @@ uint32_t axe::exception(Thread &t, uint32_t pc, int et, uint32_t ed)
 Resource *axe::checkResource(Core &state, ResourceID id)
 {
   Resource *res = state.getResourceByID(id);
-  // if (!res || !res->isInUse())
-  //   return 0;
-  if (!res) {
-    std::cout << "Resource " << id << " is null\n";
+  if (!res || !res->isInUse()) {
     return 0;
   }
-  if (!res->isInUse()) {
-    std::cout << "Resource " << id << " is in use\n";
-    return 0;
-  }
-  std::cout << "Returning Resource " << id << "\n";
   return res;
 }
 
