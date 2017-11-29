@@ -179,14 +179,6 @@ void LoggingTracer::printInstructionLineStart(const Thread &t, uint32_t pc)
     printSrcRegister(getOperandRegister(properties, ops, 1));
     return;
   }
-  if (opcode == InstructionOpcode::ADD_2rus &&
-      getOperand(properties, ops, 2) == 0) {
-    out << "mov ";
-    printDestRegister(getOperandRegister(properties, ops, 0));
-    out << ", ";
-    printSrcRegister(getOperandRegister(properties, ops, 1));
-    return;
-  }
   
   const char *fmt = instructionTraceInfo[opcode].string;
   for (const char *p = fmt; *p != '\0'; ++p) {

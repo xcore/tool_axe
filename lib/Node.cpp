@@ -5,6 +5,7 @@
 
 #include "Node.h"
 #include "BitManip.h"
+#include <iostream>
 
 using namespace axe;
 
@@ -88,6 +89,7 @@ unsigned Node::getNonNodeNumberBits() const
 
 void Node::setNodeID(unsigned value)
 {
+  std::cout << "Node id set to 0x" << std::hex << value << "\n";
   nodeID = value;
 }
 

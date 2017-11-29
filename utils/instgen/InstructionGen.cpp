@@ -1975,44 +1975,44 @@ void add()
     .addImplicitOp(SP, in)
     .transform("%1 = %1 << 2;", "%1 = %1 >> 2;");
   fru6_out("LDC", "ldc %0, %1", "%0 = %1;");
-  fru6_in("BRFT", "brft %0, %1",
+  fru6_in("BRFT", "bt %0, %1",
           "if (%0) {\n"
           "  %increment_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRFT_illegal", "brft %0, %1",
+  fru6_in("BRFT_illegal", "bt %0, %1",
           "if (%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRBT", "brbt %0, -%1",
+  fru6_in("BRBT", "bt %0, -%1",
           "if (%0) {\n"
           "  %increment_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRBT_illegal", "brbt %0, -%1",
+  fru6_in("BRBT_illegal", "bt %0, -%1",
           "if (%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRFF", "brff %0, %1",
+  fru6_in("BRFF", "bf %0, %1",
           "if (!%0) {\n"
           "  %write_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRFF_illegal", "brff %0, %1",
+  fru6_in("BRFF_illegal", "bf %0, %1",
           "if (!%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRBF", "brbf %0, -%1",
+  fru6_in("BRBF", "bf %0, -%1",
           "if (!%0) {\n"
           "  %write_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRBF_illegal", "brbf %0, -%1",
+  fru6_in("BRBF_illegal", "bf %0, -%1",
           "if (!%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
@@ -2224,6 +2224,7 @@ void add()
     .setYieldBefore();
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   f2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
+  fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r_in("TINITLR", "init t[%1]:lr, %0",
           "ResourceID resID(%1);\n"
@@ -2301,6 +2302,24 @@ void add()
          "}\n")
     .setYieldBefore()
     .setCanEvent();
+  f2r_in("TINITPC", "init t[%1]:pc, %0",
+         "ResourceID resID(%1);\n"
+         "Thread *t = checkThread(CORE, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  Thread &threadState = *t;\n"
+         "  unsigned newPc = TO_PC(%0);\n"
+         "  if (CHECK_PC(newPc)) {;\n"
+         "    // Set pc to one previous address since it will be incremented when\n"
+         "    // the thread is started with msync.\n"
+         "    // TODO is this right?\n"
+         "    threadState.pc = newPc - 1;\n"
+         "  } else {\n"
+         "    threadState.pc = CORE.getIllegalPCThreadAddr();\n"
+         "    threadState.pendingPc = newPc;\n"
+         "  }\n"
+         "} else {\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "}\n");
   fl2r_in("TINITPC", "init t[%1]:pc, %0",
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
@@ -2566,6 +2585,7 @@ void add()
          "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
          "}\n").setYieldBefore();
 
+  f1r("GETTIME", "gettime %0", "");
   f1r("SETSP", "set sp, %0", "%1 = %0;")
     .addImplicitOp(SP, out);
   // TODO should we check the pc range?
