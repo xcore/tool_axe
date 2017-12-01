@@ -1518,6 +1518,15 @@ fl3r(const std::string &name,
 }
 
 Instruction &
+fl3rus(const std::string &name,
+     const std::string &format,
+     const std::string &code)
+{
+  return inst(name + "_l3rus", 4, ops(out, in, in, imm), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
 fl3r_in(const std::string &name,
         const std::string &format,
         const std::string &code)
@@ -1801,6 +1810,15 @@ void add()
        "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
        "}",
        INSTRUCTION_CYCLES);
+  inst("TSETR_l3r", 4, ops(imm, in, in), "set t[%2]:r%0, %1",
+       "ResourceID resID(%2);\n"
+       "if (Thread *t = checkThread(CORE, resID)) {\n"
+       "  t->reg(%0) = %1;\n"
+       "} else {\n"
+       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+       "}",
+       INSTRUCTION_CYCLES);
+  //fl3r("TSETR", "tsetr", "");
   fl3r("LDAWF", "ldaw %0, %1[%2]", "%0 = %1 + (%2 << 2);");
   fl2rus("LDAWF", "ldaw %0, %1[%2]", "%0 = %1 + %2;")
          .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
@@ -1859,6 +1877,8 @@ void add()
          "assert(%2 != 32 && \"ASHR_32_2rus should be used for ashr by immediate 32\");\n"
          "%0 = (int32_t)%1 >> %2;");
   fl2rus("ASHR_32", "ashr %0, %1, 32", "%0 = (int32_t)%1 >> 31;");
+  fl2rus("UNZIP", "unzip", "");
+  fl2rus("ZIP", "zip", "");
   fl2rus_in("OUTPW", "outpw res[%1], %0, %2",
             "ResourceID resID(%1);\n"
             "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -1892,6 +1912,18 @@ void add()
          "}\n")
   .setYieldBefore();
   fl3r_inout("CRC", "crc32 %0, %1, %2", "%0 = crc32(%0, %1, %2);");
+  fl4r_inout_inout("LDD", "ldd",
+       ""
+       ""
+       "");
+  fl4r_inout_inout("CRCN", "crcn",
+       ""
+       ""
+       "");
+  fl3rus("STD", "std",
+       ""
+       ""
+       "");
   // TODO check destination registers don't overlap
   fl4r_inout_inout("MACCU", "maccu %0, %3, %1, %2",
        "uint64_t Result = ((uint64_t)%0 << 32 | %3) + (uint64_t)%1 * %2;\n"
@@ -1908,6 +1940,10 @@ void add()
   fl4r_out_inout("CRC8", "crc8 %3, %0, %1, %2",
                  "%3 = crc8(%3, (uint8_t)%1, %2);\n"
                  "%0 = %1 >> 8;");
+  fl5r("XOR4", "xor4",
+       ""
+       ""
+       "");
   // TODO check destination registers don't overlap
   // Note op0 and op3 are swapped.
   fl5r("LADD", "ladd %3, %0, %1, %2, %4",
@@ -2222,9 +2258,11 @@ void add()
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
     .setYieldBefore();
+  f2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   f2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
+  f2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r_in("TINITLR", "init t[%1]:lr, %0",
           "ResourceID resID(%1);\n"
@@ -2343,6 +2381,14 @@ void add()
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
          "  t->reg(Register::DP) = %0;\n"
+         "} else {\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "}\n");
+  fl2r_in("TINITSP", "init t[%1]:sp, %0",
+         "ResourceID resID(%1);\n"
+         "Thread *t = checkThread(CORE, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  t->reg(Register::SP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2586,6 +2632,7 @@ void add()
          "}\n").setYieldBefore();
 
   f1r("GETTIME", "gettime %0", "");
+  f1r("ELATE", "gettime %0", "");
   f1r("SETSP", "set sp, %0", "%1 = %0;")
     .addImplicitOp(SP, out);
   // TODO should we check the pc range?

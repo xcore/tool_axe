@@ -86,11 +86,6 @@ add_library(axe
   InstFunction.h
   Instruction.h
   Instruction.cpp
-  InstructionDecode.h
-  InstructionDecodeXS1B.h
-  InstructionDecodeXS1B.cpp
-  InstructionDecodeXS2A.h
-  InstructionDecodeXS2A.cpp
   InstructionDefinitions.cpp
   InstructionHelpers.h
   InstructionHelpers.cpp
