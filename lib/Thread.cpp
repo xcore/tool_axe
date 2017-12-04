@@ -89,6 +89,12 @@ void Thread::dump() const
   std::cout << std::dec;
 }
 
+uint32_t Thread::getReferenceTime () const
+{
+  // Approximate the reference clock
+  return (uint32_t)((double)time / parent->getParent()->getReferenceDivide());
+}
+
 void Thread::schedule()
 {
   getParent().getParent()->getParent()->schedule(*this);

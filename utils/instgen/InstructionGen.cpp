@@ -2631,7 +2631,7 @@ void add()
          "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
          "}\n").setYieldBefore();
 
-  f1r("GETTIME", "gettime %0", "");
+  f1r_out("GETTIME", "gettime %0", "%0 = THREAD.getReferenceTime();");
   f1r("ELATE", "gettime %0", "");
   f1r("SETSP", "set sp, %0", "%1 = %0;")
     .addImplicitOp(SP, out);

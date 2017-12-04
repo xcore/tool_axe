@@ -48,6 +48,23 @@ static long readNumberAttribute(xmlNode *node, const char *name)
   return value;
 }
 
+static long readNumberAttribute(xmlNode *node, const char *name, long default_value)
+{
+  xmlAttr *attr = findAttribute(node, name);
+  if (attr == 0) {
+    return default_value;
+  }
+
+  errno = 0;
+  long value = std::strtol((char*)attr->children->content, 0, 0);
+  if (errno != 0) {
+    std::cerr << "Invalid " << name << '"' << (char*)attr->children->content
+    << "\"\n";
+    exit(1);
+  }
+  return value;
+}
+
 static std::unique_ptr<Core>
 createCoreFromConfig(xmlNode *config, bool tracing)
 {
@@ -78,6 +95,10 @@ createNodeFromConfig(xmlNode *config,
                      std::map<long,Node*> &nodeNumberMap, bool tracing)
 {
   long jtagID = readNumberAttribute(config, "jtagId");
+  long processorMhz = readNumberAttribute(config, "processorMhz");
+  long interconnectMhz = readNumberAttribute(config, "interconnectMhz");
+  long referenceMhz = readNumberAttribute(config, "referenceMhz", 100);
+
   ProcessorNode::Type nodeType;
   if (!ProcessorNode::getTypeFromJtagID(jtagID, nodeType)) {
     std::cerr << "Unknown jtagId 0x" << std::hex << jtagID << std::dec << '\n';
@@ -89,7 +110,7 @@ createNodeFromConfig(xmlNode *config,
       numXLinks = readNumberAttribute(switchNode, "sLinks");
     }
   }
-  std::unique_ptr<Node> node(new ProcessorNode(nodeType, numXLinks));
+  std::unique_ptr<Node> node(new ProcessorNode(nodeType, numXLinks, processorMhz, referenceMhz));
   ProcessorNode *processorNode = static_cast<ProcessorNode*>(node.get());
   long nodeID = readNumberAttribute(config, "number");
   nodeNumberMap.insert(std::make_pair(nodeID, node.get()));

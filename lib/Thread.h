@@ -122,6 +122,8 @@ public:
 
   Thread();
 
+  uint32_t getReferenceTime () const;
+
   void writeRegister (int index, uint32_t value);
 
   bool hasTimeSliceExpired() const {

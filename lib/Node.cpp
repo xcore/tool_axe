@@ -89,7 +89,6 @@ unsigned Node::getNonNodeNumberBits() const
 
 void Node::setNodeID(unsigned value)
 {
-  std::cout << "Node id set to 0x" << std::hex << value << "\n";
   nodeID = value;
 }
 
@@ -106,12 +105,12 @@ ChanEndpoint *Node::getIncomingChanendDest(ResourceID ID)
   unsigned hops = 0;
   unsigned leapCount = 8;
   while (1) {
-    //unsigned destNode = ID.node() >> node->getNonNodeNumberBits();
-    unsigned destNode = ID.node();
-    if (destNode == node->getNodeID()) {
+    unsigned destNode = ID.node() >> node->getNonNodeNumberBits();
+    unsigned nodeId = node->getNodeID() >> node->getNonNodeNumberBits();
+    unsigned diff = (destNode ^ nodeId) << node->getNonNodeNumberBits();
+    if (diff == 0)
       break;
-    }
-    unsigned diff = destNode ^ node->getNodeID();
+    
     // Lookup direction
     unsigned bit = 31 - countLeadingZeros(diff);
     unsigned direction = node->directions[bit];

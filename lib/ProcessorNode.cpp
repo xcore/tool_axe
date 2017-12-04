@@ -8,9 +8,12 @@
 
 using namespace axe;
 
-ProcessorNode::ProcessorNode(Type t, unsigned numXLinks) :
+ProcessorNode::ProcessorNode(Type t, unsigned numXLinks,
+                             long processorMhz, long referenceMhz) :
   Node(t, numXLinks)
 {
+  this->processorMhz = processorMhz;
+  this->referenceMhz = referenceMhz;
 }
 
 ProcessorNode::~ProcessorNode()

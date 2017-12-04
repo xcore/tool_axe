@@ -433,7 +433,7 @@ std::string Core::getCoreName() const
   if (!codeReference.empty())
     return codeReference;
   std::ostringstream buf;
-  buf << 'c' << getCoreID();
+  buf << 'c' << std::hex << getCoreID();
   return buf.str();
 }
 
