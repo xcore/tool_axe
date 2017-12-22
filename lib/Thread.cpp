@@ -579,10 +579,6 @@ void Thread::run(ticks_t time)
       }
       pendingRegWrites.clear();
     }
-
-    if (i > 1000) {
-      return;
-    }
   }
 }
 
