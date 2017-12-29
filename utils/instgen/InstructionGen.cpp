@@ -1034,7 +1034,7 @@ void FunctionCodeEmitter::emitIncrementPcUnchecked(const std::string &args)
 {
   std::cout << "nextPc += (";
   emitNested(args);
-  std::cout << ") * (THREAD.dualIssue ? 2 : 1);\n";
+  std::cout << ") * (THREAD.isDualIssue() ? 2 : 1);\n";
 }
 
 class CodePropertyExtractor : public CodeEmitter {
@@ -2070,7 +2070,7 @@ void add()
       "  %store_word(%2, Addr)"
       "  %1 = %1 - %0;\n"
       "}\n"
-      "THREAD.dualIssue = false;\n")
+      "THREAD.setDualIssue(false);\n")
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
@@ -2081,7 +2081,7 @@ void add()
       "  %store_word(%2, Addr)"
       "  %1 = %1 - %0;\n"
       "}\n"
-      "THREAD.dualIssue = true;\n")
+      "THREAD.setDualIssue(true);\n")
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")

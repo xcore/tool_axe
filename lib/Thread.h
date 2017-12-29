@@ -75,6 +75,7 @@ class RunnableQueue;
 struct Operands;
 
 class Thread : public Runnable, public Resource {
+  bool dualIssue;
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -90,7 +91,6 @@ class Thread : public Runnable, public Resource {
 
   std::list<std::pair<int, uint32_t>> pendingRegWrites;
 public:
-  bool dualIssue;
   enum SRBit {
     EEBLE = 0,
     IEBLE = 1,
@@ -123,6 +123,9 @@ public:
   Thread();
 
   uint32_t getReferenceTime () const;
+
+  void setDualIssue (bool di);
+  bool isDualIssue ();
 
   void writeRegister (int index, uint32_t value);
 
@@ -277,13 +280,13 @@ public:
     DecodeCache::executionFrequency_t *executionFrequency =
     decodeCache.executionFrequency;
     if (++executionFrequency[shiftedAddress] > threshold) {
-      return false;
+      return true;
     }
     return false;
   }
 
   void updateExecutionFrequency(uint32_t shiftedAddress) {
-    if (updateExecutionFrequencyFromStub(shiftedAddress))
+    if (updateExecutionFrequencyFromStub(shiftedAddress) and not dualIssue)
       runJIT(shiftedAddress);
   }
 

@@ -44,6 +44,16 @@ Thread::Thread() :
   setInUse(false);
 }
 
+void Thread::setDualIssue (bool di)
+{
+  dualIssue = di;
+}
+
+bool Thread::isDualIssue ()
+{
+  return dualIssue;
+}
+
 void Thread::writeRegister (int index, uint32_t value)
 {
   if (!dualIssue) {
