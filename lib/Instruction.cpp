@@ -1723,7 +1723,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 
 void axe::
 instructionTransform(InstructionOpcode &opc, Operands &operands,
-                     const Core &tile, uint32_t address)
+                     const Core &tile, uint32_t address, bool isDualIssue)
 {
   const DecodeCache::State *decodeCache =
     tile.getDecodeCacheContaining(address);
@@ -1798,18 +1798,17 @@ instructionTransform(InstructionOpcode &opc, Operands &operands,
       opc = ASHR_32_l2rus;
     }
     break;
-  // case BRFT_ru6:
-  //   OP(1) = PC + 1 + OP(1);
-  //   if (!CHECK_PC(OP(1))) {
-  //     opc = BRFT_illegal_ru6;
-  //   }
-  //   break;
+  case BRFT_ru6:
+    OP(1) = PC + (isDualIssue ? 2 : 1) + OP(1);
+    if (!CHECK_PC(OP(1))) {
+      opc = BRFT_illegal_ru6;
+    }
+    break;
   case BRBT_ru6:
-    // OP(1) = PC + 1 - OP(1);
-    // if (!CHECK_PC(OP(1))) {
-    //   opc = BRBT_illegal_ru6;
-    // }
-    OP(1) = -OP(1);
+    OP(1) = PC + (isDualIssue ? 2 : 1) - OP(1);
+    if (!CHECK_PC(OP(1))) {
+      opc = BRBT_illegal_ru6;
+    }
     break;
   case BRFU_u6:
     OP(0) = PC + 1 + OP(0);

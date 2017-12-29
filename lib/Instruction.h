@@ -36,7 +36,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands,
-                     const Core &tile, uint32_t address);
+                     const Core &tile, uint32_t address, bool isDualIssue);
   
 } // End axe namespace
 

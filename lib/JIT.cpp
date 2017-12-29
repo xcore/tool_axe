@@ -558,7 +558,7 @@ getFragmentToCompile(Core &core, uint32_t startAddress,
       endOfBlock = true;
       break;
     }
-    instructionTransform(opc, ops, core, address);
+    instructionTransform(opc, ops, core, address, false);
     properties = &instructionProperties[opc];
     nextAddress = address + properties->size;
     if (properties->mayBranch())

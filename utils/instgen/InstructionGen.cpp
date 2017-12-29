@@ -2013,7 +2013,7 @@ void add()
   fru6_out("LDC", "ldc %0, %1", "%0 = %1;");
   fru6_in("BRFT", "bt %0, %1",
           "if (%0) {\n"
-          "  %increment_pc_unchecked(%1);\n"
+          "  %write_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
   fru6_in("BRFT_illegal", "bt %0, %1",
@@ -2023,7 +2023,7 @@ void add()
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
   fru6_in("BRBT", "bt %0, -%1",
           "if (%0) {\n"
-          "  %increment_pc_unchecked(%1);\n"
+          "  %write_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");

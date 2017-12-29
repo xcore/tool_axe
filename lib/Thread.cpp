@@ -516,7 +516,7 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
   Operands ops;
   uint32_t address = THREAD.fromPc(THREAD.pc);
   instructionDecode(CORE, address, opc, ops);
-  instructionTransform(opc, ops, CORE, address);
+  instructionTransform(opc, ops, CORE, address, thread.isDualIssue());
   THREAD.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
                    instructionProperties[opc].size);
   return InstReturn::END_TRACE;
@@ -538,7 +538,7 @@ InstReturn Thread::interpretOne()
   InstructionOpcode opc;
   uint32_t address = fromPc(pc);
   instructionDecode(*parent, address, opc, ops, true /*ignoreBreakpoints*/);
-  instructionTransform(opc, ops, *parent, address);
+  instructionTransform(opc, ops, *parent, address, isDualIssue());
   bool tracing = decodeCache.tracingEnabled;
   InstReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
   ops = oldOps;
