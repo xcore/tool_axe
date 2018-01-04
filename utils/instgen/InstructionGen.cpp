@@ -1954,7 +1954,7 @@ void add()
   // Note op0 and op3 are swapped.
   fl5r("LSUB", "lsub %3, %0, %1, %2, %4",
        "uint64_t Result = (uint64_t)%1 - (uint64_t)%2 - (%4&1);\n"
-       "%3 = (uint32_t)(Result >> 32);"
+       "%3 = (uint32_t)(Result >> 32) & 0x1;"
        "%0 = (uint32_t)(Result);\n");
 
   // Five operand long.
