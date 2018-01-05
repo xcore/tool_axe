@@ -385,6 +385,8 @@ bool Core::setProcessorState(uint32_t reg, uint32_t value)
   case PS_BOOT_STATUS:
     bootStatus = value;
     return true;
+  case PS_RING_OSC_CONTROL:
+    return true;
   }
   return false;
 }

@@ -40,7 +40,8 @@ enum ProcessorState {
   PS_RAM_BASE = 0x00b,
   PS_VECTOR_BASE = 0x10b,
   PS_BOOT_CONFIG = 0x30b,
-  PS_BOOT_STATUS = 0x40b
+  PS_BOOT_STATUS = 0x40b,
+  PS_RING_OSC_CONTROL = 0x60b,
 };
 
 class Core {
