@@ -34,6 +34,7 @@
 #include "StatsTracer.h"
 #include "DelegatingTracer.h"
 #include "CheckPacketOvertakeTracer.h"
+#include "xs2aDefaultRoms.h"
 
 // SDL must be included before main so that SDL can substitute main() with
 // SDL_main() if required.
@@ -215,6 +216,8 @@ loop(const Options &options)
     std::vector<uint8_t> rom;
     readRom(options.rom, rom);
     sys.setRom(&rom[0], rom.size());
+  } else {
+    sys.setRom(g_xs2aRom, g_xs2aRomsSize);
   }
 
   BootSequencer bootSequencer(sys);

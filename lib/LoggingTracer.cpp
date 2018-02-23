@@ -269,9 +269,23 @@ void LoggingTracer::instructionEnd() {
   if (!emittedLineStart) {
     printInstructionLineStart(*thread, pc);
   }
+  out << " # ";
+  dumpRegisters();
+
   thread = nullptr;
   emittedLineStart = false;
   printLineEnd();
+}
+
+void LoggingTracer::dumpRegisters()
+{
+  for (int i=0; i<16; i++) {
+    out << " r" << i << "=0x";
+    //out.write_hex(thread->regs[i]);
+    out.write_hex(thread->readRegisterForTrace(i));
+  }
+  out << " di=0x" << (thread->isDualIssue() ? "1" : "0");
+  out << " time=" << thread->time;
 }
 
 void LoggingTracer::printSrcRegister(Register::Reg reg)

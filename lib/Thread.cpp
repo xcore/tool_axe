@@ -33,6 +33,12 @@ Thread::Thread() :
 {
   time = 0;
   pc = 0;
+  instructionCounter = 0;
+
+  for (int i=0; i<Register::NUM_REGISTERS; i++) {
+    regs[i] = 0;
+  }
+
   regs[KEP] = 0;
   regs[KSP] = 0;
   regs[SPC] = 0;
@@ -49,7 +55,7 @@ void Thread::setDualIssue (bool di)
   dualIssue = di;
 }
 
-bool Thread::isDualIssue ()
+bool Thread::isDualIssue () const
 {
   return dualIssue;
 }
@@ -62,6 +68,16 @@ void Thread::writeRegister (int index, uint32_t value)
     auto evt = std::make_pair(index, value);
     pendingRegWrites.push_back(evt);
   }
+}
+
+uint32_t Thread::readRegisterForTrace (int index) const
+{
+  for (auto e : pendingRegWrites) {
+    if (e.first == index) {
+      return e.second;
+    }
+  }
+  return regs[index];
 }
 
 void Thread::setParent(Core &p)
@@ -97,6 +113,12 @@ void Thread::dump() const
   }
   std::cout << "pc: 0x" << getRealPc() << "\n";
   std::cout << std::dec;
+}
+
+void Thread::addTime(ticks_t value) {
+  if (!dualIssue || pc % 2 == 0) {
+    time += value;
+  }
 }
 
 uint32_t Thread::getReferenceTime () const
@@ -442,7 +464,7 @@ do { \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
 do { \
-  if (tracing) { CORE.getTracer()->regWrite(register, value); } \
+  if (tracing) { /*CORE.getTracer()->regWrite(register, value);*/ } \
 } while(0)
 #define TRACE_END() \
 do { \
@@ -578,7 +600,20 @@ void Thread::run(ticks_t time)
     auto cpc = pc;
 
 
+    pcHistory.push_back(pc);
+    while (pcHistory.size() > 10) {
+      pcHistory.pop_front();
+    }
+
+    instructionCounter++;
     if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION) {
+
+      if (dualIssue && pc % 2 == 0) {
+        for (auto e : pendingRegWrites) {
+          regs[e.first] = e.second;
+        }
+        pendingRegWrites.clear();
+      }
       return;
     }
     i++;

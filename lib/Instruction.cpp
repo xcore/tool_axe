@@ -291,6 +291,10 @@ decodeLU10Operands(operands, high, low); \
 do { \
 opcode = inst; \
 } while(0)
+#define DECODE_L0R(inst) \
+do { \
+opcode = inst; \
+} while(0)
 #define DECODE_L2R(inst, high, low) \
 do { \
 opcode = inst; \
@@ -305,6 +309,11 @@ decodeL3ROperands(operands, high, low); \
 do { \
 opcode = inst; \
 decodeL2RUSOperands(operands, high, low); \
+} while(0)
+#define DECODE_L3RUS(inst, high, low) \
+do { \
+opcode = inst; \
+decodeL4ROperands(operands, high, low); \
 } while(0)
 #define DECODE_L4R(inst, high, low) \
 do { \
@@ -794,7 +803,7 @@ void case_0x0d(uint16_t low, uint16_t high, bool highValid,
 }
 
 void case_0x0e(uint16_t low, uint16_t high, bool highValid,
-                  InstructionOpcode &opcode, Operands &operands) /* 0b01110 */
+                  InstructionOpcode &opcode, Operands &operands, Node::Type type) /* 0b01110 */
 {
   if (testRU6(low)) {
     switch (bit(low, 10)) {
@@ -829,7 +838,11 @@ void case_0x0e(uint16_t low, uint16_t high, bool highValid,
         DECODE_U6(EXTSP_u6, low);
         break;
       case 0x1f:
-        DECODE_U6(RETSP_u6, low);
+        if (type == Node::Type::XS2_A) {
+          DECODE_U6(RETSP_xs2a_u6, low);
+        } else {
+          DECODE_U6(RETSP_u6, low);
+        }
         break;
     }
   }
@@ -1191,7 +1204,11 @@ void case_PFIX(uint16_t low, uint16_t high, bool highValid,
             DECODE_LU6(EXTSP_lu6, high, low);
             break;
           case 0x1f:
-            DECODE_LU6(RETSP_lu6, high, low);
+            if (type == Node::Type::XS2_A) {
+              DECODE_LU6(RETSP_xs2a_lu6, high, low);
+            } else {
+              DECODE_LU6(RETSP_lu6, high, low);
+            }
             break;
         }
       }
@@ -1316,6 +1333,8 @@ void case_EOPR(uint16_t low, uint16_t high, bool highValid,
             }
             break;
         }
+      } else {
+        DECODE_L0R(KRET_l0r);
       }
       break;
     case 0x01: /* 0b00001 */
@@ -1365,11 +1384,11 @@ void case_EOPR(uint16_t low, uint16_t high, bool highValid,
         if (type == Node::Type::XS2_A) {
           switch (bit(high, 4)) {
             case 0:
-              //TODO DECODE_L4R(STD_l4r, high, low);
+              DECODE_L4R(STD_l4r, high, low);
               break;
-            // case 1:
-            //   DECODE_L4R(STD_l3rus, high, low);
-            //     break;
+            case 1:
+              DECODE_L3RUS(STD_l3rus, high, low);
+                break;
           }
         }
       } else if (testL3R(high, low)) {
@@ -1393,7 +1412,7 @@ void case_EOPR(uint16_t low, uint16_t high, bool highValid,
       if (testL5R(high, low) && type == Node::Type::XS2_A) {
         switch (bit(high, 4)) {
           case 0:
-            // DECODE_L5R(LEXTRACT_l4rus, high, low);
+            DECODE_L5R(LEXTRACT_l4rus, high, low);
             break;
           case 1:
             // DECODE_L5R(LINSERT_l4rus, high, low);
@@ -1422,9 +1441,10 @@ void case_EOPR(uint16_t low, uint16_t high, bool highValid,
           case 0:
             DECODE_L4R(LDD_l4r, high, low);
             break;
-          // case 1:
-          //   DECODE_L3RUS(LDD_l3rus, high, low);
-          //   break;
+          case 1:
+            // TODO DECODE_L3RUS
+            DECODE_L3RUS(LDD_l3rus, high, low);
+            break;
         }
       } else if (testL3R(high, low)) {
         switch (bitRange(high, 3, 0)) {
@@ -1602,6 +1622,21 @@ void case_EOPR(uint16_t low, uint16_t high, bool highValid,
         }
       }
       break;
+    case 0x1c: /* 0b11100 */
+      if (testL3R(high, low)) {
+        DECODE_L3R(LSATS_l3r, high, low);
+      }
+      break;
+    case 0x1d: /* 0b11101 */
+      if (testL3R(high, low)) {
+        DECODE_L2RUS(LDDSP_l2rus, high, low);
+      }
+      break;
+    case 0x1e: /* 0b11110 */
+      if (testL3R(high, low)) {
+        DECODE_L2RUS(STDSP_l2rus, high, low);
+      }
+      break;
   }
 }
 
@@ -1654,7 +1689,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
       case_0x0d(low, high, highValid, opcode, operands);
       break;
     case 0x0e: /* 0b01110 */
-      case_0x0e(low, high, highValid, opcode, operands);
+      case_0x0e(low, high, highValid, opcode, operands, type);
       break;
     case 0x0f: /* 0b01111 */
       case_0x0f(low, high, highValid, opcode, operands, type);
@@ -1725,6 +1760,7 @@ void axe::
 instructionTransform(InstructionOpcode &opc, Operands &operands,
                      const Core &tile, uint32_t address, bool isDualIssue)
 {
+  int issueWidth = isDualIssue ? 2 : 1;
   const DecodeCache::State *decodeCache =
     tile.getDecodeCacheContaining(address);
   assert(decodeCache);
@@ -1761,16 +1797,20 @@ instructionTransform(InstructionOpcode &opc, Operands &operands,
     break;
   case EXTDP_u6:
   case ENTSP_u6:
+  case DUALENTSP_u6:
   case EXTSP_u6:
   case RETSP_u6:
+  case RETSP_xs2a_u6:
   case KENTSP_u6:
   case KRESTSP_u6:
   case LDAWCP_u6:
   case LDWCPL_u10:
   case EXTDP_lu6:
   case ENTSP_lu6:
+  case DUALENTSP_lu6:
   case EXTSP_lu6:
   case RETSP_lu6:
+  case RETSP_xs2a_lu6:
   case KENTSP_lu6:
   case KRESTSP_lu6:
   case LDAWCP_lu6:
@@ -1781,7 +1821,7 @@ instructionTransform(InstructionOpcode &opc, Operands &operands,
   case LDAPF_u10:
   case LDAPB_lu10:
   case LDAPF_lu10:
-    OP(0) = OP(0) << 1;
+    OP(0) = OP(0) << issueWidth;
     break;
   case SHL_2rus:
     if (OP(2) == 32) {
@@ -1799,97 +1839,97 @@ instructionTransform(InstructionOpcode &opc, Operands &operands,
     }
     break;
   case BRFT_ru6:
-    OP(1) = PC + (isDualIssue ? 2 : 1) + OP(1);
+    OP(1) = PC + 1 + (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRFT_illegal_ru6;
     }
     break;
   case BRBT_ru6:
-    OP(1) = PC + (isDualIssue ? 2 : 1) - OP(1);
+    OP(1) = PC + 1 - (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRBT_illegal_ru6;
     }
     break;
   case BRFU_u6:
-    OP(0) = PC + 1 + OP(0);
+    OP(0) = PC + 1 + (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BRFU_illegal_u6;
     }
     break;
   case BRBU_u6:
-    OP(0) = PC + 1 - OP(0);
+    OP(0) = PC + 1 - (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BRBU_illegal_u6;
     }
     break;
   case BRFF_ru6:
-    OP(1) = PC + 1 + OP(1);
+    OP(1) = PC + 1 + (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRFF_illegal_ru6;
     }
     break;
   case BRBF_ru6:
-    OP(1) = PC + 1 - OP(1);
+    OP(1) = PC + 1 - (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRBF_illegal_ru6;
     }
     break;
   case BLRB_u10:
-    OP(0) = PC + 1 - OP(0);
+    OP(0) = PC + 1 - (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BLRB_illegal_u10;
     }
     break;
   case BLRF_u10:
-    OP(0) = PC + 1 + OP(0);
+    OP(0) = PC + 1 + (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BLRF_illegal_u10;
     }
     break;
   case BRFT_lru6:
-    OP(1) = PC + 2 + OP(1);
+    OP(1) = PC + 2 + (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRFT_illegal_lru6;
     }
     break;
   case BRBT_lru6:
-    OP(1) = PC + 2 - OP(1);
+    OP(1) = PC + 2 - (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRBT_illegal_lru6;
     }
     break;
   case BRFU_lu6:
-    OP(0) = PC + 2 + OP(0);
+    OP(0) = PC + 2 + (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BRFU_illegal_lu6;
     }
     break;
   case BRBU_lu6:
-    OP(0) = PC + 2 - OP(0);
+    OP(0) = PC + 2 - (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BRBU_illegal_lu6;
     }
     break;
   case BRFF_lru6:
-    OP(1) = PC + 2 + OP(1);
+    OP(1) = PC + 2 + (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRFF_illegal_lru6;
     }
     break;
   case BRBF_lru6:
-    OP(1) = PC + 2 - OP(1);
+    OP(1) = PC + 2 - (OP(1) * issueWidth);
     if (!CHECK_PC(OP(1))) {
       opc = BRBF_illegal_lru6;
     }
     break;
   case BLRB_lu10:
-    OP(0) = PC + 2 - OP(0);
+    OP(0) = PC + 2 - (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BLRB_illegal_lu10;
     }
     break;
   case BLRF_lu10:
-    OP(0) = PC + 2 + OP(0);
+    OP(0) = PC + 2 + (OP(0) * issueWidth);
     if (!CHECK_PC(OP(0))) {
       opc = BLRF_illegal_lu10;
     }

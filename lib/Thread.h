@@ -90,6 +90,8 @@ class Thread : public Runnable, public Resource {
   DecodeCache::State decodeCache;
 
   std::list<std::pair<int, uint32_t>> pendingRegWrites;
+  std::list<uint32_t> pcHistory;
+  long long instructionCounter;
 public:
   enum SRBit {
     EEBLE = 0,
@@ -125,9 +127,13 @@ public:
   uint32_t getReferenceTime () const;
 
   void setDualIssue (bool di);
-  bool isDualIssue ();
+  bool isDualIssue () const;
 
   void writeRegister (int index, uint32_t value);
+
+  void addTime(ticks_t value);
+
+  uint32_t readRegisterForTrace (int index) const;
 
   bool hasTimeSliceExpired() const {
     if (scheduler->empty())
@@ -280,7 +286,8 @@ public:
     DecodeCache::executionFrequency_t *executionFrequency =
     decodeCache.executionFrequency;
     if (++executionFrequency[shiftedAddress] > threshold) {
-      return true;
+      // return true;
+      return false;
     }
     return false;
   }

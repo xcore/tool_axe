@@ -101,8 +101,13 @@ SyscallHandler::SyscallHandler() :
   fds[0] = dup(STDIN_FILENO);
   fds[1] = dup(STDOUT_FILENO);
   fds[2] = dup(STDERR_FILENO);
+
+  for (unsigned i = 3; i<6; i++) {
+    fds[i] = 0;
+  }
+ 
   // The rest are initialised to -1.
-  for (unsigned i = 3; i < MAX_FDS; i++) {
+  for (unsigned i = 6; i < MAX_FDS; i++) {
     fds[i] = - 1;
   }
 }
