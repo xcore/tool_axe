@@ -9,34 +9,59 @@
 #include "PortNames.h"
 #include <algorithm>
 
-using namespace axe;
+using axe::Port;
+using axe::Signal;
+using axe::Resource;
 
 Port::Port() :
   EventableResource(RES_TYPE_PORT),
-  clock(0),
-  readyOutOf(0),
-  loopback(0),
-  tracer(0),
-  pausedOut(0),
-  pausedIn(0),
-  pausedSync(0),
+  clock(nullptr),
+  readyOutOf(nullptr),
+  loopback(nullptr),
+  tracer(nullptr),
+  pausedOut(nullptr),
+  pausedIn(nullptr),
+  pausedSync(nullptr),
   readyOut(false),
   time(0),
-  pinsInputValue() {}
+  data(0),
+  condition(COND_FULL),
+  portCounter(0),
+  shiftRegEntries(0),
+  portShiftCount(0),
+  validShiftRegEntries(0),
+  shiftReg(0),
+  transferReg(0),
+  timeReg(0),
+  readyIn(false),
+  transferWidth(0),
+  timeRegValid(false),
+  transferRegValid(false),
+  timestampReg(0),
+  holdTransferReg(false),
+  outputPort(false),
+  buffered(false),
+  inverted(false),
+  samplingEdge(Edge::RISING),
+  readyMode(NOREADY),
+  masterSlave(MASTER),
+  portType(DATAPORT) {}
 
 std::string Port::getName() const
 {
   std::string name;
-  if (getPortName(getID(), name))
+  if (getPortName(getID(), name)) {
     return name;
+  }
   return "(Unknown port)";
 }
 
 Signal Port::getDataPortPinsValue() const
 {
   assert(portType == DATAPORT);
-  if (outputPort)
+  if (outputPort) {
     return Signal(shiftReg & portWidthMask());
+  }
   return pinsInputValue;
 }
 
@@ -73,9 +98,9 @@ bool Port::setCInUse(Thread &thread, bool val, ticks_t newTime)
     masterSlave = MASTER;
     portType = DATAPORT;
     transferWidth = getPortWidth();
-    if (readyOutOf) {
+    if (readyOutOf != nullptr) {
       readyOutOf->detachReadyOut(*this);
-      readyOutOf = 0;
+      readyOutOf = nullptr;
     }
     if (clock->isFixedFrequency()) {
       nextEdge = clock->getEdgeIterator(time);
@@ -91,8 +116,9 @@ setCondition(Thread &thread, Condition c, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (c == COND_AFTER)
+  if (c == COND_AFTER) {
     return false;
+  }
   condition = c;
   scheduleUpdateIfNeeded();
   return true;
@@ -121,10 +147,12 @@ bool Port::setPortInv(Thread &thread, bool value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (inverted == value)
+  if (inverted == value) {
     return true;
-  if (value && getPortWidth() != 1)
+  }
+  if (value && getPortWidth() != 1) {
     return false;
+  }
   inverted = value;
   // TODO inverting the port should only change the direction if we are actually
   // driving the pins.
@@ -138,8 +166,9 @@ void Port::setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (samplingEdge == value)
+  if (samplingEdge == value) {
     return;
+  }
   samplingEdge = value;
   scheduleUpdateIfNeeded();
 }
@@ -148,35 +177,37 @@ bool Port::setPinDelay(Thread &thread, unsigned value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (value > 5)
-    return false;
+  return value <= 5;
   // TODO set pin delay
-  return true;
 }
 
 Signal Port::getPinsOutputValue() const
 {
   if (portType == READYPORT) {
-    if (readyOutOf)
+    if (readyOutOf != nullptr) {
       return getEffectiveValue(Signal(readyOutOf->getReadyOutValue()));
+    }
     return getEffectiveValue(Signal(0));
   }
   if (portType == CLOCKPORT) {
     return getEffectiveValue(clock->getValue());
   }
   assert(portType == DATAPORT);
-  if (!outputPort)
+  if (!outputPort) {
     return getEffectiveValue(Signal(0));
+  }
   return getEffectiveValue(Signal(shiftReg & portWidthMask()));
 }
 
 void Port::
 outputValue(Signal value, ticks_t time)
 {
-  if (loopback)
+  if (loopback != nullptr) {
     loopback->seePinsChange(value, time);
-  if (outputPort)
+  }
+  if (outputPort) {
     handlePinsChange(value, time);
+  }
 }
 
 void Port::
@@ -191,21 +222,22 @@ handlePinsChange(Signal value, ticks_t time)
       clk->setReadyInValue(effectiveValue, time);
     }
   }
-  if (tracer)
+  if (tracer != nullptr) {
     tracer->seePinsChange(value, time);
+  }
 }
 
 void Port::
-handlePinsChange(uint32_t val, ticks_t time)
+handlePinsChange(uint32_t value, ticks_t time)
 {
-  handlePinsChange(Signal(val), time);
+  handlePinsChange(Signal(value), time);
 }
 
 void Port::
 handleReadyOutChange(bool value, ticks_t time)
 {
   for (Port *port : readyOutPorts) {
-    port->outputValue(getEffectiveValue(value), time);
+    port->outputValue(getEffectiveValue(static_cast<uint32_t>(value)), time);
   }
 }
 
@@ -214,16 +246,18 @@ seePinsChange(const Signal &value, ticks_t time)
 {
   update(time);
   pinsInputValue = value;
-  if (isInUse() && outputPort)
+  if (isInUse() && outputPort) {
     return;
+  }
   handlePinsChange(value, time);
   scheduleUpdateIfNeeded();
 }
 
 void Port::updateNoExternalChange(unsigned numEdges)
 {
-  if (numEdges == 0)
+  if (numEdges == 0) {
     return;
+  }
   
   bool slowMode = false;
   ticks_t newTime = (nextEdge + (numEdges - 1))->time;
@@ -247,10 +281,11 @@ void Port::updateNoExternalChange(unsigned numEdges)
       updateSlow(newTime);
       return;
     }
-    while (readyIn != clock->getReadyInValue(time)) {
+    while (static_cast<unsigned int>(readyIn) != clock->getReadyInValue(time)) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
     if (!readyIn) {
       if (timeRegValid && numEdges >= fallingEdgesUntilTimeMet()) {
@@ -271,8 +306,9 @@ void Port::updateNoExternalChange(unsigned numEdges)
   if (outputPort) {
     while (validShiftRegEntries != 0 || portShiftCount != shiftRegEntries) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
     if (!timeRegValid) {
       updatePortCounter(numEdges);
@@ -280,7 +316,7 @@ void Port::updateNoExternalChange(unsigned numEdges)
       time = newTime;
       return;
     }
-    unsigned numFalling = (numEdges + (nextEdge->type == Edge::FALLING)) / 2;
+    unsigned numFalling = (numEdges + static_cast<unsigned int>(nextEdge->type == Edge::FALLING)) / 2;
     unsigned fallingEdgesRemaining = fallingEdgesUntilTimeMet();
     if (numFalling < fallingEdgesRemaining) {
       portCounter += numFalling;
@@ -294,13 +330,15 @@ void Port::updateNoExternalChange(unsigned numEdges)
     numEdges -= edgesRemaining - 1;
     while (timeRegValid) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
     while (validShiftRegEntries != 0 || portShiftCount != shiftRegEntries) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
     updatePortCounter(numEdges);
     nextEdge += numEdges;
@@ -318,11 +356,12 @@ void Port::updateNoExternalChange(unsigned numEdges)
       while (shiftReg != steadyStateShiftReg ||
              portShiftCount != shiftRegEntries) {
         seeEdge(nextEdge++);
-        if (--numEdges == 0)
+        if (--numEdges == 0) {
           return;
+        }
       }
     }
-    unsigned numFalling = (numEdges + (nextEdge->type == Edge::FALLING)) / 2;
+    unsigned numFalling = (numEdges + static_cast<unsigned int>(nextEdge->type == Edge::FALLING)) / 2;
     unsigned fallingEdgesRemaining = fallingEdgesUntilTimeMet();
     if (numFalling < fallingEdgesRemaining) {
       updatePortCounter(numEdges);
@@ -336,8 +375,9 @@ void Port::updateNoExternalChange(unsigned numEdges)
     numEdges -= edgesRemaining - 1;
     while (timeRegValid) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
   }
 
@@ -347,8 +387,9 @@ void Port::updateNoExternalChange(unsigned numEdges)
       while (shiftReg != steadyStateShiftReg ||
              portShiftCount != shiftRegEntries) {
         seeEdge(nextEdge++);
-        if (--numEdges == 0)
+        if (--numEdges == 0) {
           return;
+        }
       }
       updatePortCounter(numEdges);
       updateInputValidShiftRegEntries(numEdges);
@@ -358,13 +399,15 @@ void Port::updateNoExternalChange(unsigned numEdges)
     }
     while (condition != COND_FULL) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
     while (!transferRegValid || portShiftCount != shiftRegEntries) {
       seeEdge(nextEdge++);
-      if (--numEdges == 0)
+      if (--numEdges == 0) {
         return;
+      }
     }
     updatePortCounter(numEdges);
     nextEdge += numEdges;
@@ -377,14 +420,14 @@ void Port::updateNoExternalChange(unsigned numEdges)
          shiftReg != steadyStateShiftReg ||
          transferReg != steadyStateShiftReg) {
     seeEdge(nextEdge++);
-    if (--numEdges == 0)
+    if (--numEdges == 0) {
       return;
+    }
   }
   updatePortCounter(numEdges);
   updateInputValidShiftRegEntries(numEdges);
   nextEdge += numEdges;
   time = newTime;
-  return;
 }
 
 void Port::update(ticks_t newTime)
@@ -443,16 +486,13 @@ bool Port::
 shouldRealignShiftRegister()
 {
   assert(!outputPort);
-  if (!isBuffered())
-    return false;
-  if (!pausedIn && !eventsPermitted())
-    return false;
-  if (holdTransferReg)
-    return false;
-  if (!valueMeetsCondition(getEffectiveDataPortInputPinsValue(time)))
-    return false;
-  if (timeRegValid)
+  if (!isBuffered()) { return false; }
+  if ((pausedIn == nullptr) && !eventsPermitted()) { return false; }
+  if (holdTransferReg) { return false; }
+  if (!valueMeetsCondition(getEffectiveDataPortInputPinsValue(time))) { return false; }
+  if (timeRegValid) {
     return !useReadyOut() && portCounter == timeReg;
+  }
   return condition != COND_FULL;
 }
 
@@ -466,128 +506,158 @@ nextShiftRegOutputPort(uint32_t old)
 }
 
 void Port::
-seeEdge(Edge::Type edgeType, ticks_t newTime)
+seeFallingEdgeOutputPort()
 {
-  assert(newTime >= time);
-  time = newTime;
-  if (portType != DATAPORT)
-    return;
-  if (edgeType == Edge::FALLING) {
-    portCounter++;
-    if (outputPort) {
-      uint32_t nextShiftReg = shiftReg;
-      bool nextOutputPort = outputPort;
-      if (timeRegValid && timeReg == portCounter) {
-        nextOutputPort = transferRegValid;
-        timeRegValid = false;
-        validShiftRegEntries = 0;
+  uint32_t nextShiftReg = shiftReg;
+  bool nextOutputPort = outputPort;
+
+  if (timeRegValid && timeReg == portCounter) {
+    nextOutputPort = transferRegValid;
+    timeRegValid = false;
+    validShiftRegEntries = 0;
+  }
+
+  if (!useReadyIn() || readyIn) {
+
+    if (validShiftRegEntries > 0) {
+      validShiftRegEntries--;
+    }
+
+    if (validShiftRegEntries != 0) {
+      nextShiftReg = nextShiftRegOutputPort(shiftReg);
+    }
+
+    if (validShiftRegEntries == 0) {
+      if ((pausedSync != nullptr) && !transferRegValid) {
+        pausedSync->time = time;
+        pausedSync->pc++;
+        pausedSync->schedule();
+        pausedSync = nullptr;
       }
-      if (!useReadyIn() || readyIn) {
-        if (validShiftRegEntries > 0) {
-          validShiftRegEntries--;
+      if (!timeRegValid && transferRegValid) {
+        validShiftRegEntries = portShiftCount;
+        portShiftCount = shiftRegEntries;
+        nextShiftReg = transferReg;
+        timestampReg = portCounter;
+        transferRegValid = false;
+
+        if (pausedOut != nullptr) {
+          pausedOut->time = time;
+          pausedOut->schedule();
+          pausedOut = nullptr;
         }
-        if (validShiftRegEntries != 0) {
-          nextShiftReg = nextShiftRegOutputPort(shiftReg);
-        }
-        if (validShiftRegEntries == 0) {
-          if (pausedSync && !transferRegValid) {
-            pausedSync->time = time;
-            pausedSync->pc++;
-            pausedSync->schedule();
-            pausedSync = 0;
-          }
-          if (!timeRegValid) {
-            if (transferRegValid) {
-              validShiftRegEntries = portShiftCount;
-              portShiftCount = shiftRegEntries;
-              nextShiftReg = transferReg;
-              timestampReg = portCounter;
-              transferRegValid = false;
-              if (pausedOut) {
-                pausedOut->time = time;
-                pausedOut->schedule();
-                pausedOut = 0;
-              }
-            } else if (pausedIn) {
-              nextOutputPort = false;
-              validShiftRegEntries = 0;
-            }
-          }
-        }
-      }
-      bool pinsChange =
-      (shiftReg ^ (nextOutputPort ? nextShiftReg : 0)) & portWidthMask();
-      shiftReg = nextShiftReg;
-      outputPort = nextOutputPort;
-      if (pinsChange) {
-        uint32_t newValue = getPinsOutputValue(time);
-        outputValue(newValue, time);
-      }
-    } else {
-      if (useReadyOut() && timeRegValid && portCounter == timeReg) {
-        timeRegValid = false;
-        validShiftRegEntries = 0;
+      } else if (!timeRegValid && (pausedIn != nullptr)) {
+          nextOutputPort = false;
+          validShiftRegEntries = 0;
       }
     }
-    updateReadyOut(time);
   }
-  if (edgeType == samplingEdge) {
-    readyIn = clock->getReadyInValue(time);
-    if (!outputPort &&
-        (!useReadyOut() || (readyOut && !timeRegValid)) &&
-        (!useReadyIn() || readyIn)) {
-      uint32_t currentValue = getEffectiveDataPortInputPinsValue(time);
-      shiftReg >>= getPortWidth();
-      shiftReg |= currentValue << (getTransferWidth() - getPortWidth());
-      validShiftRegEntries++;
-      if (shouldRealignShiftRegister()) {
-        validShiftRegEntries = portShiftCount;
-        transferRegValid = false;
+
+  bool pinsChange =
+  ((shiftReg ^ (nextOutputPort ? nextShiftReg : 0)) & portWidthMask()) != 0u;
+
+  shiftReg = nextShiftReg;
+  outputPort = nextOutputPort;
+
+  if (pinsChange) {
+    uint32_t newValue = getPinsOutputValue(time);
+    outputValue(newValue, time);
+  }
+}
+
+void Port::
+seeFallingEdge()
+{
+  portCounter++;
+  if (outputPort) {
+    seeFallingEdgeOutputPort();
+  } else if (useReadyOut() && timeRegValid && portCounter == timeReg) {
+    timeRegValid = false;
+    validShiftRegEntries = 0;
+  }
+  updateReadyOut(time);
+}
+
+void Port::
+seeSamplingEdge()
+{
+  if (outputPort) { return; }
+  if (useReadyOut() && (!readyOut or timeRegValid)) { return; }
+  if (useReadyIn() && !readyIn) { return; }
+
+  uint32_t currentValue = getEffectiveDataPortInputPinsValue(time);
+  shiftReg >>= getPortWidth();
+  shiftReg |= currentValue << (getTransferWidth() - getPortWidth());
+  validShiftRegEntries++;
+
+  if (shouldRealignShiftRegister()) {
+    validShiftRegEntries = portShiftCount;
+    transferRegValid = false;
+    timeRegValid = false;
+    if (isBuffered()) {
+      condition = COND_FULL;
+    }
+  } else if (isBuffered() && timeRegValid && !useReadyOut() &&
+             portCounter == timeReg) {
+    timeRegValid = false;
+  }
+
+  if (validShiftRegEntries == portShiftCount &&
+      (!useReadyOut() || !transferRegValid ||
+       timeRegValid || condition != COND_FULL)) {
+    validShiftRegEntries = 0;
+
+    if (!holdTransferReg) {
+      portShiftCount = shiftRegEntries;
+      transferReg = shiftReg;
+      timestampReg = portCounter;
+      transferRegValid = true;
+
+      if (timeAndConditionMet()) {
+        // TODO should this be conditional on pausedIn || EventPermitted()?
         timeRegValid = false;
-        if (isBuffered()) {
-          condition = COND_FULL;
+
+        if (pausedIn != nullptr) {
+          pausedIn->time = time;
+          pausedIn->schedule();
+          pausedIn = nullptr;
         }
-      } else if (isBuffered() && timeRegValid && !useReadyOut() &&
-                 portCounter == timeReg) {
-        timeRegValid = false;
-      }
-      if (validShiftRegEntries == portShiftCount &&
-          (!useReadyOut() || !transferRegValid ||
-           timeRegValid || condition != COND_FULL)) {
-        validShiftRegEntries = 0;
-        if (!holdTransferReg) {
-          portShiftCount = shiftRegEntries;
-          transferReg = shiftReg;
-          timestampReg = portCounter;
-          transferRegValid = true;
-          if (timeAndConditionMet()) {
-            // TODO should this be conditional on pausedIn || EventPermitted()?
-            timeRegValid = false;
-            if (pausedIn) {
-              pausedIn->time = time;
-              pausedIn->schedule();
-              pausedIn = 0;
-            }
-            if (eventsPermitted()) {
-              event(time);
-            }
-          }
+
+        if (eventsPermitted()) {
+          event(time);
         }
       }
     }
   }
 }
 
+void Port::
+seeEdge(Edge::Type edgeType, ticks_t newTime)
+{
+  assert(newTime >= time);
+  time = newTime;
+  if (portType != DATAPORT) {
+    return;
+  }
+  if (edgeType == Edge::FALLING) {
+    seeFallingEdge();
+  }
+  if (edgeType == samplingEdge) {
+    readyIn = clock->getReadyInValue(time) != 0u;
+    seeSamplingEdge();
+  }
+}
+
 void Port::updatePortCounter(unsigned numEdges)
 {
-  unsigned numFalling = (numEdges + (nextEdge->type == Edge::FALLING)) / 2;
+  unsigned numFalling = (numEdges + static_cast<unsigned int>(nextEdge->type == Edge::FALLING)) / 2;
   portCounter += numFalling;
 }
 
 void Port::updateInputValidShiftRegEntries(unsigned numEdges)
 {
   assert(!outputPort && (!useReadyIn() || readyIn));
-  unsigned numSampling = (numEdges + (nextEdge->type == samplingEdge)) / 2;
+  unsigned numSampling = (numEdges + static_cast<unsigned int>(nextEdge->type == samplingEdge)) / 2;
   validShiftRegEntries = (validShiftRegEntries + numSampling) % shiftRegEntries;
 }
 
@@ -604,16 +674,18 @@ bool Port::seeOwnerEventEnable()
 
 void Port::seeClockStart(ticks_t time)
 {
-  if (!isInUse())
+  if (!isInUse()) {
     return;
+  }
   portCounter = 0;
   seeClockChange(time);
 }
 
 void Port::seeClockChange(ticks_t time)
 {
-  if (!isInUse())
+  if (!isInUse()) {
     return;
+  }
   if (portType == CLOCKPORT) {
     outputValue(getPinsOutputValue(), time);
   } else if (portType == DATAPORT && clock->isFixedFrequency()) {
@@ -810,8 +882,9 @@ endin(Thread &thread, ticks_t threadTime, uint32_t &value)
   unsigned entries = validShiftRegEntries;
   if (transferRegValid) {
     entries += shiftRegEntries;
-    if (validShiftRegEntries != 0)
+    if (validShiftRegEntries != 0) {
       portShiftCount = validShiftRegEntries;
+    }
   } else {
     validShiftRegEntries = 0;
     portShiftCount = shiftRegEntries;
@@ -829,8 +902,9 @@ sync(Thread &thread, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (portType != DATAPORT || !outputPort)
+  if (portType != DATAPORT || !outputPort) {
     return CONTINUE;
+  }
   pausedSync = &thread;
   scheduleUpdateIfNeeded();
   return DESCHEDULE;
@@ -857,8 +931,9 @@ Port::setPortTime(Thread &thread, uint32_t value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (portType != DATAPORT)
+  if (portType != DATAPORT) {
     return CONTINUE;
+  }
   if (outputPort) {
     if (transferRegValid) {
       pausedOut = &thread;
@@ -891,10 +966,12 @@ void Port::clearBuf(Thread &thread, ticks_t time)
 bool Port::checkTransferWidth(uint32_t value)
 {
   unsigned portWidth = getPortWidth();
-  if (transferWidth == portWidth)
+  if (transferWidth == portWidth) {
     return true;
-  if (transferWidth < portWidth)
+  }
+  if (transferWidth < portWidth) {
     return false;
+  }
   switch (value) {
   default: return false;
   // TODO check
@@ -906,8 +983,9 @@ bool Port::checkTransferWidth(uint32_t value)
 
 Signal Port::getEffectiveValue(Signal value) const
 {
-  if (inverted)
+  if (inverted) {
     value.flipLeastSignificantBit();
+  }
   return value;
 }
 
@@ -933,9 +1011,10 @@ bool Port::setReady(Thread &thread, Port *p, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (getPortWidth() != 1)
+  if (getPortWidth() != 1) {
     return false;
-  if (readyOutOf) {
+  }
+  if (readyOutOf != nullptr) {
     p->detachReadyOut(*this);
   }
   readyOutOf = p;
@@ -948,8 +1027,9 @@ bool Port::setBuffered(Thread &thread, bool value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (!value && (transferWidth != getPortWidth() || readyMode != NOREADY))
+  if (!value && (transferWidth != getPortWidth() || readyMode != NOREADY)) {
     return false;
+  }
   buffered = value;
   return true;
 }
@@ -958,8 +1038,9 @@ bool Port::setReadyMode(Thread &thread, ReadyMode mode, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (mode != NOREADY && !buffered)
+  if (mode != NOREADY && !buffered) {
     return false;
+  }
   readyMode = mode;
   scheduleUpdateIfNeeded();
   return true;
@@ -978,20 +1059,23 @@ bool Port::setPortType(Thread &thread, PortType type, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (portType == type)
+  if (portType == type) {
     return true;
+  }
   Signal oldValue = getPinsOutputValue();
   bool oldOutputPort = outputPort;
   portType = type;
   if (type == DATAPORT) {
-    if (clock->isFixedFrequency())
+    if (clock->isFixedFrequency()) {
       nextEdge = clock->getEdgeIterator(time);
+    }
   } else {
     outputPort = true;
   }
   Signal newValue = getPinsOutputValue();
-  if (newValue != oldValue || !oldOutputPort)
+  if (newValue != oldValue || !oldOutputPort) {
     outputValue(newValue, time);
+  }
   scheduleUpdateIfNeeded();
   return true;
 }
@@ -1000,8 +1084,9 @@ bool Port::setTransferWidth(Thread &thread, uint32_t value, ticks_t time)
 {
   update(time);
   updateOwner(thread);
-  if (!checkTransferWidth(value))
+  if (!checkTransferWidth(value)) {
     return false;
+  }
   transferWidth = value;
   shiftRegEntries = transferWidth / getPortWidth();
   portShiftCount = shiftRegEntries;
@@ -1011,14 +1096,15 @@ bool Port::setTransferWidth(Thread &thread, uint32_t value, ticks_t time)
 unsigned Port::fallingEdgesUntilTimeMet() const
 {
   assert(timeRegValid);
-  return (uint16_t)(timeReg - (portCounter + 1)) + 1;
+  return static_cast<uint16_t>(timeReg - (portCounter + 1)) + 1;
 }
 
 unsigned Port::edgesUntilTimeMet() const
 {
   unsigned numFallingEdges = fallingEdgesUntilTimeMet();
-  if (nextEdge->type == Edge::FALLING)
+  if (nextEdge->type == Edge::FALLING) {
     return numFallingEdges * 2 - 1;
+  }
   return numFallingEdges * 2;
 }
 
@@ -1035,10 +1121,12 @@ void Port::scheduleUpdateIfNeededOutputPort()
   }
   bool readyInKnownZero = useReadyIn() && clock->getReadyInValue() == Signal(0);
   if (!readyInKnownZero) {
-    if (nextShiftRegOutputPort(shiftReg) != shiftReg)
+    if (nextShiftRegOutputPort(shiftReg) != shiftReg) {
       return scheduleUpdate((nextEdge + 1)->time);
-    if (useReadyOut() && readyOut)
+    }
+    if (useReadyOut() && readyOut) {
       return scheduleUpdate((nextEdge + 1)->time);
+    }
   }
   if (timeRegValid) {
     // Port counter is always updated on the falling edge.
@@ -1047,7 +1135,7 @@ void Port::scheduleUpdateIfNeededOutputPort()
     return scheduleUpdate((nextEdge + edges)->time);
   }
   if (!readyInKnownZero &&
-      (pausedIn || pausedSync || transferRegValid)) {
+      ((pausedIn != nullptr) || (pausedSync != nullptr) || transferRegValid)) {
     return scheduleUpdate((nextEdge + 1)->time);
   }
 }
@@ -1058,65 +1146,70 @@ void Port::scheduleUpdateIfNeededInputPort()
   // This simplifies the rest of the code since we can assume the next edge
   // is a falling edge.
   if (nextEdge->type == Edge::RISING) {
-    return scheduleUpdate(nextEdge->time);
-  }
+    scheduleUpdate(nextEdge->time);
+
   // Next edge is falling edge
-  if (!readyOutIsInSteadyState()) {
-    return scheduleUpdate(nextEdge->time);
-  }
-  if (timeRegValid) {
+  } else if (!readyOutIsInSteadyState()) {
+    scheduleUpdate(nextEdge->time);
+  } else if (pausedOut != nullptr && !timeRegValid) {
+    scheduleUpdate(nextEdge->time);
+  } else if (timeRegValid) {
     unsigned fallingEdges = fallingEdgesUntilTimeMet();
     unsigned edges = (fallingEdges - 1) * 2;
-    if (!useReadyOut() && samplingEdge == Edge::RISING)
+    if (!useReadyOut() && samplingEdge == Edge::RISING) {
       edges++;
-    return scheduleUpdate((nextEdge + edges)->time);
-  } else {
-    if (pausedOut) {
-      return scheduleUpdate(nextEdge->time);
     }
-    if ((!useReadyIn() || clock->getReadyInValue() != Signal(0)) &&
-        (pausedIn || eventsPermitted() || (useReadyOut() && readyOut))) {
-      Signal inputSignal = getEffectiveDataPortInputPinsValue();
-      if (inputSignal.isClock() ||
-          valueMeetsCondition(inputSignal.getValue(time))) {
-        EdgeIterator nextSamplingEdge = nextEdge;
-        if (nextSamplingEdge->type != samplingEdge) {
-          ++nextSamplingEdge;
-        }
-        return scheduleUpdate(nextSamplingEdge->time);
+    scheduleUpdate((nextEdge + edges)->time);
+  } else if ((!useReadyIn() || clock->getReadyInValue() != Signal(0)) &&
+      ((pausedIn != nullptr) || eventsPermitted() || (useReadyOut() && readyOut))) {
+    Signal inputSignal = getEffectiveDataPortInputPinsValue();
+
+    if (inputSignal.isClock() ||
+        valueMeetsCondition(inputSignal.getValue(time))) {
+      EdgeIterator nextSamplingEdge = nextEdge;
+
+      if (nextSamplingEdge->type != samplingEdge) {
+        ++nextSamplingEdge;
       }
+      scheduleUpdate(nextSamplingEdge->time);
     }
   }
 }
 
 void Port::scheduleUpdateIfNeeded()
 {
-  if (!isInUse() || !clock->isFixedFrequency() || portType != DATAPORT)
+  if (!isInUse() || !clock->isFixedFrequency() || portType != DATAPORT) {
     return;
+  }
   const bool slowMode = false;
   if (slowMode) {
-    if (pausedIn || eventsPermitted() || pausedOut || pausedSync ||
-        !sourceOf.empty() || useReadyOut() || loopback) {
+    if ((pausedIn != nullptr) || eventsPermitted() || 
+        (pausedOut != nullptr) || (pausedSync != nullptr) ||
+        !sourceOf.empty() || useReadyOut() || (loopback != nullptr)) {
       return scheduleUpdate(nextEdge->time);
     }
   }
-  if (outputPort)
+  if (outputPort) {
     scheduleUpdateIfNeededOutputPort();
-  else
+  } else {
     scheduleUpdateIfNeededInputPort();
+  }
 }
 
 bool Port::computeReadyOut()
 {
-  if (!useReadyOut())
-    return 0;
+  if (!useReadyOut()) {
+    return false;
+  }
   if (outputPort) {
-    if (useReadyIn() && !readyIn)
-      return 0;
+    if (useReadyIn() && !readyIn) {
+      return false;
+    }
     return validShiftRegEntries != 0;
   }
-  if (timeRegValid)
+  if (timeRegValid) {
     return portCounter == timeReg;
+  }
   return validShiftRegEntries != portShiftCount;
 }
 
@@ -1126,42 +1219,58 @@ bool Port::computeReadyOut()
 bool Port::readyOutIsInSteadyStateSlowPath()
 {
   assert(useReadyOut());
-  if (readyOut != computeReadyOut())
-    return false;
-  if (outputPort) {
-    if (readyOut)
-      return false;
-    if (validShiftRegEntries == 0)
-      return true;
-    assert(useReadyIn() && !readyIn);
-    return clock->getReadyInValue() == Signal(0);
-  } else {
-    if (!readyOut)
-      return true;
-    if (timeRegValid)
-      return false;
-    if (useReadyIn() && !readyIn && clock->getReadyInValue() == Signal(0))
-      return false;
-    if (readyOut && condition != COND_FULL &&
-        !valueMeetsCondition(getEffectiveDataPortInputPinsValue(time)))
-      return true;
+  if (readyOut != computeReadyOut()) {
     return false;
   }
+
+  if (outputPort && readyOut) {
+    return false;
+  }
+
+  if (outputPort && validShiftRegEntries == 0) {
+      return true;
+  }
+
+  if (outputPort) {
+    assert(useReadyIn() && !readyIn);
+    return clock->getReadyInValue() == Signal(0);
+  }
+
+  if (!readyOut) {
+    return true;
+  }
+
+  if (timeRegValid) {
+    return false;
+  }
+
+  if (useReadyIn() && !readyIn && clock->getReadyInValue() == Signal(0)) {
+    return false;
+  }
+
+  if (readyOut && condition != COND_FULL &&
+      !valueMeetsCondition(getEffectiveDataPortInputPinsValue(time))) {
+    return true;
+  }
+
+  return false;
 }
 
 void Port::clearReadyOut(ticks_t time)
 {
-  if (readyOut == 0)
+  if (!readyOut) {
     return;
-  readyOut = 0;
-  handleReadyOutChange(0, time);
+  }
+  readyOut = false;
+  handleReadyOutChange(false, time);
 }
 
 void Port::updateReadyOut(ticks_t time)
 {
   bool newValue = computeReadyOut();
-  if (newValue == readyOut)
+  if (newValue == readyOut) {
     return;
+  }
   readyOut = newValue;
   handleReadyOutChange(newValue, time);
 }
