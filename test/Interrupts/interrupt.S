@@ -1,5 +1,7 @@
 //RUN: xcc -O2 %s -x xc %s -target=XK-1A -o %t1.xe
 //RUN: axe %t1.xe
+//RUN: xcc -O2 %s -x xc %s -target=XCORE-200-EXPLORER -mno-dual-issue -o %t1.xe
+//RUN: axe %t1.xe
 #ifdef __XC__
 #include <stdlib.h>
 

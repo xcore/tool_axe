@@ -1,5 +1,7 @@
 // RUN: xcc -target=XK-1A %s -o %t1.xe
 // RUN: axe %t1.xe --loopback XS1_PORT_1A XS1_PORT_1B
+// RUN: xcc -target=XCORE-200-EXPLORER %s -o %t1.xe
+// RUN: axe %t1.xe --loopback XS1_PORT_1A XS1_PORT_1B
 
 #include <xs1.h>
 #include <print.h>
