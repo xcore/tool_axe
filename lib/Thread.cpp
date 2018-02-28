@@ -28,10 +28,17 @@ using namespace Register;
 Thread::Thread() :
   Resource(RES_TYPE_THREAD),
   parent(0),
-  scheduler(0)
+  scheduler(0),
+  dualIssue(false)
 {
   time = 0;
   pc = 0;
+  instructionCounter = 0;
+
+  for (int i=0; i<Register::NUM_REGISTERS; i++) {
+    regs[i] = 0;
+  }
+
   regs[KEP] = 0;
   regs[KSP] = 0;
   regs[SPC] = 0;
@@ -41,6 +48,36 @@ Thread::Thread() :
   eeble() = false;
   ieble() = false;
   setInUse(false);
+}
+
+void Thread::setDualIssue (bool di)
+{
+  dualIssue = di;
+}
+
+bool Thread::isDualIssue () const
+{
+  return dualIssue;
+}
+
+void Thread::writeRegister (int index, uint32_t value)
+{
+  if (!dualIssue) {
+    regs[index] = value;
+  } else {
+    auto evt = std::make_pair(index, value);
+    pendingRegWrites.push_back(evt);
+  }
+}
+
+uint32_t Thread::readRegisterForTrace (int index) const
+{
+  for (auto e : pendingRegWrites) {
+    if (e.first == index) {
+      return e.second;
+    }
+  }
+  return regs[index];
 }
 
 void Thread::setParent(Core &p)
@@ -76,6 +113,19 @@ void Thread::dump() const
   }
   std::cout << "pc: 0x" << getRealPc() << "\n";
   std::cout << std::dec;
+}
+
+void Thread::addTime(ticks_t value) {
+  value *= instructionCycles;
+  if (!dualIssue || pc % 2 == 0) {
+    time += value;
+  }
+}
+
+uint32_t Thread::getReferenceTime () const
+{
+  // Approximate the reference clock
+  return (uint32_t)((double)time / parent->getParent()->getReferenceDivide());
 }
 
 void Thread::schedule()
@@ -415,7 +465,7 @@ do { \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
 do { \
-  if (tracing) { CORE.getTracer()->regWrite(register, value); } \
+  if (tracing) { /*CORE.getTracer()->regWrite(register, value);*/ } \
 } while(0)
 #define TRACE_END() \
 do { \
@@ -489,7 +539,7 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
   Operands ops;
   uint32_t address = THREAD.fromPc(THREAD.pc);
   instructionDecode(CORE, address, opc, ops);
-  instructionTransform(opc, ops, CORE, address);
+  instructionTransform(opc, ops, CORE, address, thread.isDualIssue());
   THREAD.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
                    instructionProperties[opc].size);
   return InstReturn::END_TRACE;
@@ -511,7 +561,7 @@ InstReturn Thread::interpretOne()
   InstructionOpcode opc;
   uint32_t address = fromPc(pc);
   instructionDecode(*parent, address, opc, ops, true /*ignoreBreakpoints*/);
-  instructionTransform(opc, ops, *parent, address);
+  instructionTransform(opc, ops, *parent, address, isDualIssue());
   bool tracing = decodeCache.tracingEnabled;
   InstReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
   ops = oldOps;
@@ -546,9 +596,38 @@ void Thread::getNextPC() {
 
 void Thread::run(ticks_t time)
 {
+  if (this->time == 0) {
+    this->time = 1;
+  }
+  auto i = 0;
   while (1) {
-    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION)
+    auto cpc = pc;
+
+
+    pcHistory.push_back(pc);
+    while (pcHistory.size() > 10) {
+      pcHistory.pop_front();
+    }
+
+    instructionCounter++;
+    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION) {
+
+      if (dualIssue && pc % 2 == 0) {
+        for (auto e : pendingRegWrites) {
+          regs[e.first] = e.second;
+        }
+        pendingRegWrites.clear();
+      }
       return;
+    }
+    i++;
+
+    if (dualIssue && pc % 2 == 0) {
+      for (auto e : pendingRegWrites) {
+        regs[e.first] = e.second;
+      }
+      pendingRegWrites.clear();
+    }
   }
 }
 

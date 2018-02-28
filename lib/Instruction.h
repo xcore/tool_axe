@@ -7,6 +7,7 @@
 #define _Instruction_h_
 
 #include "Config.h"
+#include "Node.h"
 #include "InstFunction.h"
 #include <cstddef>
 
@@ -25,17 +26,17 @@ struct Operands {
   };
 };
 
-void instructionDecode(const Core &core, uint32_t addr,
+void instructionDecode(const Core &tile, uint32_t addr,
                        InstructionOpcode &opcode, Operands &operands,
                        bool ignoreBreakpoints = false);
 
 void
 instructionDecode(uint16_t low, uint16_t high, bool highValid,
-                  InstructionOpcode &opcode, Operands &operands);
+                  InstructionOpcode &opcode, Operands &operands, Node::Type type);
 
 void
 instructionTransform(InstructionOpcode &opc, Operands &operands,
-                     const Core &core, uint32_t address);
+                     const Core &tile, uint32_t address, bool isDualIssue);
   
 } // End axe namespace
 

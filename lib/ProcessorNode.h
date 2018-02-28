@@ -16,22 +16,25 @@ class Core;
 class ProcessorNode : public Node {
 private:
   std::vector<Core *> cores;
+  long processorMhz;
+  long referenceMhz;
   
   void computeCoreNumberBits();
 public:
   bool isProcessorNode() override { return true; }
   typedef std::vector<Core *>::iterator core_iterator;
   typedef std::vector<Core *>::const_iterator const_core_iterator;
-  ProcessorNode(Type t, unsigned numXLinks);
+  ProcessorNode(Type t, unsigned numXLinks, long processorMhz, long referenceMhz);
   ProcessorNode(const Node &) = delete;
   ~ProcessorNode();
   void finalize() override;
-  void addCore(std::auto_ptr<Core> cores);
+  void addCore(std::unique_ptr<Core> cores);
   const std::vector<Core*> &getCores() const { return cores; }
   uint32_t getCoreID(unsigned coreNum) const;
   void setNodeID(unsigned value) override;
   static bool getTypeFromJtagID(unsigned jtagID, Type &type);
   ChanEndpoint *getLocalChanendDest(ResourceID ID) override;
+  uint32_t getReferenceDivide() { return processorMhz / referenceMhz; };
 };
 
 } // End axe namespace

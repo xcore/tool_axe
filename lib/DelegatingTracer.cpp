@@ -14,7 +14,7 @@ DelegatingTracer::~DelegatingTracer()
   }
 }
 
-void DelegatingTracer::addDelegate(std::auto_ptr<Tracer> tracer)
+void DelegatingTracer::addDelegate(std::unique_ptr<Tracer> tracer)
 {
   delegates.push_back(tracer.release());
 }

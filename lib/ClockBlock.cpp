@@ -5,6 +5,9 @@
 
 #include "ClockBlock.h"
 #include "Port.h"
+#include "Thread.h"
+#include "Core.h"
+#include "ProcessorNode.h"
 
 using namespace axe;
 
@@ -91,8 +94,9 @@ void ClockBlock::setSourceRefClock(Thread &thread, ticks_t time)
 }
 
 bool ClockBlock::setData(Thread &thread, uint32_t newDivide, ticks_t time) {
-  if (source)
+  if (source && thread.getParent().getParent()->type != Node::Type::XS2_A)
     return false;
+
   newDivide = newDivide & 0xff;
   if (newDivide == 0)
     divide = 1;

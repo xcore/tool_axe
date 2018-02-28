@@ -477,7 +477,8 @@ getOperandName(const Instruction &inst, unsigned i)
     return getImplicitOpName(reg);
   }
   std::ostringstream buf;
-  const char *opMacro = inst.getOperands().size() > 3 ? "LOP" : "OP";
+  auto opsSize = inst.getOperands().size() - inst.getImplicitOps().size();
+  const char *opMacro = opsSize > 3 ? "LOP" : "OP";
   buf << opMacro << '(' << i << ')';
   return buf.str();
 }
@@ -543,6 +544,7 @@ protected:
   virtual void emitLoadByte(const std::string &args) { emitLoad(args, BYTE); }
   virtual void emitWritePc(const std::string &args) = 0;
   virtual void emitWritePcUnchecked(const std::string &args) = 0;
+  virtual void emitIncrementPcUnchecked(const std::string &args) = 0;
 };
 
 const char *CodeEmitter::getLoadStoreTypeName(LoadStoreType type)
@@ -657,6 +659,12 @@ void CodeEmitter::emitNested(const std::string &code)
         std::string content(&s[i], close);
         emitWritePcUnchecked(content);
         i = (close - s);
+      } else if (std::strncmp(&s[i], "increment_pc_unchecked(", 23) == 0) {
+        i += 23;
+        const char *close = scanClosingBracket(&s[i]);
+        std::string content(&s[i], close);
+        emitIncrementPcUnchecked(content);
+        i = (close - s);
       } else {
         std::cerr << "error: stray % in code string\n";
         std::exit(1);
@@ -695,6 +703,7 @@ protected:
   virtual void emitLoad(const std::string &args, LoadStoreType type);
   virtual void emitWritePc(const std::string &args);
   virtual void emitWritePcUnchecked(const std::string &args);
+  virtual void emitIncrementPcUnchecked(const std::string &args);
 private:
   bool shouldEmitMemoryChecks() {
     return !jit || !inst->getEnableMemCheckOpt();
@@ -708,7 +717,7 @@ void FunctionCodeEmitter::emitBare(const std::string &s)
 
 void FunctionCodeEmitter::emitCycles()
 {
-  std::cout << "THREAD.time += " << inst->getCycles() << ";\n";
+  std::cout << "THREAD.addTime(" << inst->getCycles() << ");\n";
 }
 
 void FunctionCodeEmitter::emitRegWriteBack()
@@ -730,9 +739,9 @@ void FunctionCodeEmitter::emitRegWriteBack()
           std::cout << "TRACE_REG_WRITE((Register::Reg)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
-        std::cout << "THREAD.regs[" << getOperandName(*inst, i);
-        std::cout << "] = ";
-        std::cout << "op" << i << ";\n";
+        std::cout << "THREAD.writeRegister(" << getOperandName(*inst, i);
+        std::cout << ", ";
+        std::cout << "op" << i << ");\n";
       }
       break;
     }
@@ -1022,6 +1031,13 @@ void FunctionCodeEmitter::emitWritePcUnchecked(const std::string &args)
   std::cout << ";\n";
 }
 
+void FunctionCodeEmitter::emitIncrementPcUnchecked(const std::string &args)
+{
+  std::cout << "nextPc += (";
+  emitNested(args);
+  std::cout << ") * (THREAD.isDualIssue() ? 2 : 1);\n";
+}
+
 class CodePropertyExtractor : public CodeEmitter {
   Instruction *inst;
 protected:
@@ -1058,6 +1074,10 @@ protected:
     emitNested(args);
   }
   virtual void emitWritePcUnchecked(const std::string &args) {
+    inst->setWritesPc();
+    emitNested(args);
+  }
+  virtual void emitIncrementPcUnchecked(const std::string &args) {
     inst->setWritesPc();
     emitNested(args);
   }
@@ -1187,6 +1207,8 @@ static void emitInstFunction(Instruction &inst, bool jit)
     std::cout << "ERROR();\n";
   } else {
     if (!jit) {
+      std::cout << "static uint32_t executionCount = 0;\n";
+      std::cout << "executionCount++;\n";
       std::cout << "uint32_t nextPc = THREAD.pc + " << inst.getSize()/2;
       std::cout << ";\n";
     }
@@ -1456,7 +1478,7 @@ static void emitInstTraceInfo()
   std::cout << "#endif //EMIT_INSTRUCTION_TRACE_INFO\n";
 }
 
-#define INSTRUCTION_CYCLES 4
+#define INSTRUCTION_CYCLES 1
 /// Time to execute a divide instruction in 400MHz clock cycles. This is
 /// approximate. The XCore divide unit divides 1 bit per cycle and is shared
 /// between threads.
@@ -1490,11 +1512,46 @@ f2rus_in(const std::string &name,
 }
 
 Instruction &
+fl0r(const std::string &name,
+    const std::string &format,
+    const std::string &code)
+{
+  return inst(name + "_l0r", 4, ops(), format, code, INSTRUCTION_CYCLES);
+}
+
+Instruction &
 fl3r(const std::string &name,
      const std::string &format,
      const std::string &code)
 {
   return inst(name + "_l3r", 4, ops(out, in, in), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
+fl3r_inout_inout(const std::string &name,
+         const std::string &format,
+         const std::string &code)
+{
+  return inst(name + "_l3r", 4, ops(inout, inout, in), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
+fl3rus_in(const std::string &name,
+     const std::string &format,
+     const std::string &code)
+{
+  return inst(name + "_l3rus", 4, ops(in, in, imm, in), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
+fl3rus_out_out(const std::string &name,
+     const std::string &format,
+     const std::string &code)
+{
+  return inst(name + "_l3rus", 4, ops(out, in, imm, out), format, code,
               INSTRUCTION_CYCLES);
 }
 
@@ -1526,6 +1583,15 @@ fl2rus(const std::string &name,
 }
 
 Instruction &
+fl2rus_out(const std::string &name,
+       const std::string &format,
+       const std::string &code)
+{
+  return inst(name + "_l2rus", 4, ops(out, out, imm), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
 fl2rus_in(const std::string &name,
           const std::string &format,
           const std::string &code)
@@ -1535,11 +1601,29 @@ fl2rus_in(const std::string &name,
 }
 
 Instruction &
+fl4rus(const std::string &name,
+       const std::string &format,
+       const std::string &code)
+{
+  return inst(name + "_l4rus", 4, ops(out, in, in, in, imm), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
 fl4r_inout_inout(const std::string &name,
                  const std::string &format,
                  const std::string &code)
 {
   return inst(name + "_l4r", 4, ops(inout, in, in, inout), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
+fl4r_out_out(const std::string &name,
+                 const std::string &format,
+                 const std::string &code)
+{
+  return inst(name + "_l4r", 4, ops(out, in, in, out), format, code,
               INSTRUCTION_CYCLES);
 }
 
@@ -1558,6 +1642,15 @@ fl5r(const std::string &name,
      const std::string &code)
 {
   return inst(name + "_l5r", 4, ops(out, in, in, out, in), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
+fl5r_1out_4in(const std::string &name,
+          const std::string &format,
+          const std::string &code)
+{
+  return inst(name + "_l5r", 4, ops(in, in, in, out, in), format, code,
               INSTRUCTION_CYCLES);
 }
 
@@ -1782,6 +1875,33 @@ void add()
        "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
        "}",
        INSTRUCTION_CYCLES);
+  inst("TSETR_l3r", 4, ops(imm, in, in), "set t[%2]:r%0, %1",
+       "ResourceID resID(%2);\n"
+       "if (Thread *t = checkThread(CORE, resID)) {\n"
+       "  t->reg(%0) = %1;\n"
+       "} else {\n"
+       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+       "}",
+       INSTRUCTION_CYCLES);
+  //fl3r("TSETR", "tsetr", "");
+
+  fl3r_inout_inout("LSATS", "lsats %0, %1, %2",
+       "if (%2 > 0 && %2 < 32) {\n"
+       "  int sign_word = ((int)%0) >> (%2 - 1);\n"
+       "  int sign_bit = (%0 >> (32 - 1)) & 1;\n"
+       "  if (sign_bit) {\n"
+       "    if (sign_word != ~0) {\n"
+       "      %0 = ~0 << (%2 - 1);\n"
+       "      %1 = 0;\n"
+       "    }\n"
+       "  } else {\n"
+       "    if (sign_word != 0) {\n"
+       "      %0 = ~(~0 << (%2 - 1));\n"
+       "      %1 = ~0;\n"
+       "    }\n"
+       "  }\n"
+       "}\n");
+
   fl3r("LDAWF", "ldaw %0, %1[%2]", "%0 = %1 + (%2 << 2);");
   fl2rus("LDAWF", "ldaw %0, %1[%2]", "%0 = %1 + %2;")
          .transform("%2 = %2 << 2;", "%2 = %2 >> 2;");
@@ -1840,6 +1960,8 @@ void add()
          "assert(%2 != 32 && \"ASHR_32_2rus should be used for ashr by immediate 32\");\n"
          "%0 = (int32_t)%1 >> %2;");
   fl2rus("ASHR_32", "ashr %0, %1, 32", "%0 = (int32_t)%1 >> 31;");
+  fl2rus("UNZIP", "unzip", "");
+  fl2rus("ZIP", "zip", "");
   fl2rus_in("OUTPW", "outpw res[%1], %0, %2",
             "ResourceID resID(%1);\n"
             "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -1873,6 +1995,49 @@ void add()
          "}\n")
   .setYieldBefore();
   fl3r_inout("CRC", "crc32 %0, %1, %2", "%0 = crc32(%0, %1, %2);");
+  // TODO finish
+  fl4r_out_out("LDD", "ldd_l4r %3, %0, %1",
+       "uint32_t Addr = %1 + (%2 << 3);\n"
+       "%load_word(%0, Addr)\n"
+       "%load_word(%3, Addr + 4)\n")
+    .setEnableMemCheckOpt();
+  // TODO finish
+  fl3rus_out_out("LDD", "ldd_l3r %3, %0, %1",
+       "uint32_t Addr = %1 + (%2 << 3);\n"
+       "%load_word(%0, Addr)\n"
+       "%load_word(%3, Addr + 4)\n")
+    .setEnableMemCheckOpt();
+  // TODO finish
+  fl2rus_out("LDDSP", "ldd %1, %0, sp[%2]",
+      "uint32_t Addr = %3 + (%2 << 3);\n"
+      "%load_word(%0, Addr)\n"
+      "%load_word(%1, Addr + 4)\n")
+  .addImplicitOp(SP, in)
+  .setEnableMemCheckOpt();
+  // TODO finish
+  fl4r_inout_inout("CRCN", "crcn",
+       ""
+       ""
+       "");
+  // TODO finish
+  fl4r_inout_inout("STD", "std %3, %0, %1",
+       "uint32_t Addr = %1+ (%2 << 3);\n"
+       //"%store_double((%0 << 32) | %3, Addr)\n");
+       "%store_word(%0, Addr)\n"
+       "%store_word(%3, Addr + 4)\n");
+  // TODO finish
+  fl3rus_in("STD", "std %3, %0, %1",
+       "uint32_t Addr = %1 + (%2 << 3);\n"
+       "%store_word(%0, Addr)\n"
+       "%store_word(%3, Addr + 4)\n")
+    .setEnableMemCheckOpt();
+  // TODO finish
+  fl2rus_in("STDSP", "std %1, %0, sp[%2]",
+         "uint32_t Addr = %3 + (%2 << 3);\n"
+         "%store_word(%0, Addr)\n"
+         "%store_word(%1, Addr + 4)")
+    .addImplicitOp(SP, in)
+    .setEnableMemCheckOpt();
   // TODO check destination registers don't overlap
   fl4r_inout_inout("MACCU", "maccu %0, %3, %1, %2",
        "uint64_t Result = ((uint64_t)%0 << 32 | %3) + (uint64_t)%1 * %2;\n"
@@ -1889,6 +2054,8 @@ void add()
   fl4r_out_inout("CRC8", "crc8 %3, %0, %1, %2",
                  "%3 = crc8(%3, (uint8_t)%1, %2);\n"
                  "%0 = %1 >> 8;");
+  fl5r_1out_4in("XOR4", "xor4 %3, %0, %1, %2, %4",
+       "%3 = %0 ^ %1 ^ %2 ^ %4;");
   // TODO check destination registers don't overlap
   // Note op0 and op3 are swapped.
   fl5r("LADD", "ladd %3, %0, %1, %2, %4",
@@ -1899,8 +2066,25 @@ void add()
   // Note op0 and op3 are swapped.
   fl5r("LSUB", "lsub %3, %0, %1, %2, %4",
        "uint64_t Result = (uint64_t)%1 - (uint64_t)%2 - (%4&1);\n"
-       "%3 = (uint32_t)(Result >> 32);"
+       "%3 = (uint32_t)(Result >> 32) & 0x1;"
        "%0 = (uint32_t)(Result);\n");
+
+  fl4rus("LEXTRACT", "lextract %3, %0, %1, %2, %4",
+       "int bitp_map[] = {32, 1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32};\n"
+       "int bitp = bitp_map[op4];\n"
+       "if (%2 >= 32) {\n"
+       "  %0 = %3;\n"
+       "} else if (%2 == 0) {\n"
+       "  %0 = %1;\n"
+       "} else {\n"
+       "  uint32_t r = %1 >> %2;\n"
+       "  uint32_t l = %3 << (32 - %2);\n"
+       "  %0 = r | l;\n"
+       "}\n"
+       "if (bitp < 32) {\n"
+       "  %0 = %0 & ((1 << bitp) - 1);\n"
+       "}\n"
+       "");
 
   // Five operand long.
   // Note operands are reordered.
@@ -1977,23 +2161,23 @@ void add()
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRFF", "bt %0, %1",
+  fru6_in("BRFF", "bf %0, %1",
           "if (!%0) {\n"
           "  %write_pc_unchecked(%1);\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRFF_illegal", "bt %0, %1",
+  fru6_in("BRFF_illegal", "bf %0, %1",
           "if (!%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
     .transform("%1 = %pc + %1;", "%1 = %1 - %pc;");
-  fru6_in("BRBF", "bt %0, -%1",
+  fru6_in("BRBF", "bf %0, -%1",
           "if (!%0) {\n"
           "  %write_pc_unchecked(%1);\n"
           "  %yield"
           "}")
     .transform("%1 = %pc - %1;", "%1 = %pc - %1;");
-  fru6_in("BRBF_illegal", "bt %0, -%1",
+  fru6_in("BRBF_illegal", "bf %0, -%1",
           "if (!%0) {\n"
           "  %exception(ET_ILLEGAL_PC, FROM_PC(%1))\n"
           "}")
@@ -2014,7 +2198,19 @@ void add()
       "  uint32_t Addr = %1;\n"
       "  %store_word(%2, Addr)"
       "  %1 = %1 - %0;\n"
-      "}\n")
+      "}\n"
+      "THREAD.setDualIssue(false);\n")
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(LR, in)
+    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
+    .setEnableMemCheckOpt();
+  fu6("DUALENTSP", "dualentsp %0",
+      "if (%0 > 0) {\n"
+      "  uint32_t Addr = %1;\n"
+      "  %store_word(%2, Addr)"
+      "  %1 = %1 - %0;\n"
+      "}\n"
+      "THREAD.setDualIssue(true);\n")
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
@@ -2030,6 +2226,25 @@ void add()
       )
     .addImplicitOp(SP, inout)
     .addImplicitOp(LR, inout)
+    .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
+    .setEnableMemCheckOpt()
+    // retsp always causes an fnop.
+    .setCycles(2 * INSTRUCTION_CYCLES);
+  fu6("RETSP_xs2a", "retsp %0",
+      "auto lr = %2;\n"
+      "auto sp = %1;\n"
+      "auto u = %0;\n"
+      "if (u > 0) {\n"
+      "  uint32_t ea = sp + u;\n"
+      "  %load_word(lr, ea)" // lr = mem[ea]
+      "  %1 = ea;\n" // sp = ea
+      "}\n"
+      "THREAD.setDualIssue(lr & 0x1);\n"
+      "%write_pc(lr & ~0x1);\n"
+      "%yield"
+      )
+    .addImplicitOp(SP, inout)
+    .addImplicitOp(LR, in)
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
     .setEnableMemCheckOpt()
     // retsp always causes an fnop.
@@ -2096,6 +2311,7 @@ void add()
     .transform("%0 = %0 << 1;", "%0 = %0 >> 1;");
   fu10("BLRF", "bl %0",
        "%1 = FROM_PC(%pc);\n"
+       "%1 = %1 | (THREAD.isDualIssue() ? 1 : 0);\n"
        "%write_pc_unchecked(%0);")
     .addImplicitOp(LR, out)
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
@@ -2103,6 +2319,7 @@ void add()
     .transform("%0 = %pc + %0;", "%0 = %0 - %pc;");
   fu10("BLRB", "bl -%0",
        "%1 = FROM_PC(%pc);\n"
+       "%1 = %1 | (THREAD.isDualIssue() ? 1 : 0);\n"
        "%write_pc_unchecked(%0);\n"
        "%yield")
     .addImplicitOp(LR, out)
@@ -2191,8 +2408,11 @@ void add()
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n")
     .setYieldBefore();
+  f2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
   fl2r("BITREV", "bitrev %0, %1", "%0 = bitReverse(%1);");
+  f2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
   fl2r("BYTEREV", "byterev %0, %1", "%0 = bswap32(%1);");
+  f2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r("CLZ", "clz %0, %1", "%0 = countLeadingZeros(%1);");
   fl2r_in("TINITLR", "init t[%1]:lr, %0",
           "ResourceID resID(%1);\n"
@@ -2288,11 +2508,37 @@ void add()
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
+  fl2r_in("TINITPC", "init t[%1]:pc, %0",
+         "ResourceID resID(%1);\n"
+         "Thread *t = checkThread(CORE, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  Thread &threadState = *t;\n"
+         "  unsigned newPc = TO_PC(%0);\n"
+         "  if (CHECK_PC(newPc)) {;\n"
+         "    // Set pc to one previous address since it will be incremented when\n"
+         "    // the thread is started with msync.\n"
+         "    // TODO is this right?\n"
+         "    threadState.pc = newPc - 1;\n"
+         "  } else {\n"
+         "    threadState.pc = CORE.getIllegalPCThreadAddr();\n"
+         "    threadState.pendingPc = newPc;\n"
+         "  }\n"
+         "} else {\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "}\n");
   f2r_in("TINITDP", "init t[%1]:dp, %0",
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
          "  t->reg(Register::DP) = %0;\n"
+         "} else {\n"
+         "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
+         "}\n");
+  fl2r_in("TINITSP", "init t[%1]:sp, %0",
+         "ResourceID resID(%1);\n"
+         "Thread *t = checkThread(CORE, resID);\n"
+         "if (t && t->inSSync()) {\n"
+         "  t->reg(Register::SP) = %0;\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2535,6 +2781,8 @@ void add()
          "  %exception(ET_ILLEGAL_RESOURCE, %1);\n"
          "}\n").setYieldBefore();
 
+  f1r_out("GETTIME", "gettime %0", "%0 = THREAD.getReferenceTime();");
+  f1r("ELATE", "gettime %0", "");
   f1r("SETSP", "set sp, %0", "%1 = %0;")
     .addImplicitOp(SP, out);
   // TODO should we check the pc range?
@@ -2560,7 +2808,7 @@ void add()
       "%yield\n")
     .addImplicitOp(LR, out);
   f1r("BRU", "bru %0",
-      "uint32_t target = FROM_PC(%pc + %0);\n"
+      "uint32_t target = FROM_PC(%pc + (%0 * (THREAD.isDualIssue() ? 2 : 1)));\n"
       "%write_pc(target);\n"
       "%yield\n");
   f1r("TSTART", "start t[%0]",
@@ -2672,6 +2920,7 @@ void add()
       "} else {\n"
       "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
       "}\n").setYieldBefore();
+  f0r("NOP", "nop", "");
   f0r("GETID", "get %0, id", "%0 = THREAD.getNum();")
     .addImplicitOp(R11, out);
   f0r("GETET", "get %0, %1", "%0 = %1;")
@@ -2691,6 +2940,18 @@ void add()
     .addImplicitOp(KEP, out)
     .addImplicitOp(R11, in);
   f0r("KRET", "kret",
+      "%3 = %1;\n"
+      "Thread::sr_t value((int)%2);\n"
+      "value[Thread::WAITING] = false;\n"
+      "%4 = value;"
+      "%write_pc(%0);\n")
+    .addImplicitOp(SPC, in)
+    .addImplicitOp(SED, in)
+    .addImplicitOp(SSR, in)
+    .addImplicitOp(ED, out)
+    .addImplicitOp(SR, out)
+    .setYieldBefore();
+  fl0r("KRET", "kret",
       "%3 = %1;\n"
       "Thread::sr_t value((int)%2);\n"
       "value[Thread::WAITING] = false;\n"

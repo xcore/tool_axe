@@ -16,7 +16,7 @@ namespace axe {
   public:
     ~DelegatingTracer();
 
-    void addDelegate(std::auto_ptr<Tracer> tracer);
+    void addDelegate(std::unique_ptr<Tracer> tracer);
 
     virtual void attach(const SystemState &systemState) override;
 

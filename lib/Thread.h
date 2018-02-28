@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <bitset>
+#include <list>
 #include "Runnable.h"
 #include "RunnableQueue.h"
 #include "Resource.h"
@@ -74,6 +75,7 @@ class RunnableQueue;
 struct Operands;
 
 class Thread : public Runnable, public Resource {
+  bool dualIssue;
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -86,6 +88,10 @@ class Thread : public Runnable, public Resource {
   RunnableQueue *scheduler;
   /// Cached decode information.
   DecodeCache::State decodeCache;
+
+  std::list<std::pair<int, uint32_t>> pendingRegWrites;
+  std::list<uint32_t> pcHistory;
+  long long instructionCounter;
 public:
   enum SRBit {
     EEBLE = 0,
@@ -96,9 +102,12 @@ public:
     // TODO When is this set?
     SINK = 5,
     WAITING = 6,
-    FAST = 7
+    FAST = 7,
+    DI = 8,
+    KEDI = 9,
+    HIPRI = 10,
   };
-  typedef std::bitset<8> sr_t;
+  typedef std::bitset<11> sr_t;
   uint32_t regs[Register::NUM_REGISTERS];
   /// The program counter. Note that the pc will not be valid if the thread is
   /// executing since it is cached in the dispatch loop.
@@ -112,8 +121,23 @@ public:
   uint32_t pendingPc;
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
+  /// Number of clock cycles per instruction
+  uint32_t instructionCycles;
+
+  void setInstructionCycles(uint32_t cycles) { instructionCycles = cycles; }
 
   Thread();
+
+  uint32_t getReferenceTime () const;
+
+  void setDualIssue (bool di);
+  bool isDualIssue () const;
+
+  void writeRegister (int index, uint32_t value);
+
+  void addTime(ticks_t value);
+
+  uint32_t readRegisterForTrace (int index) const;
 
   bool hasTimeSliceExpired() const {
     if (scheduler->empty())
@@ -266,13 +290,14 @@ public:
     DecodeCache::executionFrequency_t *executionFrequency =
     decodeCache.executionFrequency;
     if (++executionFrequency[shiftedAddress] > threshold) {
-      return true;
+      // return true;
+      return false;
     }
     return false;
   }
 
   void updateExecutionFrequency(uint32_t shiftedAddress) {
-    if (updateExecutionFrequencyFromStub(shiftedAddress))
+    if (updateExecutionFrequencyFromStub(shiftedAddress) and not dualIssue)
       runJIT(shiftedAddress);
   }
 
@@ -302,6 +327,11 @@ public:
     if (!enabled[EEBLE] && !enabled[IEBLE])
       return false;
     return setSRSlowPath(enabled);
+  }
+
+  void setStatusDualIssue(bool value)
+  {
+    sr[DI] = value;
   }
 
   void clre()

@@ -179,14 +179,6 @@ void LoggingTracer::printInstructionLineStart(const Thread &t, uint32_t pc)
     printSrcRegister(getOperandRegister(properties, ops, 1));
     return;
   }
-  if (opcode == InstructionOpcode::ADD_2rus &&
-      getOperand(properties, ops, 2) == 0) {
-    out << "mov ";
-    printDestRegister(getOperandRegister(properties, ops, 0));
-    out << ", ";
-    printSrcRegister(getOperandRegister(properties, ops, 1));
-    return;
-  }
   
   const char *fmt = instructionTraceInfo[opcode].string;
   for (const char *p = fmt; *p != '\0'; ++p) {
@@ -277,9 +269,23 @@ void LoggingTracer::instructionEnd() {
   if (!emittedLineStart) {
     printInstructionLineStart(*thread, pc);
   }
+  out << " # ";
+  dumpRegisters();
+
   thread = nullptr;
   emittedLineStart = false;
   printLineEnd();
+}
+
+void LoggingTracer::dumpRegisters()
+{
+  for (int i=0; i<16; i++) {
+    out << " r" << i << "=0x";
+    //out.write_hex(thread->regs[i]);
+    out.write_hex(thread->readRegisterForTrace(i));
+  }
+  out << " di=0x" << (thread->isDualIssue() ? "1" : "0");
+  out << " time=" << thread->time;
 }
 
 void LoggingTracer::printSrcRegister(Register::Reg reg)

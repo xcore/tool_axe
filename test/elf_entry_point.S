@@ -1,5 +1,7 @@
 // RUN: xcc -nostdlib -target=XK-1A %s -o %t1.xe
 // RUN: axe %t1.xe
+// RUN: xcc -nostdlib -target=XCORE-200-EXPLORER %s -o %t1.xe
+// RUN: axe %t1.xe
 .text
 .align 2
   ldc r0, 1

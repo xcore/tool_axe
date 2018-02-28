@@ -8,9 +8,12 @@
 
 using namespace axe;
 
-ProcessorNode::ProcessorNode(Type t, unsigned numXLinks) :
+ProcessorNode::ProcessorNode(Type t, unsigned numXLinks,
+                             long processorMhz, long referenceMhz) :
   Node(t, numXLinks)
 {
+  this->processorMhz = processorMhz;
+  this->referenceMhz = referenceMhz;
 }
 
 ProcessorNode::~ProcessorNode()
@@ -43,7 +46,7 @@ void ProcessorNode::finalize()
   Node::finalize();
 }
 
-void ProcessorNode::addCore(std::auto_ptr<Core> c)
+void ProcessorNode::addCore(std::unique_ptr<Core> c)
 {
   c->setParent(this);
   cores.push_back(c.get());
@@ -69,9 +72,11 @@ void ProcessorNode::computeCoreNumberBits()
 
 uint32_t ProcessorNode::getCoreID(unsigned coreNum) const
 {
-  unsigned coreBits = getNonNodeNumberBits();
+  //unsigned coreBits = getNonNodeNumberBits();
   assert(coreNum <= makeMask(getNonNodeNumberBits()));
-  return (getNodeID() << coreBits) | coreNum;
+  //auto id = (getNodeID() << coreBits) | coreNum;
+  auto id = getNodeID() | coreNum;
+  return id;
 }
 
 bool ProcessorNode::getTypeFromJtagID(unsigned jtagID, Type &type)
@@ -85,12 +90,15 @@ bool ProcessorNode::getTypeFromJtagID(unsigned jtagID, Type &type)
   case 0x2633:
     type = XS1_L;
     return true;
+  case 0x5633:
+    type = XS2_A;
+    return true;
   }
 }
 
 ChanEndpoint *ProcessorNode::getLocalChanendDest(ResourceID ID)
 {
-  assert(hasMatchingNodeID(ID));
+  //assert(hasMatchingNodeID(ID));
   unsigned destCore = ID.node() & makeMask(getNonNodeNumberBits());
   if (destCore >= cores.size())
     return 0;

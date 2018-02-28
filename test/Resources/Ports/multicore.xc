@@ -1,5 +1,7 @@
 // RUN: xcc -target=XS1-L16A-128-QF124-C10 %s -o %t1.xe
 // RUN: axe %t1.xe --loopback tile[0]:XS1_PORT_1A tile[1]:XS1_PORT_1A
+// RUN: xcc -target=XCORE-200-EXPLORER %s -o %t1.xe
+// RUN: axe %t1.xe --loopback tile[0]:XS1_PORT_1A tile[1]:XS1_PORT_1A
 
 #include <platform.h>
 #include <xs1.h>

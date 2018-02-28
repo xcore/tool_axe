@@ -72,6 +72,11 @@ extern "C" bool jitInvalidateWordCheck(Thread &t, uint32_t address)
   return t.getParent().invalidateWordCheck(address);
 }
 
+extern "C" bool jitInvalidateDoubleCheck(Thread &t, uint32_t address)
+{
+  return t.getParent().invalidateDoubleCheck(address);
+}
+
 extern "C" InstReturn jitInterpretOne(Thread &t) {
   t.pendingPc = t.pc;
   t.pc = t.getParent().getInterpretOneAddr();

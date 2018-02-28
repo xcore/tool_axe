@@ -10,7 +10,6 @@
 #include "SystemState.h"
 #include "SyscallHandler.h"
 #include "XE.h"
-#include "ScopedArray.h"
 #include "StopReason.h"
 #include "SymbolInfo.h"
 #include "Tracer.h"
@@ -28,7 +27,7 @@ const unsigned XCORE_ELF_MACHINE = 0xCB;
 
 static void readSymbols(Elf *e, Elf_Scn *scn, const GElf_Shdr &shdr,
                         unsigned low, unsigned high,
-                        std::auto_ptr<CoreSymbolInfo> &SI)
+                        std::unique_ptr<CoreSymbolInfo> &SI)
 {
   Elf_Data *data = elf_getdata(scn, NULL);
   if (data == NULL) {
@@ -55,7 +54,7 @@ static void readSymbols(Elf *e, Elf_Scn *scn, const GElf_Shdr &shdr,
 }
 
 static void readSymbols(Elf *e, unsigned low, unsigned high,
-                        std::auto_ptr<CoreSymbolInfo> &SI)
+                        std::unique_ptr<CoreSymbolInfo> &SI)
 {
   Elf_Scn *scn = NULL;
   GElf_Shdr shdr;
@@ -247,10 +246,10 @@ int BootSequenceStepElf::execute(ExecutionState &state)
     }
   }
 
-  std::auto_ptr<CoreSymbolInfo> CSI;
+  std::unique_ptr<CoreSymbolInfo> CSI;
   readSymbols(e, ram_base, ram_base + ram_size, CSI);
   SymbolInfo &SI = sys.getSymbolInfo();
-  SI.add(core, CSI);
+  SI.add(core, std::move(CSI));
 
   // Patch in syscall instruction at the syscall address.
   if (const ElfSymbol *syscallSym = SI.getGlobalSymbol(core, "_DoSyscall")) {

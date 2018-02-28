@@ -51,8 +51,9 @@ uint32_t axe::exception(Thread &t, uint32_t pc, int et, uint32_t ed)
 Resource *axe::checkResource(Core &state, ResourceID id)
 {
   Resource *res = state.getResourceByID(id);
-  if (!res || !res->isInUse())
+  if (!res || !res->isInUse()) {
     return 0;
+  }
   return res;
 }
 

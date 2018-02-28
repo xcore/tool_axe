@@ -52,7 +52,8 @@ class Node {
 public:
   enum Type {
     XS1_L,
-    XS1_G
+    XS1_G,
+    XS2_A
   };
   Type type;
   std::vector<XLink> xLinks;
