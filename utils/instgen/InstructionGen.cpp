@@ -1478,7 +1478,7 @@ static void emitInstTraceInfo()
   std::cout << "#endif //EMIT_INSTRUCTION_TRACE_INFO\n";
 }
 
-#define INSTRUCTION_CYCLES 4
+#define INSTRUCTION_CYCLES 1
 /// Time to execute a divide instruction in 400MHz clock cycles. This is
 /// approximate. The XCore divide unit divides 1 bit per cycle and is shared
 /// between threads.

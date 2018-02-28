@@ -412,7 +412,13 @@ bool Core::getProcessorState(uint32_t reg, uint32_t &value)
 
 void Core::finalize()
 {
+  auto iCycles = 4;
+  if (parent->type == Node::Type::XS2_A) {
+    iCycles = 5;
+  }
+
   for (unsigned i = 0; i < NUM_THREADS; i++) {
+    thread[i].setInstructionCycles(iCycles);
     thread[i].finalize();
   }
 }

@@ -218,6 +218,14 @@ public:
     return true;
   }
 
+  bool invalidateDoubleCheck(uint32_t address) {
+    uint16_t info;
+    std::memcpy(&info, &invalidationInfoOffset[address >> 1], sizeof(info));
+    if (info == (DecodeCache::INVALIDATE_NONE | (DecodeCache::INVALIDATE_NONE << 8)))
+      return false;
+    return true;
+  }
+
   bool invalidateWord(uint32_t address) {
     if (!invalidateWordCheck(address))
       return false;

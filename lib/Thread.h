@@ -121,6 +121,10 @@ public:
   uint32_t pendingPc;
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
+  /// Number of clock cycles per instruction
+  uint32_t instructionCycles;
+
+  void setInstructionCycles(uint32_t cycles) { instructionCycles = cycles; }
 
   Thread();
 

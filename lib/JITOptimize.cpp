@@ -11,6 +11,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include "stdio.h"
 
 using namespace axe;
 
@@ -99,6 +100,10 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
   case LDWSP_lru6:
     access = MemoryAccess(Register::SP, 4, isStore).addImmOffset(ops.ops[1]);
     return true;
+  case STDSP_l2rus:
+    isStore = true;
+  case LDDSP_l2rus:
+    access = MemoryAccess(Register::SP, 8, isStore).addImmOffset(ops.ops[1] << 3);
   case ST8_l3r:
     isStore = true;
     // Fallthrough.
@@ -127,6 +132,12 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
     access = MemoryAccess(Register::Reg(ops.ops[1]), 4, isStore)
       .addImmOffset(ops.ops[2]);
     return true;
+  case STD_l3rus:
+    isStore = true;
+  case LDD_l3rus:
+    access = MemoryAccess(Register::Reg(ops.ops[1]), 8, isStore)
+      .addImmOffset(ops.ops[2] << 3);
+    return true;
   case ENTSP_u6:
   case ENTSP_lu6:
     if (ops.ops[0] == 0)
@@ -135,6 +146,8 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
     return true;
   case RETSP_u6:
   case RETSP_lu6:
+  case RETSP_xs2a_u6:
+  case RETSP_xs2a_lu6:
     if (ops.ops[0] == 0)
       return false;
     access = MemoryAccess(Register::SP, 4, false).addImmOffset(ops.ops[0]);

@@ -609,9 +609,10 @@ seeSamplingEdge()
 
     if (!holdTransferReg) {
       portShiftCount = shiftRegEntries;
-      transferReg = shiftReg;
+      //transferReg = shiftReg;
       timestampReg = portCounter;
-      transferRegValid = true;
+      //transferRegValid = true;
+      setTransferReg(shiftReg);
 
       if (timeAndConditionMet()) {
         // TODO should this be conditional on pausedIn || EventPermitted()?
@@ -805,8 +806,9 @@ out(Thread &thread, uint32_t value, ticks_t threadTime)
     // TODO probably wrong.
     validShiftRegEntries = 1;
   }
-  transferRegValid = true;
-  transferReg = value;
+  //transferRegValid = true;
+  //transferReg = value;
+  setTransferReg(value);
   outputPort = true;
   scheduleUpdateIfNeeded();
   return CONTINUE;
@@ -834,9 +836,10 @@ outpw(Thread &thread, uint32_t value, uint32_t width, ticks_t threadTime)
     // TODO probably wrong.
     validShiftRegEntries = 1;
   }
-  transferRegValid = true;
+  // transferRegValid = true;
   portShiftCount = width / getPortWidth();
-  transferReg = value;
+  // transferReg = value;
+  setTransferReg(value);
   outputPort = true;
   scheduleUpdateIfNeeded();
   return CONTINUE;
@@ -888,9 +891,10 @@ endin(Thread &thread, ticks_t threadTime, uint32_t &value)
   } else {
     validShiftRegEntries = 0;
     portShiftCount = shiftRegEntries;
-    transferReg = shiftReg;
+    // transferReg = shiftReg;
     timestampReg = portCounter;
-    transferRegValid = true;
+    // transferRegValid = true;
+    setTransferReg(shiftReg);
   }
   value = entries * getPortWidth();
   scheduleUpdateIfNeeded();

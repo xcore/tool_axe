@@ -116,6 +116,7 @@ void Thread::dump() const
 }
 
 void Thread::addTime(ticks_t value) {
+  value *= instructionCycles;
   if (!dualIssue || pc % 2 == 0) {
     time += value;
   }
@@ -595,6 +596,9 @@ void Thread::getNextPC() {
 
 void Thread::run(ticks_t time)
 {
+  if (this->time == 0) {
+    this->time = 1;
+  }
   auto i = 0;
   while (1) {
     auto cpc = pc;

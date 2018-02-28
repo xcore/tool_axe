@@ -89,6 +89,7 @@ class axe::JITImpl {
     LLVMValueRef jitInvalidateByteCheck;
     LLVMValueRef jitInvalidateShortCheck;
     LLVMValueRef jitInvalidateWordCheck;
+    LLVMValueRef jitInvalidateDoubleCheck;
     LLVMValueRef jitInterpretOne;
     void init(LLVMModuleRef mod);
   };
@@ -178,6 +179,7 @@ void JITImpl::Functions::init(LLVMModuleRef module)
     { "jitInvalidateByteCheck", &jitInvalidateByteCheck },
     { "jitInvalidateShortCheck", &jitInvalidateShortCheck },
     { "jitInvalidateWordCheck", &jitInvalidateWordCheck },
+    { "jitInvalidateDoubleCheck", &jitInvalidateDoubleCheck },
     { "jitInterpretOne", &jitInterpretOne },
   };
   for (unsigned i = 0; i < arraySize(initInfo); i++) {
@@ -827,6 +829,8 @@ LLVMValueRef JITImpl::getJitInvalidateFunction(unsigned size)
     return functions.jitInvalidateShortCheck;
   case 4:
     return functions.jitInvalidateWordCheck;
+  case 8:
+    return functions.jitInvalidateDoubleCheck;
   }
 }
 
