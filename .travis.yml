@@ -9,3 +9,4 @@ before_install:
 compiler:
   - clang
 script: /usr/local/bin/cmake . && make
+dist: precise
