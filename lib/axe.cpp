@@ -28,7 +28,7 @@ AXESystemRef axeCreateInstance(const char *xeFileName, int tracingEnabled)
   SystemStateWrapper *sysWrapper;
   if(tracingEnabled != 0)
   {
-    std::unique_ptr<Tracer> tracer = std::unique_ptr<Tracer>(new LoggingTracer(false));
+    std::unique_ptr<Tracer> tracer = std::unique_ptr<Tracer>(new LoggingTracer(false, false));
     sysWrapper = new SystemStateWrapper(xeReader.readConfig(std::move(tracer)));
   }
   else

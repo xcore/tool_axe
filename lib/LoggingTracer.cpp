@@ -30,9 +30,9 @@ static llvm::raw_ostream &operator<<(llvm::raw_ostream &out,
   return out << getRegisterName(r);
 }
 
-LoggingTracer::LoggingTracer(bool traceCycles) :
+LoggingTracer::LoggingTracer(bool traceCycles, bool useColour) :
   traceCycles(traceCycles),
-  useColors(llvm::outs().has_colors()),
+  useColors(useColour && llvm::outs().has_colors()),
   out(llvm::outs()),
   pos(out.tell()),
   thread(nullptr),

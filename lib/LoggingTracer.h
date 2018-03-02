@@ -63,7 +63,7 @@ namespace axe {
     
     void syscallBegin(const Thread &t);
   public:
-    LoggingTracer(bool traceCycles);
+    LoggingTracer(bool traceCycles, bool useColour);
 
     void attach(const SystemState &systemState) override;
 
