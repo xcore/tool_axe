@@ -683,6 +683,7 @@ public:
   void emitCycles();
   void emitRegWriteBack();
   void emitUpdateExecutionFrequency();
+  void emitRegWritePending();
   void emitForceYield();
   void emitYieldIfTimeSliceExpired(bool endTrace = true);
   void emitNormalReturn();
@@ -739,9 +740,15 @@ void FunctionCodeEmitter::emitRegWriteBack()
           std::cout << "TRACE_REG_WRITE((Register::Reg)" << getOperandName(*inst, i);
           std::cout << ", " << "op" << i << ");\n";
         }
-        std::cout << "THREAD.writeRegister(" << getOperandName(*inst, i);
-        std::cout << ", ";
-        std::cout << "op" << i << ");\n";
+        if (inst->getSize() == 2) {
+          std::cout << "THREAD.writeRegister(" << getOperandName(*inst, i);
+          std::cout << ", ";
+          std::cout << "op" << i << ");\n";
+        } else {
+          std::cout << "THREAD.regs[" << getOperandName(*inst, i);
+          std::cout << "] = ";
+          std::cout << "op" << i << ";\n";
+        }
       }
       break;
     }
@@ -768,6 +775,17 @@ void FunctionCodeEmitter::emitUpdateExecutionFrequency()
     std::cout << "THREAD.updateExecutionFrequency(THREAD.pc);\n";
   }
   std::cout << "}\n";
+}
+
+void FunctionCodeEmitter::emitRegWritePending()
+{
+  if (inst->getSize() == 2) {
+    std::cout << "if (THREAD.pc % 2 == 0) {\n";
+    std::cout << "  THREAD.doPendingRegWrites();\n";
+    std::cout << "}\n";
+  } else {
+    std::cout << "THREAD.doPendingRegWrites();\n";
+  }
 }
 
 void FunctionCodeEmitter::emitCheckEvents() const
@@ -1218,6 +1236,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
 
     FunctionCodeEmitter emitter(jit);
     emitter.setInstruction(inst);
+    emitter.emitRegWritePending();
     if (inst.getYieldBefore()) {
       emitter.emitYieldIfTimeSliceExpired(false);
     }

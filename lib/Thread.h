@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 #include <bitset>
-#include <list>
+#include <vector>
 #include "Runnable.h"
 #include "RunnableQueue.h"
 #include "Resource.h"
@@ -89,8 +89,6 @@ class Thread : public Runnable, public Resource {
   /// Cached decode information.
   DecodeCache::State decodeCache;
 
-  std::list<std::pair<int, uint32_t>> pendingRegWrites;
-  std::list<uint32_t> pcHistory;
   long long instructionCounter;
 public:
   enum SRBit {
@@ -108,7 +106,10 @@ public:
     HIPRI = 10,
   };
   typedef std::bitset<11> sr_t;
-  uint32_t regs[Register::NUM_REGISTERS];
+  std::vector<uint32_t> regs;
+  // Buffer register writes in dual issue mode
+  std::vector<uint32_t> regsBuffer;
+  bool bufferInitialized;
   /// The program counter. Note that the pc will not be valid if the thread is
   /// executing since it is cached in the dispatch loop.
   uint32_t pc;
@@ -134,6 +135,7 @@ public:
   bool isDualIssue () const;
 
   void writeRegister (int index, uint32_t value);
+  void doPendingRegWrites();
 
   void addTime(ticks_t value);
 

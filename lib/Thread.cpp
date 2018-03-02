@@ -29,15 +29,14 @@ Thread::Thread() :
   Resource(RES_TYPE_THREAD),
   parent(0),
   scheduler(0),
-  dualIssue(false)
+  dualIssue(false),
+  regs(Register::NUM_REGISTERS, 0),
+  regsBuffer(Register::NUM_REGISTERS, 0),
+  bufferInitialized(true)
 {
   time = 0;
   pc = 0;
   instructionCounter = 0;
-
-  for (int i=0; i<Register::NUM_REGISTERS; i++) {
-    regs[i] = 0;
-  }
 
   regs[KEP] = 0;
   regs[KSP] = 0;
@@ -65,17 +64,18 @@ void Thread::writeRegister (int index, uint32_t value)
   if (!dualIssue) {
     regs[index] = value;
   } else {
-    auto evt = std::make_pair(index, value);
-    pendingRegWrites.push_back(evt);
+    if (!bufferInitialized) {
+      regsBuffer = regs;
+      bufferInitialized = true;
+    }
+    regsBuffer[index] = value;
   }
 }
 
 uint32_t Thread::readRegisterForTrace (int index) const
 {
-  for (auto e : pendingRegWrites) {
-    if (e.first == index) {
-      return e.second;
-    }
+  if (bufferInitialized) {
+    return regsBuffer[index];
   }
   return regs[index];
 }
@@ -480,6 +480,9 @@ do { \
 
 template<bool tracing>
 InstReturn Instruction_TSETMR_2r(Thread &thread) {
+  if (THREAD.pc % 2 == 0) {
+    THREAD.doPendingRegWrites();
+  }
   TRACE_BEGIN();
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
@@ -594,39 +597,22 @@ void Thread::getNextPC() {
     pc++;
 }
 
+void Thread::doPendingRegWrites() {
+  if (bufferInitialized) {
+    regs.swap(regsBuffer);
+    bufferInitialized = false;
+  }
+}
+
 void Thread::run(ticks_t time)
 {
   if (this->time == 0) {
     this->time = 1;
   }
-  auto i = 0;
   while (1) {
-    auto cpc = pc;
-
-
-    pcHistory.push_back(pc);
-    while (pcHistory.size() > 10) {
-      pcHistory.pop_front();
-    }
-
     instructionCounter++;
     if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION) {
-
-      if (dualIssue && pc % 2 == 0) {
-        for (auto e : pendingRegWrites) {
-          regs[e.first] = e.second;
-        }
-        pendingRegWrites.clear();
-      }
       return;
-    }
-    i++;
-
-    if (dualIssue && pc % 2 == 0) {
-      for (auto e : pendingRegWrites) {
-        regs[e.first] = e.second;
-      }
-      pendingRegWrites.clear();
     }
   }
 }
