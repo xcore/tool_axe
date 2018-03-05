@@ -1602,6 +1602,15 @@ fl2rus(const std::string &name,
 }
 
 Instruction &
+fl2rus_inout_inout(const std::string &name,
+       const std::string &format,
+       const std::string &code)
+{
+  return inst(name + "_l2rus", 4, ops(inout, inout, imm), format, code,
+              INSTRUCTION_CYCLES);
+}
+
+Instruction &
 fl2rus_out(const std::string &name,
        const std::string &format,
        const std::string &code)
@@ -1979,8 +1988,55 @@ void add()
          "assert(%2 != 32 && \"ASHR_32_2rus should be used for ashr by immediate 32\");\n"
          "%0 = (int32_t)%1 >> %2;");
   fl2rus("ASHR_32", "ashr %0, %1, 32", "%0 = (int32_t)%1 >> 31;");
-  fl2rus("UNZIP", "unzip", "");
-  fl2rus("ZIP", "zip", "");
+  fl2rus_inout_inout("UNZIP", "unzip",
+         "uint32_t i, value;\n"
+         "uint32_t zip_spacing = 1 << op2;\n"
+         "uint32_t op0shift = op0;\n"
+         "uint32_t op1shift = op1;\n"
+         "uint32_t mask = (1 << zip_spacing)-1;\n"
+         "op0 = 0;\n"
+         "op1 = 0;\n"
+         "if (op2 < 5) {\n"
+         "  for (i = 0; i < 32; i += zip_spacing) {\n"
+         "    if (i < 32 / 2) {\n"
+         "      value = op1shift;\n"
+         "      op1shift >>= zip_spacing * 2;\n"
+         "    } else {\n"
+         "      value = op0shift;\n"
+         "      op0shift >>= zip_spacing * 2;\n"
+         "    }\n"
+         "    op0 |= ((value >> zip_spacing) & mask) << i;\n"
+         "    op1 |= (value & mask) << i;\n"
+         "  }  \n"
+         "}\n"
+         );
+  fl2rus_inout_inout("ZIP", "zip %0, %1, %2",
+         "uint32_t op0_masked, op1_masked;\n"
+         "uint32_t op0shift, op1shift;\n"
+         "uint32_t zip_spacing = 1 << op2;\n"
+         "uint32_t mask = (1 << zip_spacing) - 1;\n"
+         "uint32_t zipped;\n"
+         "op0shift = op0;\n"
+         "op1shift = op1;\n"
+         "if (op2 < 5)\n"
+         "{\n"
+         "  op0 = 0;\n"
+         "  op1 = 0;\n"
+         "  for (int i = 0; i < (2 * 32) ; i=i+zip_spacing*2)\n"
+         "  {\n"
+         "    op0_masked = op0shift & mask;\n"
+         "    op1_masked = op1shift & mask;\n"
+         "    zipped = op0_masked << zip_spacing | op1_masked;\n"
+         "    if (i < 32) {\n"
+         "      op1 = op1 | (zipped << i);\n"
+         "    } else {\n"
+         "      op0 = op0 | (zipped << (i - 32));\n"
+         "    }\n"
+         "    op0shift >>= zip_spacing;\n"
+         "    op1shift >>= zip_spacing;\n"
+         "  }  \n"
+         "}\n"
+         );
   fl2rus_in("OUTPW", "outpw res[%1], %0, %2",
             "ResourceID resID(%1);\n"
             "if (Port *res = checkPort(CORE, resID)) {\n"
@@ -2037,7 +2093,7 @@ void add()
   fl4r_inout_inout("CRCN", "crcn",
        ""
        ""
-       "");
+       "").setUnimplemented();
   // TODO finish
   fl4r_inout_inout("STD", "std %3, %0, %1",
        "uint32_t Addr = %1+ (%2 << 3);\n"
@@ -2801,7 +2857,7 @@ void add()
          "}\n").setYieldBefore();
 
   f1r_out("GETTIME", "gettime %0", "%0 = THREAD.getReferenceTime();");
-  f1r("ELATE", "gettime %0", "");
+  f1r("ELATE", "gettime %0", "").setUnimplemented();
   f1r("SETSP", "set sp, %0", "%1 = %0;")
     .addImplicitOp(SP, out);
   // TODO should we check the pc range?
