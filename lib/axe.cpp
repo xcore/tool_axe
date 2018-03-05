@@ -70,7 +70,7 @@ AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex) {
   for (Node *node : sys->getNodes()) {
     if (!node->isProcessorNode())
       continue;
-    if (node->getJtagIndex() != jtagIndex)
+    if (node->getJtagIndex() != (unsigned)jtagIndex)
       continue;
     return (AXENodeType)node->getType();
   }
@@ -83,7 +83,7 @@ int axeGetNumTiles(AXESystemRef system, int jtagIndex) {
   for (Node *node : sys->getNodes()) {
     if (!node->isProcessorNode())
       continue;
-    if (node->getJtagIndex() != jtagIndex)
+    if (node->getJtagIndex() != (unsigned)jtagIndex)
       continue;
     return static_cast<ProcessorNode*>(node)->getCores().size();
   }

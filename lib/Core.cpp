@@ -22,7 +22,6 @@ using namespace axe;
 
 Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   ramDecodeCache(RamBase >> 1, RamBase, true, tracing),
-  jitEnabled(!tracing),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
@@ -42,7 +41,8 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   bootStatus(0),
   rom(0),
   romBase(0),
-  romSize(0)
+  romSize(0),
+  jitEnabled(!tracing)
 {
   memoryOffset = memory - RamBase;
   invalidationInfoOffset =

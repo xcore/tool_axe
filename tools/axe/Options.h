@@ -32,6 +32,7 @@ struct Options {
   bool tracing;
   bool traceCycles;
   bool time;
+  bool useColour;
   bool stats;
   bool warnPacketOvertake;
   ticks_t maxCycles;

@@ -96,7 +96,6 @@ createNodeFromConfig(xmlNode *config,
 {
   long jtagID = readNumberAttribute(config, "jtagId");
   long processorMhz = readNumberAttribute(config, "processorMhz", 400);
-  long interconnectMhz = readNumberAttribute(config, "interconnectMhz", 400);
   long referenceMhz = readNumberAttribute(config, "referenceMhz", 100);
 
   ProcessorNode::Type nodeType;

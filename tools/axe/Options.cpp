@@ -21,6 +21,7 @@ Options::Options() :
   tracing(false),
   traceCycles(false),
   time(false),
+  useColour(true),
   stats(false),
   warnPacketOvertake(false),
   maxCycles(0),
@@ -56,6 +57,7 @@ static void printUsage(const char *ProgName) {
   "  --time                      Display elapsed time on exit.\n"
   "  --stats                     Display simulator statistics on exit.\n"
   "  --warn-packet-overtake      Warn about possible packet overtaking.\n"
+  "  --no-colour                 Dont use colour when printing trace output.\n"
   "\n"
   "Peripherals:\n";
   for (PeripheralDescriptor *periph : make_range(PeripheralRegistry::begin(),
@@ -208,6 +210,8 @@ void Options::parse(int argc, char **argv)
       traceCycles = true;
     } else if (arg == "--time") {
       time = true;
+    } else if (arg == "--no-colour") {
+      useColour = false;
     } else if (arg == "--stats") {
       stats = true;
     } else if (arg == "--max-cycles") {

@@ -1231,7 +1231,7 @@ static void emitInstFunction(Instruction &inst, bool jit)
       std::cout << ";\n";
     }
     std::cout << "bool watchpointHit = false;\n";
-    std::cout << "WatchpointType watchpointType;\n";
+    std::cout << "WatchpointType watchpointType = WatchpointType::UNSET;\n";
     std::cout << "uint32_t watchpointAddr = 0;";
 
     FunctionCodeEmitter emitter(jit);

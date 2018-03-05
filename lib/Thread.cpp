@@ -27,9 +27,9 @@ using namespace Register;
 
 Thread::Thread() :
   Resource(RES_TYPE_THREAD),
+  dualIssue(false),
   parent(0),
   scheduler(0),
-  dualIssue(false),
   regs(Register::NUM_REGISTERS, 0),
   regsBuffer(Register::NUM_REGISTERS, 0),
   bufferInitialized(true)

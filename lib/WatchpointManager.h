@@ -8,6 +8,7 @@
 namespace axe {
 
 enum class WatchpointType {
+  UNSET,
   READ,
   WRITE
 };
