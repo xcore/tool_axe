@@ -1,7 +1,7 @@
 // RUN: xcc -target=XK-1A %s -o %t1.xe
-// RUN: axe %t1.xe
+// RUN: %sim %t1.xe
 // RUN: xcc -target=XCORE-200-EXPLORER %s -o %t1.xe
-// RUN: axe %t1.xe
+// RUN: %sim %t1.xe
 #include <xs1.h>
 
 .text
@@ -12,17 +12,41 @@ main:
   set kep, r11
 
   ldc r0, 5
+  .align 4
   kcall 5
-  bt r0, fail
+  .align 4
+  bu kcall2
+  bu fail
+  bu fail
+  bu fail
+  bu fail
+  bu fail
 
-  ldc r0, 0xffff
-  kcall 0xffff
-  bt r0, fail
+kcall2:
+  ldc r0, 0xff
+  .align 4
+  kcall 0xff
+  .align 4
+  bu kcall3
+  bu fail
+  bu fail
+  bu fail
+  bu fail
+  bu fail
 
+kcall3:
   ldc r0, 5
+  .align 4
   kcall r0
-  bt r0, fail
+  .align 4
+  bu fin
+  bu fail
+  bu fail
+  bu fail
+  bu fail
+  bu fail
 
+fin:
   retsp 0
 
 .align 128
@@ -39,6 +63,16 @@ kernel_entry:
   eq r11, r11, r0
   bf r11, fail
   ldc r0, 0
+
+  ldaw r3, sp[0]
+  extsp 1
+  stw spc, sp[1]
+  ldw r1, sp[1]
+  add r1, r1, 4
+  stw r1, sp[1]
+  ldw spc, sp[1]
+  set sp, r3
+
   kret
 
 fail:

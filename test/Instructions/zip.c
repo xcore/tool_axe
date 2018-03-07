@@ -1,6 +1,6 @@
 /*
  * RUN: xcc -O1 -target=XCORE-200-EXPLORER %s -o %t1.xe
- * RUN: axe %t1.xe
+ * RUN: %sim %t1.xe
  */
 #include <stdint.h>
 #include <stdio.h>

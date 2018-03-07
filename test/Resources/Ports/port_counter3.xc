@@ -1,5 +1,5 @@
 // RUN: xcc -O2 -target=XK-1A %s -o %t1.xe
-// RUN: axe %t1.xe
+// RUN: %sim %t1.xe
 
 // Check effect of set_port_sample_delay() on port counter.
 

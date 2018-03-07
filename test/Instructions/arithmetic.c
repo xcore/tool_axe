@@ -1,8 +1,8 @@
 /*
  * RUN: xcc -O2 -target=XK-1A %s -o %t1.xe
- * RUN: axe %t1.xe
+ * RUN: %sim %t1.xe
  * RUN: xcc -O2 -target=XCORE-200-EXPLORER %s -o %t1.xe
- * RUN: axe %t1.xe
+ * RUN: %sim %t1.xe
  */
 #include <stdint.h>
 #include <stdlib.h>

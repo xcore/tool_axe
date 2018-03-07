@@ -1,7 +1,7 @@
 // RUN: xcc -target=XK-1A %s %exception_expect -o %t1.xe
-// RUN: axe %t1.xe
+// RUN: %sim %t1.xe
 // RUN: xcc -target=XCORE-200-EXPLORER %s %exception_expect -o %t1.xe
-// RUN: axe %t1.xe
+// RUN: %sim %t1.xe
 #include <xs1.h>
 
 .text

@@ -1,8 +1,8 @@
 // RUN: xcc -target=XK-1A %s -o %t1.xe
-// RUN: not axe %t1.xe > %t2.txt
+// RUN: not %sim %t1.xe > %t2.txt
 // RUN: cmp %t2.txt %s.expect
 // RUN: xcc -target=XCORE-200-EXPLORER %s -o %t1.xe
-// RUN: not axe %t1.xe > %t2.txt
+// RUN: not %sim %t1.xe > %t2.txt
 // RUN: cmp %t2.txt %s.expect
 #include <xs1.h>
 
