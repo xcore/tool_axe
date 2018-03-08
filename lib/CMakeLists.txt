@@ -215,6 +215,10 @@ add_library(axe
   )
 
 # add the executable that will do the generation
+if (NOT CMAKE_VERSION VERSION_LESS 3.0)
+  # Silence warnings when using cmake 3.x
+  cmake_policy(SET CMP0026 OLD)     # Disallow use of the LOCATION target property
+endif ()
 get_target_property(INSTGEN_EXE instgen LOCATION)
 get_target_property(GENHEX_EXE genHex LOCATION)
 get_target_property(GENJITGLOBALMAP_EXE genJitGlobalMap LOCATION)
