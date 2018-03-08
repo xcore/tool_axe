@@ -75,7 +75,6 @@ class RunnableQueue;
 struct Operands;
 
 class Thread : public Runnable, public Resource {
-  bool dualIssue;
   bool ssync;
   Synchroniser *sync;
   /// Resources owned by the thread with events enabled.
@@ -106,6 +105,7 @@ public:
     HIPRI = 10,
   };
   typedef std::bitset<11> sr_t;
+  bool dualIssue;
   std::vector<uint32_t> regs;
   // Buffer register writes in dual issue mode
   std::vector<uint32_t> regsBuffer;
@@ -292,8 +292,7 @@ public:
     DecodeCache::executionFrequency_t *executionFrequency =
     decodeCache.executionFrequency;
     if (++executionFrequency[shiftedAddress] > threshold) {
-      // return true;
-      return false;
+      return true;
     }
     return false;
   }

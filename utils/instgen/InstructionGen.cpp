@@ -718,7 +718,10 @@ void FunctionCodeEmitter::emitBare(const std::string &s)
 
 void FunctionCodeEmitter::emitCycles()
 {
-  std::cout << "THREAD.addTime(" << inst->getCycles() << ");\n";
+  // Inlined THREAD.addTime( inst->getCycles() )
+  std::cout << "if (!THREAD.dualIssue || THREAD.pc % 2 == 0) {\n";
+  std::cout << "  THREAD.time += THREAD.instructionCycles * " << inst->getCycles() << ";\n";
+  std::cout << "}\n";
 }
 
 void FunctionCodeEmitter::emitRegWriteBack()
@@ -741,9 +744,17 @@ void FunctionCodeEmitter::emitRegWriteBack()
           std::cout << ", " << "op" << i << ");\n";
         }
         if (inst->getSize() == 2) {
-          std::cout << "THREAD.writeRegister(" << getOperandName(*inst, i);
-          std::cout << ", ";
-          std::cout << "op" << i << ");\n";
+          // Inlined THREAD.writeRegister( getOperandName(*inst, i), op i )
+          auto reg_index = getOperandName(*inst, i);
+          std::cout << "if (!THREAD.dualIssue) {\n";
+          std::cout << "  THREAD.regs[" << reg_index << "] = op" << i << ";\n";
+          std::cout << "} else {\n";
+          std::cout << "  if (!THREAD.bufferInitialized) {\n";
+          std::cout << "    THREAD.regsBuffer = THREAD.regs;\n";
+          std::cout << "    THREAD.bufferInitialized = true;\n";
+          std::cout << "  }\n";
+          std::cout << "  THREAD.regsBuffer[" << reg_index << "] = op" << i << ";\n";
+          std::cout << "}\n";
         } else {
           std::cout << "THREAD.regs[" << getOperandName(*inst, i);
           std::cout << "] = ";
@@ -780,11 +791,17 @@ void FunctionCodeEmitter::emitUpdateExecutionFrequency()
 void FunctionCodeEmitter::emitRegWritePending()
 {
   if (inst->getSize() == 2) {
-    std::cout << "if (THREAD.pc % 2 == 0) {\n";
-    std::cout << "  THREAD.doPendingRegWrites();\n";
-    std::cout << "}\n";
+    // Inlined if (THREAD.pc %2 == 0) { THREAD.doPendingRegWrites(); }
+    std::cout << "  if (THREAD.bufferInitialized && THREAD.pc % 2 == 0) {\n";
+    std::cout << "    THREAD.regs.swap(THREAD.regsBuffer);\n";
+    std::cout << "    THREAD.bufferInitialized = false;\n";
+    std::cout << "  }\n";
   } else {
-    std::cout << "THREAD.doPendingRegWrites();\n";
+    // Inlined THREAD.doPendingRegWrites()
+    std::cout << "  if (THREAD.bufferInitialized) {\n";
+    std::cout << "    THREAD.regs.swap(THREAD.regsBuffer);\n";
+    std::cout << "    THREAD.bufferInitialized = false;\n";
+    std::cout << "  }\n";
   }
 }
 
