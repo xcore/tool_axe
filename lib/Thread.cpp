@@ -458,7 +458,6 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
-#define LOP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
 #define TRACE_BEGIN() \
 do { \
   if (tracing) { CORE.getTracer()->instructionBegin(THREAD); } \
@@ -552,7 +551,6 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
 #undef CORE
 #undef ERROR
 #undef OP
-#undef LOP
 #undef TRACE_BEGIN
 #undef TRACE_REG_WRITE
 #undef TRACE_END

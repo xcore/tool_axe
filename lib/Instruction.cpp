@@ -1748,11 +1748,9 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 }
 
 #undef OP
-#undef LOP
 #undef PC
 #undef CHECK_PC
 #define OP(n) (operands.ops[n])
-#define LOP(n) (operands.ops[n])
 #define PC pc
 #define CHECK_PC(pc) (decodeCache->isValidPc(pc))
 

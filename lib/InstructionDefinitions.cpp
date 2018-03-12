@@ -91,7 +91,6 @@ extern "C" InstReturn jitInterpretOne(Thread &t) {
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (field ## n)
-#define LOP(n) OP(n)
 #define EMIT_JIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
 #undef EMIT_JIT_INSTRUCTION_FUNCTIONS

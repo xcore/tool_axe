@@ -478,7 +478,7 @@ getOperandName(const Instruction &inst, unsigned i)
   }
   std::ostringstream buf;
   auto opsSize = inst.getOperands().size() - inst.getImplicitOps().size();
-  const char *opMacro = opsSize > 3 ? "LOP" : "OP";
+  const char *opMacro = "OP";
   buf << opMacro << '(' << i << ')';
   return buf.str();
 }
