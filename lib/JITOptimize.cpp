@@ -168,8 +168,6 @@ getRegister(const InstructionProperties &properties, const Operands &ops,
 {
   if (i >= properties.getNumExplicitOperands())
     return properties.getImplicitOperand(i - properties.getNumExplicitOperands());
-  if (properties.getNumExplicitOperands() > 3)
-    return static_cast<Register::Reg>(ops.lops[i]);
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 

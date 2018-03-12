@@ -188,10 +188,10 @@ static void decodeL4ROperands(Operands &operands, uint32_t high, uint32_t low)
   uint32_t op0_high = combined % 3;
   uint32_t op1_high = (combined / 3) % 3;
   uint32_t op2_high = combined / 9;
-  operands.lops[0] = bitRange(low, 5, 4) | (op0_high << 2);
-  operands.lops[1] = bitRange(low, 3, 2) | (op1_high << 2);
-  operands.lops[2] = bitRange(low, 1, 0) | (op2_high << 2);
-  operands.lops[3] = bitRange(high, 3, 0);
+  operands.ops[0] = bitRange(low, 5, 4) | (op0_high << 2);
+  operands.ops[1] = bitRange(low, 3, 2) | (op1_high << 2);
+  operands.ops[2] = bitRange(low, 1, 0) | (op2_high << 2);
+  operands.ops[3] = bitRange(high, 3, 0);
 }
 
 static void decodeL5ROperands(Operands &operands, uint32_t high, uint32_t low)
@@ -205,11 +205,11 @@ static void decodeL5ROperands(Operands &operands, uint32_t high, uint32_t low)
   uint32_t op3_high = combined_high%3;
   uint32_t op4_high = combined_high/3;
   
-  operands.lops[0] = bitRange(low, 5, 4) | (op0_high << 2);
-  operands.lops[1] = bitRange(low, 3, 2) | (op1_high << 2);
-  operands.lops[2] = bitRange(low, 1, 0) | (op2_high << 2);
-  operands.lops[3] = bitRange(high, 3, 2) | (op3_high << 2);
-  operands.lops[4] = bitRange(high, 1, 0) | (op4_high << 2);
+  operands.ops[0] = bitRange(low, 5, 4) | (op0_high << 2);
+  operands.ops[1] = bitRange(low, 3, 2) | (op1_high << 2);
+  operands.ops[2] = bitRange(low, 1, 0) | (op2_high << 2);
+  operands.ops[3] = bitRange(high, 3, 2) | (op3_high << 2);
+  operands.ops[4] = bitRange(high, 1, 0) | (op4_high << 2);
 }
 
 static void decodeL6ROperands(Operands &operands, uint32_t high, uint32_t low)
@@ -224,12 +224,12 @@ static void decodeL6ROperands(Operands &operands, uint32_t high, uint32_t low)
   uint32_t op4_high = (combined_high / 3) % 3;
   uint32_t op5_high = combined_high / 9;
   
-  operands.lops[0] = bitRange(low, 5, 4) | (op0_high << 2);
-  operands.lops[1] = bitRange(low, 3, 2) | (op1_high << 2);
-  operands.lops[2] = bitRange(low, 1, 0) | (op2_high << 2);
-  operands.lops[3] = bitRange(high, 5, 4) | (op3_high << 2);
-  operands.lops[4] = bitRange(high, 3, 2) | (op4_high << 2);
-  operands.lops[5] = bitRange(high, 1, 0) | (op5_high << 2);
+  operands.ops[0] = bitRange(low, 5, 4) | (op0_high << 2);
+  operands.ops[1] = bitRange(low, 3, 2) | (op1_high << 2);
+  operands.ops[2] = bitRange(low, 1, 0) | (op2_high << 2);
+  operands.ops[3] = bitRange(high, 5, 4) | (op3_high << 2);
+  operands.ops[4] = bitRange(high, 3, 2) | (op4_high << 2);
+  operands.ops[5] = bitRange(high, 1, 0) | (op5_high << 2);
 }
 
 #define DECODE_3R(inst, low) \
@@ -1752,7 +1752,7 @@ instructionDecode(uint16_t low, uint16_t high, bool highValid,
 #undef PC
 #undef CHECK_PC
 #define OP(n) (operands.ops[n])
-#define LOP(n) (operands.lops[n])
+#define LOP(n) (operands.ops[n])
 #define PC pc
 #define CHECK_PC(pc) (decodeCache->isValidPc(pc))
 

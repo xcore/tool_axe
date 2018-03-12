@@ -458,7 +458,7 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
-#define LOP(n) (THREAD.getOperands(THREAD.pc).lops[(n)])
+#define LOP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
 #define TRACE_BEGIN() \
 do { \
   if (tracing) { CORE.getTracer()->instructionBegin(THREAD); } \

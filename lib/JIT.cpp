@@ -649,9 +649,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     args[2] = ramBase;
     args[3] = ramSizeLog2Param;
     for (unsigned i = fixedArgs; i < numArgs; i++) {
-      uint32_t value =
-      properties->getNumExplicitOperands() <= 3 ? ops.ops[i - fixedArgs] :
-      ops.lops[i - fixedArgs];
+      uint32_t value = ops.ops[i - fixedArgs];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = emitCallToBeInlined(callee, args, numArgs);

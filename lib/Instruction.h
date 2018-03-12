@@ -20,10 +20,7 @@ enum InstructionOpcode : short;
 typedef InstFunction_t OPCODE_TYPE;
 
 struct Operands {
-  union {
-    uint32_t ops[3];
-    uint8_t lops[6];
-  };
+  uint32_t ops[6];
 };
 
 void instructionDecode(const Core &tile, uint32_t addr,

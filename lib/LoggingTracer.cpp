@@ -128,9 +128,6 @@ void LoggingTracer::printThreadPC(const Thread &t, uint32_t pc)
 static uint32_t getOperand(const InstructionProperties &properties,
                            const Operands &operands, unsigned i)
 {
-  if (properties.getNumExplicitOperands() > 3) {
-    return operands.lops[i];
-  }
   return operands.ops[i];
 }
 
@@ -140,8 +137,6 @@ getOperandRegister(const InstructionProperties &properties,
 {
   if (i >= properties.getNumExplicitOperands())
     return properties.getImplicitOperand(i - properties.getNumExplicitOperands());
-  if (properties.getNumExplicitOperands() > 3)
-    return static_cast<Register::Reg>(ops.lops[i]);
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
