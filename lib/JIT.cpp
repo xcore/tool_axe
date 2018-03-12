@@ -135,7 +135,7 @@ class axe::JITImpl {
                           bool &endOfBlock, uint32_t &nextPc);
   LLVMBasicBlockRef getOrCreateMemoryCheckBailoutBlock(unsigned index);
   void emitMemoryChecks(unsigned index,
-                        std::queue<std::pair<uint32_t,MemoryCheck*>> &checks);
+                        std::queue<std::pair<uint32_t,std::shared_ptr<MemoryCheck>>> &checks);
   LLVMValueRef getJitInvalidateFunction(unsigned size);
   void emitJumpToNextFragment(JITCoreInfo &coreInfo, uint32_t targetPc,
                               JITFunctionInfo *caller);
@@ -601,7 +601,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     pcAfterFragment = core.toRamPc(pcAfterFragment);
     return false;
   }
-  std::queue<std::pair<uint32_t,MemoryCheck*>> checks;
+  std::queue<std::pair<uint32_t,std::shared_ptr<MemoryCheck>>> checks;
   placeMemoryChecks(opcode, operands, checks);
 
   if (info) {
@@ -751,10 +751,10 @@ LLVMBasicBlockRef JITImpl::getOrCreateMemoryCheckBailoutBlock(unsigned index)
 
 void JITImpl::
 emitMemoryChecks(unsigned index,
-                 std::queue<std::pair<uint32_t,MemoryCheck*>> &checks)
+                 std::queue<std::pair<uint32_t,std::shared_ptr<MemoryCheck>>> &checks)
 {
   while (!checks.empty() && checks.front().first == index) {
-    MemoryCheck *check = checks.front().second;
+    std::shared_ptr<MemoryCheck> check = checks.front().second;
     checks.pop();
     LLVMBasicBlockRef bailoutBB = getOrCreateMemoryCheckBailoutBlock(index);
     // Compute address.
@@ -814,7 +814,6 @@ emitMemoryChecks(unsigned index,
                     LLVMConstInt(LLVMTypeOf(cacheInvalidated), 0, false), "");
       emitCondBrToBlock(cmp, bailoutBB);
     }
-    delete check;
   }
 }
 
