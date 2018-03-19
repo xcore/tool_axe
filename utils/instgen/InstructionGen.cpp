@@ -2395,10 +2395,18 @@ void add()
     .transform("%0 = %0 << 2;", "%0 = %0 >> 2;")
     .setEnableMemCheckOpt();
   // TODO could be optimised to %1 = ram_base + %0
-  fu10("LDAPF", "ldap %1, %0", "%1 = FROM_PC(%pc) + %0;")
+  fu10("LDAPF", "ldap %1, %0",
+       "%1 = FROM_PC(%pc) + %0;\n"
+       "if (THREAD.isDualIssue()) {\n"
+       "  %1 += FROM_PC(%pc) %% 4;\n"
+       "}\n")
     .addImplicitOp(R11, out)
     .transform("%0 = %0 << 1;", "%0 = %0 >> 1;");
-  fu10("LDAPB", "ldap %1, -%0", "%1 = FROM_PC(%pc) - %0;")
+  fu10("LDAPB", "ldap %1, -%0",
+       "%1 = FROM_PC(%pc) - %0;\n"
+       "if (THREAD.isDualIssue()) {\n"
+       "  %1 += FROM_PC(%pc) %% 4;\n"
+       "}\n")
     .addImplicitOp(R11, out)
     .transform("%0 = %0 << 1;", "%0 = %0 >> 1;");
   fu10("BLRF", "bl %0",
