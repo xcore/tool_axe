@@ -2903,7 +2903,7 @@ void add()
       "%write_pc(%0);\n"
       "%yield\n");
   f1r("BLA", "bla %0",
-      "%1 = FROM_PC(%pc);\n"
+      "%1 = FROM_PC(%pc) | (uint32_t)THREAD.isDualIssue();\n"
       "%write_pc(%0);\n"
       "%yield\n")
     .addImplicitOp(LR, out);
