@@ -753,7 +753,7 @@ emitMemoryChecks(unsigned index,
                  std::queue<std::pair<uint32_t,boost::shared_ptr<MemoryCheck>>> &checks)
 {
   while (!checks.empty() && checks.front().first == index) {
-    boost::shared_ptr<MemoryCheck> check(checks.front().second);
+    boost::shared_ptr<MemoryCheck> check = checks.front().second;
     checks.pop();
     LLVMBasicBlockRef bailoutBB = getOrCreateMemoryCheckBailoutBlock(index);
     // Compute address.
