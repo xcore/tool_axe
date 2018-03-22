@@ -1695,7 +1695,7 @@ fl5r_1out_4in(const std::string &name,
           const std::string &format,
           const std::string &code)
 {
-  return inst(name + "_l5r", 4, ops(in, in, in, out, in), format, code,
+  return inst(name + "_l5r", 4, ops(out, in, in, in, in), format, code,
               INSTRUCTION_CYCLES);
 }
 
@@ -2146,8 +2146,8 @@ void add()
   fl4r_out_inout("CRC8", "crc8 %3, %0, %1, %2",
                  "%3 = crc8(%3, (uint8_t)%1, %2);\n"
                  "%0 = %1 >> 8;");
-  fl5r_1out_4in("XOR4", "xor4 %3, %0, %1, %2, %4",
-       "%3 = %0 ^ %1 ^ %2 ^ %4;");
+  fl5r_1out_4in("XOR4", "xor4 %0, %3, %1, %2, %4",
+       "%0 = %1 ^ %2 ^ %3 ^ %4;");
   // TODO check destination registers don't overlap
   // Note op0 and op3 are swapped.
   fl5r("LADD", "ladd %3, %0, %1, %2, %4",
