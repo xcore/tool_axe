@@ -561,6 +561,10 @@ getFragmentToCompile(Core &core, uint32_t startAddress,
       endOfBlock = true;
       break;
     }
+    if (opc == DUALENTSP_u6 || opc == DUALENTSP_lu6) {
+      endOfBlock = true;
+      return false;
+    }
     instructionTransform(opc, ops, core, address, false);
     properties = &instructionProperties[opc];
     nextAddress = address + properties->size;
