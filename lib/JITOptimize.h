@@ -11,7 +11,6 @@
 #include <utility>
 #include "Instruction.h"
 #include "Register.h"
-#include <boost/shared_ptr.hpp>
 
 namespace axe {
 
@@ -51,7 +50,7 @@ public:
 
 void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                        std::vector<Operands> &operands,
-                       std::queue<std::pair<uint32_t,boost::shared_ptr<MemoryCheck>>> &checks);
+                       std::queue<std::pair<uint32_t,MemoryCheck>> &checks);
   
 } // End axe namespace
 

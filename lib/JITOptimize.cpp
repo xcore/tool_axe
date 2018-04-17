@@ -14,7 +14,6 @@
 #include <memory>
 #include <array>
 #include "stdio.h"
-#include <boost/make_shared.hpp>
 
 using namespace axe;
 
@@ -61,15 +60,15 @@ public:
 class MemoryCheckCandidate {
   unsigned earliestIndex;
   unsigned instructionIndex;
-  boost::shared_ptr<MemoryCheck> check;
+  const MemoryCheck check;
 public:
-  MemoryCheckCandidate(unsigned e, unsigned i, boost::shared_ptr<MemoryCheck> c) :
+  MemoryCheckCandidate(unsigned e, unsigned i, MemoryCheck c) :
     earliestIndex(e),
     instructionIndex(i),
     check(c) {}
   unsigned getEarliestIndex() const { return earliestIndex; }
   unsigned getInstructionIndex() const { return instructionIndex; }
-  boost::shared_ptr<MemoryCheck> getMemoryCheck() { return check; }
+  MemoryCheck getMemoryCheck() { return check; }
 };
 
 static bool
@@ -221,7 +220,7 @@ update(InstructionOpcode opc, const Operands &ops, unsigned nextOffset)
 void axe::
 placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                   std::vector<Operands> &operands,
-                  std::queue<std::pair<uint32_t,boost::shared_ptr<MemoryCheck>>> &checks)
+                  std::queue<std::pair<uint32_t,MemoryCheck>> &checks)
 {
   MemoryCheckState state;
 
@@ -252,8 +251,8 @@ placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
           updateBaseRegAlign = true;
         }
       }
-      auto check =
-        boost::make_shared<MemoryCheck>(access.getSize(), access.getBaseReg(),
+      const auto check =
+        MemoryCheck(access.getSize(), access.getBaseReg(),
                         access.getScale(), access.getOffsetReg(),
                         access.getOffsetImm(), flags);
       candidates.push_back(MemoryCheckCandidate(first, i, check));
