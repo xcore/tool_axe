@@ -60,7 +60,7 @@ public:
 class MemoryCheckCandidate {
   unsigned earliestIndex;
   unsigned instructionIndex;
-  const MemoryCheck check;
+  MemoryCheck check;
 public:
   MemoryCheckCandidate(unsigned e, unsigned i, MemoryCheck c) :
     earliestIndex(e),
