@@ -105,7 +105,7 @@ void EventableResource::event(ticks_t time)
 
 void EventableResource::completeEvent()
 {
-  owner->reg(ED) = getTruncatedEV(*owner);
+  owner->writeRegister(ED, getTruncatedEV(*owner));
   owner->pc = vector;
 }
 
