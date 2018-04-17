@@ -486,11 +486,11 @@ InstReturn Instruction_TSETMR_2r(Thread &thread) {
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
   if (sync) {
-    sync->master().reg((OP(0))) = THREAD.reg(OP(1));
+    sync->master().writeRegister((OP(0)), THREAD.reg(OP(1)));
   } else {
     // Undocumented behaviour, possibly incorrect. However this seems to
     // match the simulator.
-    THREAD.reg(OP(0)) = THREAD.reg(OP(1));
+    THREAD.writeRegister(OP(0), THREAD.reg(OP(1)));
   }
   THREAD.pc++;
   TRACE_END();

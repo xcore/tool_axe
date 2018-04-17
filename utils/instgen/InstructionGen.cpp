@@ -1915,7 +1915,7 @@ void add()
   inst("TSETR_3r", 2, ops(imm, in, in), "set t[%2]:r%0, %1",
        "ResourceID resID(%2);\n"
        "if (Thread *t = checkThread(CORE, resID)) {\n"
-       "  t->reg(%0) = %1;\n"
+       "  t->writeRegister(%0, %1);\n"
        "} else {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
        "}",
@@ -1923,7 +1923,7 @@ void add()
   inst("TSETR_l3r", 4, ops(imm, in, in), "set t[%2]:r%0, %1",
        "ResourceID resID(%2);\n"
        "if (Thread *t = checkThread(CORE, resID)) {\n"
-       "  t->reg(%0) = %1;\n"
+       "  t->writeRegister(%0, %1);\n"
        "} else {\n"
        "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
        "}",
@@ -2518,7 +2518,7 @@ void add()
           "ResourceID resID(%1);\n"
           "Thread *t = checkThread(CORE, resID);\n"
           "if (t && t->inSSync()) {\n"
-          "  t->reg(Register::LR) = %0;\n"
+          "  t->writeRegister(Register::LR, %0);\n"
           "} else {\n"
           "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
           "}\n");
@@ -2630,7 +2630,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(Register::DP) = %0;\n"
+         "  t->writeRegister(Register::DP, %0);\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2638,7 +2638,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(Register::SP) = %0;\n"
+         "  t->writeRegister(Register::SP, %0);\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2646,7 +2646,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(Register::SP) = %0;\n"
+         "  t->writeRegister(Register::SP, %0);\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");
@@ -2654,7 +2654,7 @@ void add()
          "ResourceID resID(%1);\n"
          "Thread *t = checkThread(CORE, resID);\n"
          "if (t && t->inSSync()) {\n"
-         "  t->reg(Register::CP) = %0;\n"
+         "  t->writeRegister(Register::CP, %0);\n"
          "} else {\n"
          "  %exception(ET_ILLEGAL_RESOURCE, resID);\n"
          "}\n");

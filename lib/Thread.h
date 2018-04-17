@@ -218,7 +218,7 @@ public:
     return sync;
   }
 
-  uint32_t &reg(unsigned RegNum)
+  uint32_t reg(unsigned RegNum)
   {
     return regs[RegNum];
   }

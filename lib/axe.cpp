@@ -224,7 +224,7 @@ int axeWriteReg(AXEThreadRef thread, AXERegister axeReg, unsigned value)
       Register::Reg regNum;
       if (!convertRegNum(axeReg, regNum))
         return 0;
-      unwrap(thread)->reg(regNum) = value;
+      unwrap(thread)->writeRegister(regNum, value);
       return 1;
     }
   case AXE_REG_PC:
