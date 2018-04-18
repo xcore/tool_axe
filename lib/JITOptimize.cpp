@@ -106,6 +106,7 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
     isStore = true;
   case LDDSP_l2rus:
     access = MemoryAccess(Register::SP, 8, isStore).addImmOffset(ops.ops[1] << 3);
+    return true;
   case ST8_l3r:
     isStore = true;
     // Fallthrough.
