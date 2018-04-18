@@ -15,7 +15,6 @@
 #include "SDLEventPoller.h"
 #include "BitManip.h"
 #include <boost/assign/list_of.hpp>
-#include <boost/function.hpp>
 #include <deque>
 
 using namespace axe;
