@@ -239,6 +239,7 @@ enum {
   SETC_COND_FULL = 0x1,
   SETC_COND_AFTER = 0x9,
   SETC_COND_EQ = 0x11,
+  SETC_DRIVE_PULL_UP = 0x13,
   SETC_COND_NEQ = 0x19,
   SETC_IE_MODE_EVENT = 0x2,
   SETC_IE_MODE_INTERRUPT = 0xa,
@@ -367,6 +368,9 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
   switch (val) {
   default:
     internalError(*this, __FILE__, __LINE__); // TODO
+  case SETC_DRIVE_PULL_UP:
+    // TODO
+    break;
   case SETC_IE_MODE_EVENT:
   case SETC_IE_MODE_INTERRUPT:
     {
