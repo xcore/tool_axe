@@ -6,11 +6,11 @@
 #ifndef _SyscallHandler_h_
 #define _SyscallHandler_h_
 
-#include "ScopedArray.h"
 #include <set>
 #include <string>
 #include <vector>
-#include <boost/function.hpp>
+#include <memory>
+#include <functional>
 
 namespace axe {
 
@@ -18,7 +18,7 @@ class Core;
 
 class SyscallHandler {
 private:
-  const scoped_array<int> fds;
+  const std::unique_ptr<int[]> fds;
   std::set<Core*> doneSyscallsSeen;
   unsigned doneSyscallsRequired;
   struct {
@@ -34,10 +34,10 @@ private:
   int convertOpenMode(int mode);
   bool convertLseekType(int whence, int &converted);
   void doException(const Thread &state, uint32_t et, uint32_t ed);
-  boost::function<bool (Core &, void *, uint32_t, uint32_t)> loadImageCallback;
-  boost::function<bool (const Thread &, uint32_t, uint32_t, std::string &)>
+  std::function<bool (Core &, void *, uint32_t, uint32_t)> loadImageCallback;
+  std::function<bool (const Thread &, uint32_t, uint32_t, std::string &)>
     describeExceptionCallback;
-  
+
 public:
   enum SycallOutcome {
     CONTINUE,
@@ -48,16 +48,33 @@ public:
   void setCmdLine(int clientArgc, char **clientArgv);
   void setDoneSyscallsRequired(unsigned count);
   void setLoadImageCallback(
-    const boost::function<bool (Core &,void *,uint32_t,uint32_t)> &callback) {
+    const std::function<bool (Core &,void *,uint32_t,uint32_t)> &callback) {
     loadImageCallback = callback;
   }
   void setDescribeExceptionCallback(
-    const boost::function<bool (const Thread &, uint32_t, uint32_t,
+    const std::function<bool (const Thread &, uint32_t, uint32_t,
                                 std::string &)> &callback) {
     describeExceptionCallback = callback;
   }
   SycallOutcome doSyscall(Thread &thread, int &retval);
   void doException(const Thread &thread);
+
+private:
+  SycallOutcome doOsCallExit(Thread &thread, int &retval);
+  SycallOutcome doOsCallDone(Thread &thread, int &retval);
+  SycallOutcome doOsCallOpen(Thread &thread, int &retval);
+  SycallOutcome doOsCallClose(Thread &thread, int &retval);
+  SycallOutcome doOsCallRead(Thread &thread, int &retval);
+  SycallOutcome doOsCallWrite(Thread &thread, int &retval);
+  SycallOutcome doOsCallLseek(Thread &thread, int &retval);
+  SycallOutcome doOsCallRename(Thread &thread, int &retval);
+  SycallOutcome doOsCallTime(Thread &thread, int &retval);
+  SycallOutcome doOsCallRemove(Thread &thread, int &retval);
+  SycallOutcome doOsCallSystem(Thread &thread, int &retval);
+  SycallOutcome doOsCallArgv(Thread &thread, int &retval);
+  SycallOutcome doOsCallIsSimulation(Thread &thread, int &retval);
+  SycallOutcome doOsCallLoadImage(Thread &thread, int &retval);
+  
 };
   
 } // End axe namespace

@@ -17,6 +17,7 @@ class SSwitchCtrlRegs {
 private:
   Node *node;
   uint32_t scratchReg;
+  uint32_t clkDividerReg;
   std::vector<uint8_t> regFlags;
   enum RegisterFlags {
     REG_READ = 1,

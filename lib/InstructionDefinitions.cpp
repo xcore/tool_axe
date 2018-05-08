@@ -72,6 +72,11 @@ extern "C" bool jitInvalidateWordCheck(Thread &t, uint32_t address)
   return t.getParent().invalidateWordCheck(address);
 }
 
+extern "C" bool jitInvalidateDoubleCheck(Thread &t, uint32_t address)
+{
+  return t.getParent().invalidateDoubleCheck(address);
+}
+
 extern "C" InstReturn jitInterpretOne(Thread &t) {
   t.pendingPc = t.pc;
   t.pc = t.getParent().getInterpretOneAddr();
@@ -86,7 +91,6 @@ extern "C" InstReturn jitInterpretOne(Thread &t) {
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (field ## n)
-#define LOP(n) OP(n)
 #define EMIT_JIT_INSTRUCTION_FUNCTIONS
 #include "InstructionGenOutput.inc"
 #undef EMIT_JIT_INSTRUCTION_FUNCTIONS

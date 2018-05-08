@@ -28,10 +28,16 @@ using namespace Register;
 Thread::Thread() :
   Resource(RES_TYPE_THREAD),
   parent(0),
-  scheduler(0)
+  scheduler(0),
+  dualIssue(false),
+  regs(Register::NUM_REGISTERS, 0),
+  regsBuffer(Register::NUM_REGISTERS, 0),
+  bufferInitialized(true)
 {
   time = 0;
   pc = 0;
+  instructionCounter = 0;
+
   regs[KEP] = 0;
   regs[KSP] = 0;
   regs[SPC] = 0;
@@ -41,6 +47,37 @@ Thread::Thread() :
   eeble() = false;
   ieble() = false;
   setInUse(false);
+}
+
+void Thread::setDualIssue (bool di)
+{
+  dualIssue = di;
+}
+
+bool Thread::isDualIssue () const
+{
+  return dualIssue;
+}
+
+void Thread::writeRegister (int index, uint32_t value)
+{
+  if (!dualIssue) {
+    regs[index] = value;
+  } else {
+    if (!bufferInitialized) {
+      regsBuffer = regs;
+      bufferInitialized = true;
+    }
+    regsBuffer[index] = value;
+  }
+}
+
+uint32_t Thread::readRegisterForTrace (int index) const
+{
+  if (bufferInitialized) {
+    return regsBuffer[index];
+  }
+  return regs[index];
 }
 
 void Thread::setParent(Core &p)
@@ -76,6 +113,19 @@ void Thread::dump() const
   }
   std::cout << "pc: 0x" << getRealPc() << "\n";
   std::cout << std::dec;
+}
+
+void Thread::addTime(ticks_t value) {
+  value *= instructionCycles;
+  if (!dualIssue || pc % 2 == 0) {
+    time += value;
+  }
+}
+
+uint32_t Thread::getReferenceTime () const
+{
+  // Approximate the reference clock
+  return (uint32_t)((double)time / parent->getParent()->getReferenceDivide());
 }
 
 void Thread::schedule()
@@ -189,6 +239,7 @@ enum {
   SETC_COND_FULL = 0x1,
   SETC_COND_AFTER = 0x9,
   SETC_COND_EQ = 0x11,
+  SETC_DRIVE_PULL_UP = 0x13,
   SETC_COND_NEQ = 0x19,
   SETC_IE_MODE_EVENT = 0x2,
   SETC_IE_MODE_INTERRUPT = 0xa,
@@ -317,6 +368,9 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
   switch (val) {
   default:
     internalError(*this, __FILE__, __LINE__); // TODO
+  case SETC_DRIVE_PULL_UP:
+    // TODO
+    break;
   case SETC_IE_MODE_EVENT:
   case SETC_IE_MODE_INTERRUPT:
     {
@@ -408,14 +462,13 @@ setC(ticks_t time, ResourceID resID, uint32_t val)
 //#define ERROR() internalError(THREAD, __FILE__, __LINE__);
 #define ERROR() std::abort();
 #define OP(n) (THREAD.getOperands(THREAD.pc).ops[(n)])
-#define LOP(n) (THREAD.getOperands(THREAD.pc).lops[(n)])
 #define TRACE_BEGIN() \
 do { \
   if (tracing) { CORE.getTracer()->instructionBegin(THREAD); } \
 } while(0)
 #define TRACE_REG_WRITE(register, value) \
 do { \
-  if (tracing) { CORE.getTracer()->regWrite(register, value); } \
+  if (tracing) { /*CORE.getTracer()->regWrite(register, value);*/ } \
 } while(0)
 #define TRACE_END() \
 do { \
@@ -430,15 +483,18 @@ do { \
 
 template<bool tracing>
 InstReturn Instruction_TSETMR_2r(Thread &thread) {
+  if (THREAD.pc % 2 == 0) {
+    THREAD.doPendingRegWrites();
+  }
   TRACE_BEGIN();
   THREAD.time += INSTRUCTION_CYCLES;
   Synchroniser *sync = THREAD.getSync();
   if (sync) {
-    sync->master().reg((OP(0))) = THREAD.reg(OP(1));
+    sync->master().writeRegister((OP(0)), THREAD.reg(OP(1)));
   } else {
     // Undocumented behaviour, possibly incorrect. However this seems to
     // match the simulator.
-    THREAD.reg(OP(0)) = THREAD.reg(OP(1));
+    THREAD.writeRegister(OP(0), THREAD.reg(OP(1)));
   }
   THREAD.pc++;
   TRACE_END();
@@ -489,7 +545,7 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
   Operands ops;
   uint32_t address = THREAD.fromPc(THREAD.pc);
   instructionDecode(CORE, address, opc, ops);
-  instructionTransform(opc, ops, CORE, address);
+  instructionTransform(opc, ops, CORE, address, thread.isDualIssue());
   THREAD.setOpcode(THREAD.pc, (tracing ? opcodeMapTracing : opcodeMap)[opc], ops,
                    instructionProperties[opc].size);
   return InstReturn::END_TRACE;
@@ -499,7 +555,6 @@ template<bool tracing> InstReturn Instruction_DECODE(Thread &thread) {
 #undef CORE
 #undef ERROR
 #undef OP
-#undef LOP
 #undef TRACE_BEGIN
 #undef TRACE_REG_WRITE
 #undef TRACE_END
@@ -511,7 +566,7 @@ InstReturn Thread::interpretOne()
   InstructionOpcode opc;
   uint32_t address = fromPc(pc);
   instructionDecode(*parent, address, opc, ops, true /*ignoreBreakpoints*/);
-  instructionTransform(opc, ops, *parent, address);
+  instructionTransform(opc, ops, *parent, address, isDualIssue());
   bool tracing = decodeCache.tracingEnabled;
   InstReturn retval = (*(tracing ? opcodeMapTracing : opcodeMap)[opc])(*this);
   ops = oldOps;
@@ -544,11 +599,23 @@ void Thread::getNextPC() {
     pc++;
 }
 
+void Thread::doPendingRegWrites() {
+  if (bufferInitialized) {
+    regs.swap(regsBuffer);
+    bufferInitialized = false;
+  }
+}
+
 void Thread::run(ticks_t time)
 {
+  if (this->time == 0) {
+    this->time = 1;
+  }
   while (1) {
-    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION)
+    instructionCounter++;
+    if ((*decodeCache.opcode[pc])(*this) == InstReturn::END_THREAD_EXECUTION) {
       return;
+    }
   }
 }
 

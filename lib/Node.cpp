@@ -5,6 +5,7 @@
 
 #include "Node.h"
 #include "BitManip.h"
+#include <iostream>
 
 using namespace axe;
 
@@ -105,9 +106,11 @@ ChanEndpoint *Node::getIncomingChanendDest(ResourceID ID)
   unsigned leapCount = 8;
   while (1) {
     unsigned destNode = ID.node() >> node->getNonNodeNumberBits();
-    unsigned diff = destNode ^ node->getNodeID();
+    unsigned nodeId = node->getNodeID() >> node->getNonNodeNumberBits();
+    unsigned diff = (destNode ^ nodeId) << node->getNonNodeNumberBits();
     if (diff == 0)
       break;
+    
     // Lookup direction
     unsigned bit = 31 - countLeadingZeros(diff);
     unsigned direction = node->directions[bit];

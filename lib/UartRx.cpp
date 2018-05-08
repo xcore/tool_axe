@@ -167,9 +167,9 @@ createUartRx(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorUartRx()
+std::unique_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorUartRx()
 {
-  std::auto_ptr<PeripheralDescriptor> p(
+  std::unique_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("uart-rx", &createUartRx));
   p->addProperty(PropertyDescriptor::portProperty("port")).setRequired(true);
   p->addProperty(PropertyDescriptor::integerProperty("bitrate"));

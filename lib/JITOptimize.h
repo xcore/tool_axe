@@ -50,7 +50,7 @@ public:
 
 void placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                        std::vector<Operands> &operands,
-                       std::queue<std::pair<uint32_t,MemoryCheck*>> &checks);
+                       std::queue<std::pair<uint32_t,MemoryCheck>> &checks);
   
 } // End axe namespace
 

@@ -1,5 +1,7 @@
 // RUN: xcc -target=XK-1A %s -o %t1.xe
 // RUN: axe %t1.xe --uart-rx port=0x10200,bitrate=115200
+// RUN: xcc -target=XCORE-200-EXPLORER %s -o %t1.xe
+// RUN: axe %t1.xe --uart-rx port=0x10200,bitrate=115200
 
 #include <xs1.h>
 #include <print.h>

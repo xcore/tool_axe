@@ -28,8 +28,8 @@ AXESystemRef axeCreateInstance(const char *xeFileName, int tracingEnabled)
   SystemStateWrapper *sysWrapper;
   if(tracingEnabled != 0)
   {
-    std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>(new LoggingTracer(false));
-    sysWrapper = new SystemStateWrapper(xeReader.readConfig(tracer));
+    std::unique_ptr<Tracer> tracer = std::unique_ptr<Tracer>(new LoggingTracer(false, false));
+    sysWrapper = new SystemStateWrapper(xeReader.readConfig(std::move(tracer)));
   }
   else
   {
@@ -70,7 +70,7 @@ AXENodeType axeGetNodeType(AXESystemRef system, int jtagIndex) {
   for (Node *node : sys->getNodes()) {
     if (!node->isProcessorNode())
       continue;
-    if (node->getJtagIndex() != jtagIndex)
+    if (node->getJtagIndex() != (unsigned)jtagIndex)
       continue;
     return (AXENodeType)node->getType();
   }
@@ -83,7 +83,7 @@ int axeGetNumTiles(AXESystemRef system, int jtagIndex) {
   for (Node *node : sys->getNodes()) {
     if (!node->isProcessorNode())
       continue;
-    if (node->getJtagIndex() != jtagIndex)
+    if (node->getJtagIndex() != (unsigned)jtagIndex)
       continue;
     return static_cast<ProcessorNode*>(node)->getCores().size();
   }
@@ -224,7 +224,7 @@ int axeWriteReg(AXEThreadRef thread, AXERegister axeReg, unsigned value)
       Register::Reg regNum;
       if (!convertRegNum(axeReg, regNum))
         return 0;
-      unwrap(thread)->reg(regNum) = value;
+      unwrap(thread)->writeRegister(regNum, value);
       return 1;
     }
   case AXE_REG_PC:

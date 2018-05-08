@@ -30,9 +30,9 @@ static llvm::raw_ostream &operator<<(llvm::raw_ostream &out,
   return out << getRegisterName(r);
 }
 
-LoggingTracer::LoggingTracer(bool traceCycles) :
+LoggingTracer::LoggingTracer(bool traceCycles, bool useColour) :
   traceCycles(traceCycles),
-  useColors(llvm::outs().has_colors()),
+  useColors(useColour && llvm::outs().has_colors()),
   out(llvm::outs()),
   pos(out.tell()),
   thread(nullptr),
@@ -128,9 +128,6 @@ void LoggingTracer::printThreadPC(const Thread &t, uint32_t pc)
 static uint32_t getOperand(const InstructionProperties &properties,
                            const Operands &operands, unsigned i)
 {
-  if (properties.getNumExplicitOperands() > 3) {
-    return operands.lops[i];
-  }
   return operands.ops[i];
 }
 
@@ -140,8 +137,6 @@ getOperandRegister(const InstructionProperties &properties,
 {
   if (i >= properties.getNumExplicitOperands())
     return properties.getImplicitOperand(i - properties.getNumExplicitOperands());
-  if (properties.getNumExplicitOperands() > 3)
-    return static_cast<Register::Reg>(ops.lops[i]);
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
@@ -174,14 +169,6 @@ void LoggingTracer::printInstructionLineStart(const Thread &t, uint32_t pc)
   // TODO remove this by describing tsetmr as taking an immediate?
   if (opcode == InstructionOpcode::TSETMR_2r) {
     out << "tsetmr ";
-    printDestRegister(getOperandRegister(properties, ops, 0));
-    out << ", ";
-    printSrcRegister(getOperandRegister(properties, ops, 1));
-    return;
-  }
-  if (opcode == InstructionOpcode::ADD_2rus &&
-      getOperand(properties, ops, 2) == 0) {
-    out << "mov ";
     printDestRegister(getOperandRegister(properties, ops, 0));
     out << ", ";
     printSrcRegister(getOperandRegister(properties, ops, 1));
@@ -277,9 +264,23 @@ void LoggingTracer::instructionEnd() {
   if (!emittedLineStart) {
     printInstructionLineStart(*thread, pc);
   }
+  out << " # ";
+  dumpRegisters();
+
   thread = nullptr;
   emittedLineStart = false;
   printLineEnd();
+}
+
+void LoggingTracer::dumpRegisters()
+{
+  for (int i=0; i<16; i++) {
+    out << " r" << i << "=0x";
+    //out.write_hex(thread->regs[i]);
+    out.write_hex(thread->readRegisterForTrace(i));
+  }
+  out << " di=0x" << (thread->isDualIssue() ? "1" : "0");
+  out << " time=" << thread->time;
 }
 
 void LoggingTracer::printSrcRegister(Register::Reg reg)

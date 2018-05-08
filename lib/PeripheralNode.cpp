@@ -21,6 +21,8 @@ void PeripheralNode::finalize()
   XLink &xlink = getXLink(0);
   xlink.setFiveWire(true);
   xlink.setEnabled(true);
+
+  Node::finalize();
 }
 
 ChanEndpoint *PeripheralNode::getOutgoingChanendDest(ResourceID ID)

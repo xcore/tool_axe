@@ -13,7 +13,7 @@ namespace axe {
 
 class PeripheralDescriptor;
 
-  std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy();
+  std::unique_ptr<PeripheralDescriptor> getPeripheralDescriptorEthernetPhy();
   
 } // End axe namespace
 

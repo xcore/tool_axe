@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <bitset>
+#include <vector>
 #include "Runnable.h"
 #include "RunnableQueue.h"
 #include "Resource.h"
@@ -86,6 +87,8 @@ class Thread : public Runnable, public Resource {
   RunnableQueue *scheduler;
   /// Cached decode information.
   DecodeCache::State decodeCache;
+
+  long long instructionCounter;
 public:
   enum SRBit {
     EEBLE = 0,
@@ -96,10 +99,17 @@ public:
     // TODO When is this set?
     SINK = 5,
     WAITING = 6,
-    FAST = 7
+    FAST = 7,
+    DI = 8,
+    KEDI = 9,
+    HIPRI = 10,
   };
-  typedef std::bitset<8> sr_t;
-  uint32_t regs[Register::NUM_REGISTERS];
+  typedef std::bitset<11> sr_t;
+  bool dualIssue;
+  std::vector<uint32_t> regs;
+  // Buffer register writes in dual issue mode
+  std::vector<uint32_t> regsBuffer;
+  bool bufferInitialized;
   /// The program counter. Note that the pc will not be valid if the thread is
   /// executing since it is cached in the dispatch loop.
   uint32_t pc;
@@ -112,8 +122,24 @@ public:
   uint32_t pendingPc;
   /// The resource on which the thread is paused on.
   Resource *pausedOn;
+  /// Number of clock cycles per instruction
+  uint32_t instructionCycles;
+
+  void setInstructionCycles(uint32_t cycles) { instructionCycles = cycles; }
 
   Thread();
+
+  uint32_t getReferenceTime () const;
+
+  void setDualIssue (bool di);
+  bool isDualIssue () const;
+
+  void writeRegister (int index, uint32_t value);
+  void doPendingRegWrites();
+
+  void addTime(ticks_t value);
+
+  uint32_t readRegisterForTrace (int index) const;
 
   bool hasTimeSliceExpired() const {
     if (scheduler->empty())
@@ -192,7 +218,7 @@ public:
     return sync;
   }
 
-  uint32_t &reg(unsigned RegNum)
+  uint32_t reg(unsigned RegNum)
   {
     return regs[RegNum];
   }
@@ -272,7 +298,7 @@ public:
   }
 
   void updateExecutionFrequency(uint32_t shiftedAddress) {
-    if (updateExecutionFrequencyFromStub(shiftedAddress))
+    if (updateExecutionFrequencyFromStub(shiftedAddress) and not dualIssue)
       runJIT(shiftedAddress);
   }
 
@@ -302,6 +328,11 @@ public:
     if (!enabled[EEBLE] && !enabled[IEBLE])
       return false;
     return setSRSlowPath(enabled);
+  }
+
+  void setStatusDualIssue(bool value)
+  {
+    sr[DI] = value;
   }
 
   void clre()

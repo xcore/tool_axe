@@ -93,7 +93,9 @@ void SSwitch::handleRequest(ticks_t time, const Request &request)
   ResourceID destID = ResourceID::chanendID(request.returnNum,
                                             request.returnNode);
   Tracer *tracer = parent->getParent()->getTracer();
-  if (request.write) {
+  if (parent->nodeID != request.returnNode) {
+    ack = true;
+  } else if (request.write) {
     ack = regs.write(request.regNum, request.data);
     if (tracer) {
       tracer->SSwitchWrite(*parent, destID, request.regNum, request.data);

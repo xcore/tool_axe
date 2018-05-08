@@ -16,12 +16,12 @@ class SystemState;
 class Thread;
 
 class SystemStateWrapper {
-  std::auto_ptr<SystemState> system;
+  std::unique_ptr<SystemState> system;
   Thread *lastBreakpointThread;
   int lastExitStatus;
   ticks_t lastStopTime;
 public:
-  SystemStateWrapper(std::auto_ptr<SystemState> s);
+  SystemStateWrapper(std::unique_ptr<SystemState> s);
   SystemState *getSystemState() { return system.get(); }
   Thread *getThreadForLastBreakpoint() { return lastBreakpointThread; }
   int getLastExitStatus() const { return lastExitStatus; }

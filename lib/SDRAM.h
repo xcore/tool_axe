@@ -12,7 +12,7 @@ namespace axe {
 
 class PeripheralDescriptor;
 
-std::auto_ptr<PeripheralDescriptor> getPeripheralDescriptorSDRAM();
+std::unique_ptr<PeripheralDescriptor> getPeripheralDescriptorSDRAM();
 
 } // End namespace axe
 

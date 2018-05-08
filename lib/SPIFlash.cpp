@@ -192,9 +192,9 @@ createSPIFlash(SystemState &system, PortConnectionManager &connectionManager,
   return p;
 }
 
-std::auto_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorSPIFlash()
+std::unique_ptr<PeripheralDescriptor> axe::getPeripheralDescriptorSPIFlash()
 {
-  std::auto_ptr<PeripheralDescriptor> p(
+  std::unique_ptr<PeripheralDescriptor> p(
     new PeripheralDescriptor("spi-flash", &createSPIFlash));
   p->addProperty(PropertyDescriptor::portProperty("miso")).setRequired(true);
   p->addProperty(PropertyDescriptor::portProperty("mosi")).setRequired(true);

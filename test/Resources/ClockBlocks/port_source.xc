@@ -1,11 +1,15 @@
 // RUN: xcc -O2 -target=XK-1A %s -o %t1.xe
-// RUN: axe %t1.xe
+// RUN: %sim %t1.xe
 
 #include <xs1.h>
+#include <stdio.h>
 
 out port clk_out = XS1_PORT_1A;
+// out port clk_out = 0x10200;
 in port p = XS1_PORT_1B;
+// in port p = 0x10000;
 clock c = XS1_CLKBLK_1;
+// __clock_t c = 0x106;
 
 #define NUM_RISING 10
 #define DELAY 50
@@ -39,7 +43,10 @@ int main() {
       t :> t2;
     }
   }
+
   diff = t2 - t1;
+  printf("DIFF: %u\n", diff);
+  printf("EXPECTED: %u\n", EXPECTED);
   if (diff < EXPECTED - TOLERANCE ||
       diff > EXPECTED + TOLERANCE)
     return 1;

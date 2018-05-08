@@ -38,7 +38,6 @@
 #include <vector>
 
 
-
 using namespace axe;
 
 // InstFunction with a a fast calling convention.
@@ -89,6 +88,7 @@ class axe::JITImpl {
     LLVMValueRef jitInvalidateByteCheck;
     LLVMValueRef jitInvalidateShortCheck;
     LLVMValueRef jitInvalidateWordCheck;
+    LLVMValueRef jitInvalidateDoubleCheck;
     LLVMValueRef jitInterpretOne;
     void init(LLVMModuleRef mod);
   };
@@ -134,7 +134,7 @@ class axe::JITImpl {
                           bool &endOfBlock, uint32_t &nextPc);
   LLVMBasicBlockRef getOrCreateMemoryCheckBailoutBlock(unsigned index);
   void emitMemoryChecks(unsigned index,
-                        std::queue<std::pair<uint32_t,MemoryCheck*>> &checks);
+                        std::queue<std::pair<uint32_t,MemoryCheck>> &checks);
   LLVMValueRef getJitInvalidateFunction(unsigned size);
   void emitJumpToNextFragment(JITCoreInfo &coreInfo, uint32_t targetPc,
                               JITFunctionInfo *caller);
@@ -178,6 +178,7 @@ void JITImpl::Functions::init(LLVMModuleRef module)
     { "jitInvalidateByteCheck", &jitInvalidateByteCheck },
     { "jitInvalidateShortCheck", &jitInvalidateShortCheck },
     { "jitInvalidateWordCheck", &jitInvalidateWordCheck },
+    { "jitInvalidateDoubleCheck", &jitInvalidateDoubleCheck },
     { "jitInterpretOne", &jitInterpretOne },
   };
   for (unsigned i = 0; i < arraySize(initInfo); i++) {
@@ -558,7 +559,11 @@ getFragmentToCompile(Core &core, uint32_t startAddress,
       endOfBlock = true;
       break;
     }
-    instructionTransform(opc, ops, core, address);
+    if (opc == DUALENTSP_u6 || opc == DUALENTSP_lu6) {
+      endOfBlock = true;
+      return false;
+    }
+    instructionTransform(opc, ops, core, address, false);
     properties = &instructionProperties[opc];
     nextAddress = address + properties->size;
     if (properties->mayBranch())
@@ -599,7 +604,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     pcAfterFragment = core.toRamPc(pcAfterFragment);
     return false;
   }
-  std::queue<std::pair<uint32_t,MemoryCheck*>> checks;
+  std::queue<std::pair<uint32_t,MemoryCheck>> checks;
   placeMemoryChecks(opcode, operands, checks);
 
   if (info) {
@@ -647,9 +652,7 @@ compileOneFragment(Core &core, JITCoreInfo &coreInfo, uint32_t startPc,
     args[2] = ramBase;
     args[3] = ramSizeLog2Param;
     for (unsigned i = fixedArgs; i < numArgs; i++) {
-      uint32_t value =
-      properties->getNumExplicitOperands() <= 3 ? ops.ops[i - fixedArgs] :
-      ops.lops[i - fixedArgs];
+      uint32_t value = ops.ops[i - fixedArgs];
       args[i] = LLVMConstInt(paramTypes[i], value, false);
     }
     LLVMValueRef call = emitCallToBeInlined(callee, args, numArgs);
@@ -749,10 +752,10 @@ LLVMBasicBlockRef JITImpl::getOrCreateMemoryCheckBailoutBlock(unsigned index)
 
 void JITImpl::
 emitMemoryChecks(unsigned index,
-                 std::queue<std::pair<uint32_t,MemoryCheck*>> &checks)
+                 std::queue<std::pair<uint32_t,MemoryCheck>> &checks)
 {
   while (!checks.empty() && checks.front().first == index) {
-    MemoryCheck *check = checks.front().second;
+    const auto check = checks.front().second;
     checks.pop();
     LLVMBasicBlockRef bailoutBB = getOrCreateMemoryCheckBailoutBlock(index);
     // Compute address.
@@ -763,20 +766,20 @@ emitMemoryChecks(unsigned index,
                         paramTypes);
       LLVMValueRef args[] = {
         threadParam,
-        LLVMConstInt(paramTypes[1], check->getBaseReg(), false),
-        LLVMConstInt(paramTypes[2], check->getScale(), false),
-        LLVMConstInt(paramTypes[3], check->getOffsetReg(), false),
-        LLVMConstInt(paramTypes[4], check->getOffsetImm(), false)
+        LLVMConstInt(paramTypes[1], check.getBaseReg(), false),
+        LLVMConstInt(paramTypes[2], check.getScale(), false),
+        LLVMConstInt(paramTypes[3], check.getOffsetReg(), false),
+        LLVMConstInt(paramTypes[4], check.getOffsetImm(), false)
       };
       address = emitCallToBeInlined(functions.jitComputeAddress, args, 5);
     }
     // Check alignment.
-    if (check->getFlags() & MemoryCheck::CheckAlignment &&
-        check->getSize() > 1) {
+    if (check.getFlags() & MemoryCheck::CheckAlignment &&
+        check.getSize() > 1) {
       LLVMValueRef rem =
         LLVMBuildURem(
           builder, address,
-          LLVMConstInt(LLVMTypeOf(address), check->getSize(), false), "");
+          LLVMConstInt(LLVMTypeOf(address), check.getSize(), false), "");
       LLVMValueRef cmp =
         LLVMBuildICmp(builder, LLVMIntNE, rem,
                       LLVMConstInt(LLVMTypeOf(address), 0, false), "");
@@ -784,7 +787,7 @@ emitMemoryChecks(unsigned index,
     }
 
     // Check address valid.
-    if (check->getFlags() & MemoryCheck::CheckAddress) {
+    if (check.getFlags() & MemoryCheck::CheckAddress) {
       LLVMValueRef args[] = {
         threadParam,
         ramSizeLog2Param,
@@ -799,20 +802,19 @@ emitMemoryChecks(unsigned index,
     }
 
     // Check invalidation info.
-    if (check->getFlags() & MemoryCheck::CheckInvalidation) {
+    if (check.getFlags() & MemoryCheck::CheckInvalidation) {
       LLVMValueRef args[] = {
         threadParam,
         address
       };
       LLVMValueRef cacheInvalidated =
-        emitCallToBeInlined(getJitInvalidateFunction(check->getSize()), args,
+        emitCallToBeInlined(getJitInvalidateFunction(check.getSize()), args,
                             2);
       LLVMValueRef cmp =
       LLVMBuildICmp(builder, LLVMIntNE, cacheInvalidated,
                     LLVMConstInt(LLVMTypeOf(cacheInvalidated), 0, false), "");
       emitCondBrToBlock(cmp, bailoutBB);
     }
-    delete check;
   }
 }
 
@@ -827,6 +829,8 @@ LLVMValueRef JITImpl::getJitInvalidateFunction(unsigned size)
     return functions.jitInvalidateShortCheck;
   case 4:
     return functions.jitInvalidateWordCheck;
+  case 8:
+    return functions.jitInvalidateDoubleCheck;
   }
 }
 

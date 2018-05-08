@@ -43,9 +43,9 @@ addSymbol(const char *name, uint32_t value, unsigned char info)
   symbols.push_back(ElfSymbol(name, value, info));
 }
 
-std::auto_ptr<CoreSymbolInfo> CoreSymbolInfoBuilder::getSymbolInfo()
+std::unique_ptr<CoreSymbolInfo> CoreSymbolInfoBuilder::getSymbolInfo()
 {
-  std::auto_ptr<CoreSymbolInfo> retval(new CoreSymbolInfo);
+  std::unique_ptr<CoreSymbolInfo> retval(new CoreSymbolInfo);
 
   std::swap(symbols, retval->symbols);
   for (ElfSymbol &sym : retval->symbols) {
@@ -77,7 +77,7 @@ SymbolInfo::~SymbolInfo()
   }
 }
 
-void SymbolInfo::add(const Core *core, std::auto_ptr<CoreSymbolInfo> info)
+void SymbolInfo::add(const Core *core, std::unique_ptr<CoreSymbolInfo> info)
 {
   CoreSymbolInfo *&entry = coreMap[core];
   if (entry) {

@@ -6,6 +6,7 @@
 #ifndef _XEReader_h
 #define _XEReader_h
 
+#include "Tracer.h"
 #include <memory>
 
 namespace axe {
@@ -13,14 +14,13 @@ namespace axe {
 class XE;
 class SystemState;
 class PortAliases;
-class Tracer;
 
 class XEReader {
   XE &xe;
 public:
   XEReader(XE &x) : xe(x) {}
-  std::auto_ptr<SystemState>
-    readConfig(std::auto_ptr<Tracer> tracer = std::auto_ptr<Tracer>());
+  std::unique_ptr<SystemState>
+    readConfig(std::unique_ptr<Tracer> tracer = std::unique_ptr<Tracer>());
   void readPortAliases(PortAliases &aliases);
 };
 

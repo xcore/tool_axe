@@ -121,7 +121,7 @@ private:
   uint32_t computeSteadyStateInputShiftReg();
   /// Update the port to the specified time. The port must be clocked off a
   /// fixed frequency clock.
-  void updateSlow(ticks_t time);
+  void updateSlow(ticks_t newTime);
 
   /// Return whether the condition is met for the specified value.
   bool valueMeetsCondition(uint32_t value) const;
@@ -173,6 +173,10 @@ private:
     return getEffectiveDataPortInputPinsValue().getValue(time);
   }
   bool seeEventEnable(ticks_t time) override;
+
+  void seeFallingEdge();
+  void seeSamplingEdge();
+  void seeFallingEdgeOutputPort();
 public:
   Port();
   std::string getName() const;
@@ -181,25 +185,25 @@ public:
   }
   /// Update the pin buffer with the change.
   void seePinsChange(const Signal &value, ticks_t time) override;
-  bool setCInUse(Thread &thread, bool val, ticks_t time) override;
+  bool setCInUse(Thread &thread, bool val, ticks_t newTime) override;
 
   bool setCondition(Thread &thread, Condition c, ticks_t time) override;
   bool setData(Thread &thread, uint32_t d, ticks_t time) override;
-  bool getData(Thread &thread, uint32_t &value, ticks_t time) override;
+  bool getData(Thread &thread, uint32_t &result, ticks_t time) override;
   bool setPortInv(Thread &thread, bool value, ticks_t time);
   void setSamplingEdge(Thread &thread, Edge::Type value, ticks_t time);
   bool setPinDelay(Thread &thread, unsigned value, ticks_t time);
 
-  ResOpResult in(Thread &thread, ticks_t time, uint32_t &value);
-  ResOpResult inpw(Thread &thread, uint32_t width, ticks_t time,
+  ResOpResult in(Thread &thread, ticks_t threadTime, uint32_t &value);
+  ResOpResult inpw(Thread &thread, uint32_t width, ticks_t threadTime,
                    uint32_t &value);
-  ResOpResult out(Thread &thread, uint32_t value, ticks_t time);
+  ResOpResult out(Thread &thread, uint32_t value, ticks_t threadTime);
   ResOpResult outpw(Thread &thread, uint32_t value, uint32_t width,
-                    ticks_t time);
-  ResOpResult setpsc(Thread &thread, uint32_t value, ticks_t time);
-  ResOpResult endin(Thread &thread, ticks_t time, uint32_t &value);
+                    ticks_t threadTime);
+  ResOpResult setpsc(Thread &thread, uint32_t width, ticks_t threadTime);
+  ResOpResult endin(Thread &thread, ticks_t threadTime, uint32_t &value);
   ResOpResult sync(Thread &thread, ticks_t time);
-  uint32_t peek(Thread &thread, ticks_t time);
+  uint32_t peek(Thread &thread, ticks_t threadTime);
   ResOpResult setPortTime(Thread &thread, uint32_t value, ticks_t time);
   uint32_t getTimestamp(Thread &thread, ticks_t time);
   void clearPortTime(Thread &thread, ticks_t time);
@@ -230,11 +234,11 @@ public:
 
   bool setBuffered(Thread &thread, bool value, ticks_t time);
 
-  bool setReadyMode(Thread &thread, ReadyMode readMode, ticks_t time);
+  bool setReadyMode(Thread &thread, ReadyMode mode, ticks_t time);
 
   bool setMasterSlave(Thread &thread, MasterSlave value, ticks_t time);
 
-  bool setPortType(Thread &thread, PortType portType, ticks_t time);
+  bool setPortType(Thread &thread, PortType type, ticks_t time);
 
   bool setTransferWidth(Thread &thread, uint32_t value, ticks_t time);
 
@@ -276,7 +280,7 @@ public:
 
   uint32_t nextShiftRegOutputPort(uint32_t old);
 
-  void seeEdge(Edge::Type edgeType, ticks_t time);
+  void seeEdge(Edge::Type edgeType, ticks_t newTime);
   void seeEdge(EdgeIterator it) { seeEdge(it->type, it->time); }
 
   bool seeOwnerEventEnable();
@@ -287,7 +291,7 @@ public:
 
   /// Update the port to the specified time.
   /// \param current The currently executing thread, or 0 if none.
-  void update(ticks_t time);
+  void update(ticks_t newTime);
   
   bool useReadyIn() const {
     return readyMode == HANDSHAKE ||

@@ -6,6 +6,7 @@
 #include "SSwitchCtrlRegs.h"
 #include "ProcessorNode.h"
 #include "BitManip.h"
+#include "SystemState.h"
 #include <algorithm>
 
 using namespace axe;
@@ -67,6 +68,8 @@ void SSwitchCtrlRegs::initRegisters()
     initReg(XLINK_0 + i, REG_RW);
     //initReg(XSTATIC_0 + i, REG_RW);
   }
+
+  initReg(CLK_DIVIDER, REG_RW);
 }
 
 static inline void
@@ -208,11 +211,20 @@ bool SSwitchCtrlRegs::read(uint16_t num, uint32_t &result)
   return false;
 }
 
+void writeNodeId(Node *node, uint32_t value)
+{
+  auto n = node->getNonNodeNumberBits();
+  value = value >> n;
+  value = value << n;
+  node->setNodeID(value);
+}
+
 bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
 {
   using namespace SSwitchReg;
-  if (num > regFlags.size())
+  if (num > regFlags.size()) {
     return false;
+  }
   if ((regFlags[num] & REG_WRITE) == 0)
     return false;
   if (num >= SLINK_0 && num < PLINK_0) {
@@ -230,10 +242,13 @@ bool SSwitchCtrlRegs::write(uint16_t num, uint32_t value)
     writeDirectionReg(node, (num - DIMENSION_DIRECTION_0) * 8, value);
     return true;
   case NODE_ID:
-    node->setNodeID(value & makeMask(node->getNodeNumberBits()));
+    writeNodeId(node, value);
     return true;
   case DEVICE_ID3:
     scratchReg = value;
+    return true;
+  case CLK_DIVIDER:
+    clkDividerReg = value;
     return true;
   }
   assert(0 && "Unexpected register");

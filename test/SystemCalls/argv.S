@@ -1,5 +1,5 @@
 // RUN: xcc -target=XK-1A %s -o %t1.xe
-// RUN: axe --args %t1.xe hello world
+// RUN: %sim --args %t1.xe hello world
 
 .globl main
 

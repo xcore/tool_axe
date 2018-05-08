@@ -22,7 +22,6 @@ using namespace axe;
 
 Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   ramDecodeCache(RamBase >> 1, RamBase, true, tracing),
-  jitEnabled(!tracing),
   ramSizeLog2(31 - countLeadingZeros(RamSize)),
   ramBaseMultiple(RamBase / RamSize),
   thread(new Thread[NUM_THREADS]),
@@ -42,7 +41,8 @@ Core::Core(uint32_t RamSize, uint32_t RamBase, bool tracing) :
   bootStatus(0),
   rom(0),
   romBase(0),
-  romSize(0)
+  romSize(0),
+  jitEnabled(!tracing)
 {
   memoryOffset = memory - RamBase;
   invalidationInfoOffset =
@@ -367,8 +367,9 @@ ChanEndpoint *Core::getChanendDest(ResourceID ID)
     return 0;
   ChanEndpoint *result;
   // Try to lookup locally first.
-  if (getLocalChanendDest(ID, result))
+  if (getLocalChanendDest(ID, result)) {
     return result;
+  }
   return parent->getOutgoingChanendDest(ID);
 }
 
@@ -383,6 +384,8 @@ bool Core::setProcessorState(uint32_t reg, uint32_t value)
     return true;
   case PS_BOOT_STATUS:
     bootStatus = value;
+    return true;
+  case PS_RING_OSC_CONTROL:
     return true;
   }
   return false;
@@ -409,7 +412,13 @@ bool Core::getProcessorState(uint32_t reg, uint32_t &value)
 
 void Core::finalize()
 {
+  auto iCycles = 4;
+  if (parent->type == Node::Type::XS2_A) {
+    iCycles = 5;
+  }
+
   for (unsigned i = 0; i < NUM_THREADS; i++) {
+    thread[i].setInstructionCycles(iCycles);
     thread[i].finalize();
   }
 }
@@ -432,7 +441,7 @@ std::string Core::getCoreName() const
   if (!codeReference.empty())
     return codeReference;
   std::ostringstream buf;
-  buf << 'c' << getCoreID();
+  buf << 'c' << std::hex << getCoreID();
   return buf.str();
 }
 

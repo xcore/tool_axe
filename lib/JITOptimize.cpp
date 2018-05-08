@@ -11,6 +11,9 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include <memory>
+#include <array>
+#include "stdio.h"
 
 using namespace axe;
 
@@ -57,15 +60,15 @@ public:
 class MemoryCheckCandidate {
   unsigned earliestIndex;
   unsigned instructionIndex;
-  MemoryCheck *check;
+  MemoryCheck check;
 public:
-  MemoryCheckCandidate(unsigned e, unsigned i, MemoryCheck *c) :
+  MemoryCheckCandidate(unsigned e, unsigned i, MemoryCheck c) :
     earliestIndex(e),
     instructionIndex(i),
     check(c) {}
   unsigned getEarliestIndex() const { return earliestIndex; }
   unsigned getInstructionIndex() const { return instructionIndex; }
-  MemoryCheck *getMemoryCheck() { return check; }
+  MemoryCheck getMemoryCheck() { return check; }
 };
 
 static bool
@@ -99,6 +102,11 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
   case LDWSP_lru6:
     access = MemoryAccess(Register::SP, 4, isStore).addImmOffset(ops.ops[1]);
     return true;
+  case STDSP_l2rus:
+    isStore = true;
+  case LDDSP_l2rus:
+    access = MemoryAccess(Register::SP, 8, isStore).addImmOffset(ops.ops[1] << 3);
+    return true;
   case ST8_l3r:
     isStore = true;
     // Fallthrough.
@@ -127,6 +135,12 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
     access = MemoryAccess(Register::Reg(ops.ops[1]), 4, isStore)
       .addImmOffset(ops.ops[2]);
     return true;
+  case STD_l3rus:
+    isStore = true;
+  case LDD_l3rus:
+    access = MemoryAccess(Register::Reg(ops.ops[1]), 8, isStore)
+      .addImmOffset(ops.ops[2] << 3);
+    return true;
   case ENTSP_u6:
   case ENTSP_lu6:
     if (ops.ops[0] == 0)
@@ -135,6 +149,8 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
     return true;
   case RETSP_u6:
   case RETSP_lu6:
+  case RETSP_xs2a_u6:
+  case RETSP_xs2a_lu6:
     if (ops.ops[0] == 0)
       return false;
     access = MemoryAccess(Register::SP, 4, false).addImmOffset(ops.ops[0]);
@@ -153,8 +169,6 @@ getRegister(const InstructionProperties &properties, const Operands &ops,
 {
   if (i >= properties.getNumExplicitOperands())
     return properties.getImplicitOperand(i - properties.getNumExplicitOperands());
-  if (properties.getNumExplicitOperands() > 3)
-    return static_cast<Register::Reg>(ops.lops[i]);
   return static_cast<Register::Reg>(ops.ops[i]);
 }
 
@@ -173,21 +187,21 @@ getFlagsForCheck(const MemoryAccess &access)
 struct MemoryCheckState {
   // Index of the first instruction where the value in the specified register
   // is available.
-  unsigned regDefs[Register::NUM_REGISTERS];
-  unsigned char minAlignment[Register::NUM_REGISTERS];
+  std::array<unsigned, Register::NUM_REGISTERS> regDefs;
+  std::array<unsigned char, Register::NUM_REGISTERS> minAlignment;
 
   MemoryCheckState() {
-    std::memset(regDefs, 0, sizeof(regDefs));
-    std::memset(minAlignment, 1, sizeof(minAlignment));
+    regDefs.fill(0);
+    minAlignment.fill(1);
   }
 
   void update(InstructionOpcode opc, const Operands &ops,
               unsigned nextOffset);
   void setMinAlignment(Register::Reg reg, unsigned char value) {
-    minAlignment[reg] = value;
+    minAlignment.at(reg) = value;
   }
   unsigned char getMinAlignment(Register::Reg reg) const {
-    return minAlignment[reg];
+    return minAlignment.at(reg);
   }
 };
 
@@ -199,15 +213,15 @@ update(InstructionOpcode opc, const Operands &ops, unsigned nextOffset)
     if (!isDef(properties.getOperandType(i)))
       continue;
     Register::Reg reg = getRegister(properties, ops, i);
-    regDefs[reg] = nextOffset;
-    minAlignment[reg] = 1;
+    regDefs.at(reg) = nextOffset;
+    minAlignment.at(reg) = 1;
   }
 }
 
 void axe::
 placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
                   std::vector<Operands> &operands,
-                  std::queue<std::pair<uint32_t,MemoryCheck*>> &checks)
+                  std::queue<std::pair<uint32_t,MemoryCheck>> &checks)
 {
   MemoryCheckState state;
 
@@ -222,9 +236,9 @@ placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
         getInstructionMemoryAccess(opc, ops, access)) {
       assert(access.getOffsetImm() % access.getSize() == 0);
       // Compute the first offset where all registers are available.
-      unsigned first = state.regDefs[access.getBaseReg()];
+      unsigned first = state.regDefs.at(access.getBaseReg());
       if (access.getScale())
-        first = std::min(first, state.regDefs[access.getOffsetReg()]);
+        first = std::min(first, state.regDefs.at(access.getOffsetReg()));
       unsigned flags = getFlagsForCheck(access);
       bool updateBaseRegAlign = false;
       if (flags & MemoryCheck::CheckAlignment) {
@@ -238,8 +252,8 @@ placeMemoryChecks(std::vector<InstructionOpcode> &opcode,
           updateBaseRegAlign = true;
         }
       }
-      MemoryCheck *check =
-        new MemoryCheck(access.getSize(), access.getBaseReg(),
+      const auto check =
+        MemoryCheck(access.getSize(), access.getBaseReg(),
                         access.getScale(), access.getOffsetReg(),
                         access.getOffsetImm(), flags);
       candidates.push_back(MemoryCheckCandidate(first, i, check));

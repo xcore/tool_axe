@@ -17,7 +17,7 @@ public:
   ticks_t time;
   WatchpointException(WatchpointType t, uint32_t addr, Thread &thrd,
                       ticks_t tm) :
-    thread(thrd), address(addr), type(t), time(tm) {}
+    address(addr), type(t), thread(thrd), time(tm) {}
   uint32_t getAddr() { return address; }
   ticks_t getTime() const { return time; }
   Thread &getThread() const { return thread; }
