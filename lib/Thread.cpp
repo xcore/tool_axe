@@ -51,6 +51,18 @@ Thread::Thread() :
 
 void Thread::setDualIssue (bool di)
 {
+  // Bug in RETSP caused the write to the SP to be ignored.
+  // 1. RETSP enters; dual issue is true and bufferInitialized is true
+  // 2. RETSP turns off dual issue mode.
+  // 3. RETSP writes SP directly because 'dualIssue == false'
+  // 4. Next instruction swaps reg buffers because bufferInitialized is true
+  if (dualIssue && !di) {
+    if (bufferInitialized) {
+      regs.swap(regsBuffer);
+      bufferInitialized = false;
+    }
+  }
+
   dualIssue = di;
 }
 
