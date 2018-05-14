@@ -135,6 +135,13 @@ getInstructionMemoryAccess(InstructionOpcode opc, Operands ops,
     access = MemoryAccess(Register::Reg(ops.ops[1]), 4, isStore)
       .addImmOffset(ops.ops[2]);
     return true;
+  case STD_l4r:
+    isStore = true;
+    // Fallthrough.
+  case LDD_l4r:
+    access = MemoryAccess(Register::Reg(ops.ops[1]), 8, isStore)
+      .addRegisterOffset(8, Register::Reg(ops.ops[2]));
+    return true;
   case STD_l3rus:
     isStore = true;
   case LDD_l3rus:
