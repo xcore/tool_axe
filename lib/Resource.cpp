@@ -141,7 +141,11 @@ uint32_t EventableResource::getTruncatedEV(Thread &thread) const
 {
   if (EV == getID())
     return EV;
-  return (EV & 0xffff) | thread.getParent().getRamBase();
+  if (thread.getParent().getParent()->type == Node::Type::XS2_A) {
+    return EV;
+  } else {
+    return (EV & 0xffff) | thread.getParent().getRamBase();
+  }
 }
 
 void EventableResource::eventDisable(Thread &thread)
