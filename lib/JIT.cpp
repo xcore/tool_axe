@@ -292,9 +292,11 @@ void JITImpl::reclaimUnreachableFunctions(JITCoreInfo &coreInfo)
       info->fastFuncValue
     };
     for (LLVMValueRef f : functions) {
-      LLVMFreeMachineCodeForFunction(executionEngine, f);
-      LLVMReplaceAllUsesWith(f, LLVMGetUndef(LLVMTypeOf(f)));
-      LLVMDeleteFunction(f);
+      if(f){
+        LLVMFreeMachineCodeForFunction(executionEngine, f);
+        LLVMReplaceAllUsesWith(f, LLVMGetUndef(LLVMTypeOf(f)));
+        LLVMDeleteFunction(f);
+      }
     }
     info->fastFunc = nullptr;
     info->func = nullptr;
